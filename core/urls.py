@@ -1,0 +1,49 @@
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenBlacklistView
+
+from .views import (
+    CicloViewSet, TallerViewSet, ProfesorViewSet, AlumnoViewSet,
+    HorarioViewSet, MatriculaViewSet, MatriculaHorarioViewSet,
+    AsistenciaViewSet, ReciboViewSet, PagoProfesorViewSet,
+    calcular_pago_profesor, resumen_ciclo, ConfiguracionViewSet,
+    asistencia_por_horario
+)
+
+router = DefaultRouter()
+router.register(r'config', ConfiguracionViewSet, basename='config')
+router.register(r'ciclos', CicloViewSet)
+router.register(r'talleres', TallerViewSet)
+router.register(r'profesores', ProfesorViewSet)
+router.register(r'alumnos', AlumnoViewSet)
+router.register(r'horarios', HorarioViewSet)
+router.register(r'matriculas', MatriculaViewSet)
+router.register(r'matriculas-horarios', MatriculaHorarioViewSet)
+router.register(r'asistencias', AsistenciaViewSet)
+router.register(r'recibos', ReciboViewSet)
+router.register(r'pagos-profesores', PagoProfesorViewSet)
+
+urlpatterns = [
+    path('', include(router.urls)),
+    
+    path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/logout/', TokenBlacklistView.as_view(), name='token_blacklist'),
+    
+    path('pagos-profesores/calcular/', calcular_pago_profesor, name='calcular_pago'),
+    path('ciclos/<int:pk>/resumen/', resumen_ciclo, name='resumen_ciclo'),
+    
+    # Endpoints por ciclo
+    path('ciclos/<int:ciclo_id>/alumnos/', AlumnoViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-alumnos'),
+    path('ciclos/<int:ciclo_id>/alumnos/<int:pk>/', AlumnoViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='ciclo-alumnos-detail'),
+    path('ciclos/<int:ciclo_id>/talleres/', TallerViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-talleres'),
+    path('ciclos/<int:ciclo_id>/talleres/<int:pk>/', TallerViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='ciclo-talleres-detail'),
+    path('ciclos/<int:ciclo_id>/profesores/', ProfesorViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-profesores'),
+    path('ciclos/<int:ciclo_id>/profesores/<int:pk>/', ProfesorViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='ciclo-profesores-detail'),
+    path('ciclos/<int:ciclo_id>/horarios/', HorarioViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-horarios'),
+    path('ciclos/<int:ciclo_id>/horarios/<int:pk>/', HorarioViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='ciclo-horarios-detail'),
+    path('ciclos/<int:ciclo_id>/matriculas/', MatriculaViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-matriculas'),
+    path('ciclos/<int:ciclo_id>/asistencias/', AsistenciaViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-asistencias'),
+    path('ciclos/<int:ciclo_id>/asistencias/por-horario/', asistencia_por_horario, name='ciclo-asistencias-por-horario'),
+    path('ciclos/<int:ciclo_id>/recibos/', ReciboViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-recibos'),
+]
