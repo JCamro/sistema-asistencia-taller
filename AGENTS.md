@@ -239,3 +239,91 @@ npm run dev
 4. **Estructura**: Todas las entidades (Alumnos, Profesores, Talleres) tienen FK obligatoria a Ciclo
 5. **Idioma**: Toda la aplicación debe responder en español
 6. **Optimizaciones**: Componentes memoizados con `memo()` para evitar re-renders innecesarios
+
+---
+
+## Comandos de Ejecución
+
+### Backend (Django)
+```bash
+cd panel-asistencia
+python manage.py runserver         # Iniciar servidor en puerto 8000
+python manage.py shell            # Abrir shell de Django
+python manage.py makemigrations   # Crear migraciones
+python manage.py migrate          # Aplicar migraciones
+python manage.py test             # Ejecutar tests (si están configurados)
+```
+
+### Frontend (React + Vite)
+```bash
+cd frontend
+npm run dev      # Iniciar servidor de desarrollo (puerto 5173)
+npm run build   # Build de producción
+npm run lint    # Ejecutar ESLint
+npm run preview # Preview del build
+```
+
+### Testing
+**Backend**: Agregar pytest para ejecutar tests:
+```bash
+# Instalar
+pip install pytest pytest-django
+
+# Ejecutar todos los tests
+pytest
+
+# Ejecutar un test específico
+pytest core/tests.py::NombreTest::test_metodo
+
+# Con coverage
+pytest --cov
+```
+
+**Frontend**: Agregar Vitest para ejecutar tests:
+```bash
+# Instalar
+npm install -D vitest @testing-library/react jsdom
+
+# Ejecutar tests
+npx vitest run
+
+# Modo watch
+npx vitest
+```
+
+---
+
+## Guías de Estilo de Código
+
+### Backend (Django)
+- **Validaciones**: Todas en serializers, nunca en vistas
+- **Consultas**: Usar `select_related` y `prefetch_related` para optimizar queries
+- **Modelos**: FK obligatoria a Ciclo para todas las entidades
+- **API**: Usar ViewSets con Serializers para CRUD
+- **Errores**: Manejar exceptions con try-catch y retornar respuestas apropiadas
+
+### Frontend (React + TypeScript)
+- **HTTP**: Usar `fetch` nativo (NO axios por problemas de build)
+- **Estilos**: Estilos inline (Tailwind eliminado)
+- **Componentes**: Memoizar con `memo()` para evitar re-renders innecesarios
+- **Tipos**: TypeScript strict, evitar `any` implícito
+- **Estados**: Usar Zustand para estados globales
+- **Formularios**: react-hook-form + zod para validación
+- **Datos**: Usar React Query para fetching/caching
+
+### Naming Conventions
+- Python: `snake_case` (modelos, métodos, variables)
+- TypeScript/React: `camelCase` (variables, funciones), `PascalCase` (componentes, tipos)
+- Archivos: `kebab-case.tsx`
+
+### Errores y Manejo
+- **localStorage**: Siempre envolver en try-catch (falla en modo privado)
+- **API**: Manejar errores HTTP apropiadamente
+- **Formularios**: Validar con Zod antes de enviar
+
+---
+
+### Notas Adicionales
+
+7. **Protección de rutas**: El componente `ProtectedRoute` verifica que exista token
+8. **Sidebar**: Muestra el ciclo actual en la sección "CICLO ACTIVO"

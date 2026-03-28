@@ -46,4 +46,7 @@ urlpatterns = [
     path('ciclos/<int:ciclo_id>/asistencias/', AsistenciaViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-asistencias'),
     path('ciclos/<int:ciclo_id>/asistencias/por-horario/', asistencia_por_horario, name='ciclo-asistencias-por-horario'),
     path('ciclos/<int:ciclo_id>/recibos/', ReciboViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-recibos'),
+    
+    # Endpoints anidados para matrículas
+    path('matriculas/<int:matricula_id>/horarios/', MatriculaHorarioViewSet.as_view({'get': 'list'}), name='matricula-horarios'),
 ]
