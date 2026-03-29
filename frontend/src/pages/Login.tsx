@@ -30,14 +30,14 @@ export function Login() {
     }
   }, [navigate]);
 
-  if (isChecking) {
-    return <Loading />;
-  }
-  
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   });
 
+  if (isChecking) {
+    return <Loading />;
+  }
+  
   const onSubmit = async (data: LoginForm) => {
     try {
       setError('');

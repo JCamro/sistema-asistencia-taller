@@ -7,7 +7,7 @@ from ..serializers import AlumnoSerializer, AlumnoListSerializer
 
 
 class AlumnoViewSet(viewsets.ModelViewSet):
-    queryset = Alumno.objects.all()
+    queryset = Alumno.objects.select_related('ciclo').all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['activo']

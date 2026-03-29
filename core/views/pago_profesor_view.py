@@ -51,13 +51,13 @@ def calcular_pago_profesor(request):
 
     resultados = []
     for profesor in profesores:
-        asistencias = Asistencia.objects.filter(
+        asistencia_count = Asistencia.objects.filter(
             horario__ciclo=ciclo,
             profesor=profesor,
-            estado='presente'
-        ).values('horario').distinct()
+            estado='asistio'
+        ).count()
 
-        horas_dictadas = asistentes.count() if (asistentes := asistencias.count()) > 0 else 0
+        horas_dictadas = asistencia_count
 
         monto_calculado = Decimal('0.00')
 
@@ -65,7 +65,7 @@ def calcular_pago_profesor(request):
             for asistencia_obj in Asistencia.objects.filter(
                 horario__ciclo=ciclo,
                 profesor=profesor,
-                estado='presente'
+                estado='asistio'
             ).select_related('matricula', 'horario'):
                 precio_session = asistencia_obj.matricula.precio_por_sesion
                 monto_calculado += precio_session

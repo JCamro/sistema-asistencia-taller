@@ -14,6 +14,8 @@ interface Alumno {
   fecha_nacimiento: string | null;
   edad: number | null;
   activo: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 interface AlumnoFormData {
@@ -73,7 +75,7 @@ function AlumnosPage() {
     (a) =>
       a.nombre.toLowerCase().includes(search.toLowerCase()) ||
       a.apellido.toLowerCase().includes(search.toLowerCase()) ||
-      a.dni.includes(search)
+      a.dni?.includes(search)
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -235,19 +237,19 @@ function AlumnosPage() {
               <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Edad</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Email</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Estado</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Registro</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {filteredAlumnos.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>
+                <td colSpan={8} style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>
                   {search ? 'No se encontraron resultados' : 'No hay alumnos registrados'}
                 </td>
               </tr>
             ) : (
-              filteredAlumnos.map((alumno) => {
-                return (
+              filteredAlumnos.map((alumno) => (
                 <tr key={alumno.id} style={{ borderTop: '1px solid #e5e7eb' }}>
                   <td style={{ padding: '1rem' }}>
                     <div style={{ fontWeight: '600', color: '#111827' }}>{alumno.nombre} {alumno.apellido}</div>
@@ -283,6 +285,15 @@ function AlumnosPage() {
                       {alumno.activo ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
+                  <td style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', color: '#6b7280' }}>
+                    {alumno.created_at ? (() => {
+                      const d = new Date(alumno.created_at);
+                      const day = String(d.getDate()).padStart(2, '0');
+                      const month = String(d.getMonth() + 1).padStart(2, '0');
+                      const year = d.getFullYear();
+                      return `${day}/${month}/${year}`;
+                    })() : '-'}
+                  </td>
                   <td style={{ padding: '1rem', textAlign: 'right' }}>
                     <button
                       onClick={() => handleEdit(alumno)}
@@ -314,12 +325,33 @@ function AlumnosPage() {
                     </button>
                   </td>
                 </tr>
-                );
-              })
+              ))
             )}
           </tbody>
         </table>
       </div>
+
+      {filteredAlumnos.length === 0 && !search && (
+        <div style={{ padding: '2rem', textAlign: 'center' }}>
+          <button
+            onClick={() => setShowModal(true)}
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: '#6366f1',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            <span style={{ fontSize: '1.25rem' }}>+</span> Nuevo Alumno
+          </button>
+        </div>
+)}
 
       {showModal && (
         <div style={{

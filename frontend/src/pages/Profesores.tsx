@@ -16,6 +16,8 @@ interface Profesor {
   activo: boolean;
   es_gerente: boolean;
   observaciones: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface ProfesorFormData {
@@ -79,7 +81,7 @@ function ProfesoresPage() {
     (p) =>
       p.nombre.toLowerCase().includes(search.toLowerCase()) ||
       p.apellido.toLowerCase().includes(search.toLowerCase()) ||
-      p.dni.includes(search)
+      p.dni?.includes(search)
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -232,13 +234,14 @@ function ProfesoresPage() {
               <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Edad</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Email</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Rol</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Registro</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {filteredProfesores.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>
+                <td colSpan={8} style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>
                   {search ? 'No se encontraron resultados' : 'No hay profesores registrados'}
                 </td>
               </tr>
@@ -278,6 +281,15 @@ function ProfesoresPage() {
                     }}>
                       {profesor.es_gerente ? 'Gerente' : 'Profesor'}
                     </span>
+                  </td>
+                  <td style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', color: '#6b7280' }}>
+                    {profesor.created_at ? (() => {
+                      const d = new Date(profesor.created_at);
+                      const day = String(d.getDate()).padStart(2, '0');
+                      const month = String(d.getMonth() + 1).padStart(2, '0');
+                      const year = d.getFullYear();
+                      return `${day}/${month}/${year}`;
+                    })() : '-'}
                   </td>
                   <td style={{ padding: '1rem', textAlign: 'right' }}>
                     <button

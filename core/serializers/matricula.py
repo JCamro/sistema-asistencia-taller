@@ -17,6 +17,58 @@ class MatriculaSerializer(serializers.ModelSerializer):
         from django.conf import settings
         return None
 
+    def validate(self, data):
+        from ..models import Matricula
+        alumno = data.get('alumno')
+        taller = data.get('taller')
+        
+        if alumno and taller:
+            existentes = Matricula.objects.filter(
+                alumno=alumno,
+                taller=taller,
+                activo=True
+            )
+            if self.instance:
+                existentes = existentes.exclude(id=self.instance.id)
+            
+            if existentes.exists():
+                raise serializers.ValidationError(
+                    "El alumno ya tiene una matrícula activa en este taller. "
+                    "Debe concluir o inactivarse la matrícula actual."
+                )
+        
+        if 'horarios' in data and data['horarios']:
+            from ..models import MatriculaHorario, Horario
+            horarios_ids = data['horarios']
+            
+            nuevos_horarios = Horario.objects.filter(id__in=horarios_ids)
+            for nuevo in nuevos_horarios:
+                nuevo_inicio = nuevo.hora_inicio
+                nuevo_fin = nuevo.hora_fin
+                
+                coincidencias = MatriculaHorario.objects.filter(
+                    horario__dia_semana=nuevo.dia_semana,
+                    horario__hora_inicio__lt=nuevo_fin,
+                    horario__hora_fin__gt=nuevo_inicio,
+                    matricula__alumno=alumno,
+                    matricula__activo=True,
+                    matricula__concluida=False
+                )
+                
+                if self.instance:
+                    coincidencias = coincidencias.exclude(matricula=self.instance)
+                
+                if coincidencias.exists():
+                    conflicto = coincidencias.first()
+                    raise serializers.ValidationError(
+                        f"El horario del {conflicto.horario.get_dia_semana_display()} "
+                        f"de {conflicto.horario.hora_inicio} a {conflicto.horario.hora_fin} "
+                        f"se interpone con otra matrícula existente ({conflicto.horario.taller.nombre}). "
+                        f"Elija un horario diferente."
+                    )
+        
+        return data
+
 
 class MatriculaListSerializer(serializers.ModelSerializer):
     alumno_nombre = serializers.SerializerMethodField()
@@ -32,7 +84,8 @@ class MatriculaListSerializer(serializers.ModelSerializer):
             'id', 'alumno', 'alumno_nombre', 'ciclo', 'ciclo_nombre',
             'taller', 'taller_nombre', 'sesiones_contratadas', 'precio_total',
             'precio_por_sesion', 'modalidad', 'activo', 'concluida',
-            'sesiones_consumidas', 'sesiones_disponibles', 'fecha_matricula'
+            'sesiones_consumidas', 'sesiones_disponibles', 'fecha_matricula',
+            'created_at', 'updated_at'
         ]
 
     def get_alumno_nombre(self, obj):
