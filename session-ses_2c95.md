@@ -299,3 +299,4 @@ class ReciboSerializer(serializers.ModelSerializer):
 
 ---
 
+En /asistencias aun se filtran los horarios de una matricula que ya esta concluida, solucionar sin quitar el historial de esa matricula en los dias que se registro asistencia y si estaba activa

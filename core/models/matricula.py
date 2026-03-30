@@ -2,9 +2,11 @@ from django.db import models
 
 
 class Matricula(models.Model):
-    MODALIDAD = [
-        ('presencial', 'Presencial'),
-        ('online', 'Online'),
+    METODO_PAGO = [
+        ('efectivo', 'Efectivo'),
+        ('transferencia', 'Transferencia'),
+        ('tarjeta', 'Tarjeta'),
+        ('otro', 'Otro'),
     ]
 
     alumno = models.ForeignKey(
@@ -24,7 +26,7 @@ class Matricula(models.Model):
     )
     sesiones_contratadas = models.PositiveIntegerField()
     precio_total = models.DecimalField(max_digits=10, decimal_places=2)
-    modalidad = models.CharField(max_length=20, choices=MODALIDAD, default='presencial')
+    metodo_pago = models.CharField(max_length=20, choices=METODO_PAGO, default='efectivo')
     observaciones = models.TextField(blank=True)
     fecha_matricula = models.DateTimeField(auto_now_add=True)
     activo = models.BooleanField(default=True)
@@ -34,7 +36,6 @@ class Matricula(models.Model):
 
     class Meta:
         ordering = ['-fecha_matricula']
-        unique_together = ['alumno', 'ciclo', 'taller']
 
     def __str__(self):
         return f"{self.alumno} - {self.taller.nombre} ({self.sesiones_contratadas} sesiones)"

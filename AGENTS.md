@@ -1,329 +1,219 @@
-# Panel de Asistencia - Documentación para Agentes
+# AGENTS.md - Panel de Asistencia
 
-## Descripción General
+## Overview
 
-Aplicación web administrativa para gestionar talleres educativo-artísticos. Incluye:
-- **Backend**: Django + Django REST Framework + JWT Authentication
-- **Frontend**: React + Vite + TypeScript
-- **Base de datos**: SQLite3
-
-### Regla Importante
-El Login debe redirigir a `/ciclos` obligatoriamente. El usuario debe seleccionar un ciclo antes de acceder al dashboard y otras secciones.
+Administrative web app for managing educational-artistic workshops.
+- **Backend**: Django 6 + DRF + SimpleJWT (SQLite3)
+- **Frontend**: React 19 + Vite + TypeScript + Zustand
+- **Language**: Spanish (all user-facing text)
 
 ---
 
-## Estructura del Proyecto
+## Architecture
 
 ```
-panel-asistencia/
-├── config/                  # Configuración Django
-│   ├── settings.py         # Configuraciones principales
-│   └── urls.py             # URLs principales
-├── core/                   # App principal de Django
-│   ├── models/            # Modelos de base de datos
-│   ├── views/             # Vistas y ViewSets
-│   ├── serializers/       # Serializadores DRF
-│   └── urls.py            # URLs de la API
-├── frontend/              # Aplicación React
-│   ├── src/
-│   │   ├── api/          # Endpoints y axios
-│   │   ├── components/   # Componentes reutilizables
-│   │   ├── contexts/     # Contextos React (CicloContext)
-│   │   ├── pages/        # Páginas principales
-│   │   └── stores/       # Estados (authStore)
-│   └── dist/             # Build de producción
-└── db.sqlite3           # Base de datos
+├── config/              # Django settings, URLs
+├── core/                # Main Django app
+│   ├── models/          # Data models (one file per entity)
+│   ├── serializers/     # DRF serializers
+│   ├── views/           # ViewSets (one file per entity)
+│   ├── management/      # Management commands
+│   └── urls.py          # API routing
+├── frontend/
+│   └── src/
+│       ├── api/         # axios instance + endpoints
+│       ├── components/  # Reusable components
+│       ├── contexts/    # React contexts (CicloContext, ToastContext)
+│       ├── pages/       # Page components
+│       └── stores/      # Zustand stores
+└── db.sqlite3
 ```
 
 ---
 
-## Routers - BACKEND
+## Commands
 
-### Endpoints Principales
-
-| Recurso | Endpoint | Descripción |
-|---------|----------|-------------|
-| **Auth** | `POST /api/auth/login/` | Obtener tokens JWT |
-| **Auth** | `POST /api/auth/refresh/` | Refresh token |
-| **Auth** | `POST /api/auth/logout/` | Logout (blacklist) |
-| **Config** | `GET/PATCH /api/config/` | Configuración global |
-| **Ciclos** | `GET/POST /api/ciclos/` | Listar/Crear ciclos |
-| **Ciclos** | `GET/PATCH/DELETE /api/ciclos/{id}/` | CRUD ciclo |
-| **Alumnos** | `GET/POST /api/alumnos/` | Listar/Crear alumnos |
-| **Alumnos** | `GET/PATCH/DELETE /api/alumnos/{id}/` | CRUD alumno |
-| **Profesores** | `GET/POST /api/profesores/` | Listar/Crear profesores |
-| **Profesores** | `GET/PATCH/DELETE /api/profesores/{id}/` | CRUD profesor |
-| **Talleres** | `GET/POST /api/talleres/` | Listar/Crear talleres |
-| **Talleres** | `GET/PATCH/DELETE /api/talleres/{id}/` | CRUD taller |
-| **Horarios** | `GET/POST /api/horarios/` | Listar/Crear horarios |
-| **Horarios** | `GET/PATCH/DELETE /api/horarios/{id}/` | CRUD horario |
-| **Matrículas** | `GET/POST /api/matriculas/` | Listar/Crear matrículas |
-| **Asistencias** | `GET/POST /api/asistencias/` | Listar/Crear asistencias |
-| **Recibos** | `GET/POST /api/recibos/` | Listar/Crear recibos |
-| **Pagos Profesores** | `GET/POST /api/pagos-profesores/` | Pagos a profesores |
-
-### Endpoints por Ciclo
-
-Todos los recursos pueden filtrarse por ciclo usando la ruta anidada:
-
-```
-GET /api/ciclos/{ciclo_id}/alumnos/
-GET /api/ciclos/{ciclo_id}/profesores/
-GET /api/ciclos/{ciclo_id}/talleres/
-GET /api/ciclos/{ciclo_id}/horarios/
-GET /api/ciclos/{ciclo_id}/matriculas/
-GET /api/ciclos/{ciclo_id}/asistencias/
-GET /api/ciclos/{ciclo_id}/recibos/
+### Backend (from root)
+```bash
+python manage.py runserver              # Start server :8000
+python manage.py makemigrations         # Create migrations
+python manage.py migrate               # Apply migrations
+python manage.py shell                 # Django shell
+python manage.py <command>             # Management commands
+pytest                                 # Run all tests (requires pytest-django)
+pytest core/tests.py::TestClass::test_method  # Single test
+pytest --cov                           # With coverage
 ```
 
-### Endpoints Especiales
-
-```
-PATCH /api/config/                 # Actualizar ciclo activo
-GET  /api/ciclos/{id}/resumen/    # Resumen del ciclo
-POST /api/pagos-profesores/calcular/  # Calcular pagos
+### Frontend (from frontend/)
+```bash
+npm run dev       # Dev server :5173
+npm run build     # Production build (tsc -b && vite build)
+npm run lint      # ESLint check
+npm run preview   # Preview production build
 ```
 
 ---
 
-## Routers - FRONTEND
+## API Endpoints
 
-### Rutas de la Aplicación
+All resources support CRUD at `/api/<resource>/` and filtering by cycle at `/api/ciclos/<ciclo_id>/<resource>/`.
 
-| Ruta | Componente | Descripción |
-|------|------------|-------------|
-| `/login` | `Login.tsx` | Página de login |
-| `/` | `SeleccionCiclos` en App.tsx | Pantalla de selección de ciclos (pantalla completa) |
-| `/dashboard` | `Dashboard.tsx` | Dashboard principal (con sidebar oscuro) |
-| `/alumnos` | `Alumnos.tsx` | Gestión de alumnos |
-| `/profesores` | `Profesores.tsx` | Gestión de profesores |
-| `/talleres` | `Talleres.tsx` | Gestión de talleres |
-| `/horarios` | `Horarios.tsx` | Gestión de horarios |
-| `/matriculas` | `Matriculas.tsx` | Gestión de matrículas |
-| `/asistencias` | `Asistencias.tsx` | Gestión de asistencias |
-| `/recibos` | `Recibos.tsx` | Gestión de recibos |
+| Resource | Base Endpoint |
+|----------|--------------|
+| Auth | `/api/auth/login/`, `/api/auth/refresh/`, `/api/auth/logout/` |
+| Config | `/api/config/` |
+| Ciclos | `/api/ciclos/` |
+| Alumnos | `/api/alumnos/` or `/api/ciclos/<id>/alumnos/` |
+| Profesores | `/api/profesores/` or `/api/ciclos/<id>/profesores/` |
+| Talleres | `/api/talleres/` or `/api/ciclos/<id>/talleres/` |
+| Horarios | `/api/horarios/` or `/api/ciclos/<id>/horarios/` |
+| Matriculas | `/api/matriculas/` or `/api/ciclos/<id>/matriculas/` |
+| Asistencias | `/api/asistencias/` or `/api/ciclos/<id>/asistencias/` |
+| Recibos | `/api/recibos/` or `/api/ciclos/<id>/recibos/` |
+| Pagos Profesores | `/api/pagos-profesores/` |
 
----
+### Special Endpoints
 
-## Modelos de Datos
-
-### Ciclo
-- `id`, `nombre`, `tipo` (anual/verano/otro), `fecha_inicio`, `fecha_fin`, `activo`
-
-### Alumno
-- `id`, `ciclo` (FK), `nombre`, `apellido`, `dni`, `telefono`, `email`, `activo`
-
-### Profesor
-- `id`, `ciclo` (FK), `nombre`, `apellido`, `dni`, `telefono`, `email`, `activo`, `es_gerente`
-
-### Taller
-- `id`, `ciclo` (FK), `nombre`, `descripcion`, `activo`
-
-### Horario
-- `id`, `ciclo` (FK), `taller` (FK), `profesor` (FK), `dia_semana`, `hora_inicio`, `hora_fin`, `cupo_maximo`, `activo`
-
-### Matricula
-- `id`, `alumno` (FK), `taller` (FK), `sesiones_contratadas`, `precio_total`, `precio_por_sesion`, `modalidad`, `activo`, `concluida`
-
-### Asistencia
-- `id`, `matricula` (FK), `horario` (FK), `fecha`, `hora`, `estado`, `observacion`
-
-### Recibo
-- `id`, `numero`, `alumno` (FK), `fecha_emision`, `monto_total`, `monto_pagado`, `saldo_pendiente`, `estado`
-
-### PagoProfesor
-- `id`, `profesor` (FK), `ciclo` (FK), `horas_calculadas`, `monto_calculado`, `monto_final`, `fecha_pago`, `estado`
-
-### Configuracion
-- `id`, `ciclo_activo` (FK a Ciclo)
+| Method | URL | Description |
+|--------|-----|-------------|
+| PATCH | `/api/config/` | Set active cycle |
+| GET | `/api/ciclos/<id>/resumen/` | Financial summary of cycle |
+| POST | `/api/pagos-profesores/calcular-periodo/` | Calculate teacher payments for date range |
+| GET | `/api/pagos-profesores/detalle-clase/?horario_id=X&fecha=YYYY-MM-DD` | Get student breakdown per class |
+| GET | `/api/pagos-profesores/<id>/detalles/` | Get payment details for a teacher |
+| POST | `/api/matriculas/calcular-precio/` | Calculate recommended price for a enrollment |
 
 ---
 
-## API - Funciones del Frontend
+## Frontend Routes
 
-### Autenticación
-```typescript
-login(username, password)  // POST /auth/login/
-logout()                   // POST /auth/logout/
-```
+| Path | Component | Access |
+|------|-----------|--------|
+| `/login` | Login | Public |
+| `/` | SeleccionCiclos | Protected (cycle selection screen) |
+| `/dashboard` | Dashboard | Protected + Sidebar |
+| `/alumnos` | Alumnos | Protected + Sidebar |
+| `/profesores` | Profesores | Protected + Sidebar |
+| `/talleres` | Talleres | Protected + Sidebar |
+| `/horarios` | Horarios | Protected + Sidebar |
+| `/matriculas` | Matriculas | Protected + Sidebar |
+| `/asistencias` | Asistencias | Protected + Sidebar |
+| `/recibos` | Recibos | Protected + Sidebar |
+| `/calculadora` | CalculadoraPrecios | Protected + Sidebar |
+| `/pagos-profesores` | PagosProfesores | Protected + Sidebar |
 
-### Ciclos
-```typescript
-getCiclos()
-getCiclo(id)
-createCiclo(data)
-updateCiclo(id, data)
-deleteCiclo(id)
-```
-
-### Recursos (filtrados por ciclo)
-```typescript
-getAlumnos(cicloId?)
-getProfesores(cicloId?)
-getTalleres(cicloId?)
-getHorarios(cicloId?)
-getMatriculas(cicloId?)
-getAsistencias(cicloId?)
-getRecibos(cicloId?)
-```
-
-### Configuración
-```typescript
-getConfig()
-updateConfig({ ciclo_activo: id })
-```
+**Navigation Flow**: Login → `/` (select cycle) → `/dashboard` (with sidebar)
 
 ---
 
-## Contextos
+## Data Models
 
-### CicloContext (`frontend/src/contexts/CicloContext.tsx`)
-Proveedor que gestiona el ciclo activo:
-- `cicloActual`: Ciclo seleccionado actualmente
-- `ciclos`: Lista de todos los ciclos
-- `setCicloActual(ciclo)`: Establecer ciclo actual (sin redirect)
-- `seleccionarCiclo(ciclo)`: Seleccionar ciclo y redirigir a /dashboard
-- `recargar()`: Recargar datos
-- `isLoading`: Estado de carga
+- **Ciclo**: `nombre`, `tipo` (anual/verano/otro), `fecha_inicio`, `fecha_fin`, `activo`
+- **Alumno/Profesor**: `ciclo` (FK), `nombre`, `apellido`, `dni`, `telefono`, `email`, `activo`
+- **Taller**: `ciclo` (FK), `nombre`, `tipo` (instrumento/taller), `descripcion`, `activo`
+- **Horario**: `ciclo`, `taller`, `profesor`, `dia_semana`, `hora_inicio/fin`, `cupo_maximo`
+- **Matricula**: `alumno`, `taller`, `sesiones_contratadas`, `precio_total`, `concluida`, `metodo_pago`
+- **Asistencia**: `matricula`, `horario`, `fecha`, `hora`, `estado`
+- **Recibo**: `numero`, `alumno` (nullable), `ciclo`, `monto_bruto/total/pagado`, `estado`, `paquete_aplicado`
+- **PrecioPaquete**: `tipo_taller`, `tipo_paquete`, `cantidad_clases`, `precio_total`, `precio_por_sesion`
+- **PagoProfesor**: `profesor`, `ciclo`, `horas_calculadas`, `monto_final`, `fecha_inicio`, `fecha_fin`, `total_alumnos_asistencias`, `ganancia_taller`
+- **PagoProfesorDetalle**: `pago_profesor`, `horario`, `fecha`, `num_alumnos`, `valor_generado`, `monto_base`, `monto_adicional`, `monto_profesor`, `ganancia_taller`
 
-### useCiclo Hook
+---
+
+## Pagos Profesores - Modelo de Pago Dinámico
+
+### Fórmula de Cálculo (por clase)
+
+```
+0 alumnos   → S/. 0.00
+1 alumno   → S/. 17.00 fijo
+2+ alumnos → S/. 17.00 base + 50% del valor de sesión de cada alumno adicional
+Tope       → Máx S/. 35.00 por clase (excedente = ganancia del taller)
+```
+
+### Ejemplo
+| Alumnos | Valor Sesión | Cálculo | Total Profesor | Ganancia Taller |
+|---------|--------------|----------|----------------|-----------------|
+| 1 | S/. 20.00 | S/. 17.00 | S/. 17.00 | S/. 3.00 |
+| 2 | S/. 20.00 + S/. 16.67 | 17 + 8.34 | S/. 25.34 | S/. 11.33 |
+| 3 | S/. 20 + S/. 16.67 + S/. 15 | 17 + 10 + 8 (tope) | S/. 35.00 | S/. 16.67 |
+
+---
+
+## Code Style
+
+### Backend (Django/Python)
+- **Naming**: `snake_case` for all Python identifiers
+- **Validation**: In serializers only, never in views
+- **Queries**: Use `select_related` / `prefetch_related` for optimization
+- **Models**: One model per file in `core/models/`
+- **Views**: One ViewSet per file in `core/views/`
+- **Imports**: Group stdlib, third-party, local; use relative imports within app
+- **Error handling**: Try-except with specific exceptions, return proper HTTP status codes
+
+### Frontend (React/TypeScript)
+- **Naming**: `camelCase` for variables/functions, `PascalCase` for components/interfaces
+- **Files**: `kebab-case.tsx` for pages, `camelCase.ts` for utilities
+- **HTTP**: axios instance from `api/axios.ts` (handles token refresh automatically)
+- **State**: Zustand for global state, React Context for cycle management
+- **Forms**: react-hook-form + zod for validation
+- **Styles**: Inline styles (Tailwind removed due to PostCSS issues)
+- **Performance**: Wrap components with `memo()` to prevent unnecessary re-renders
+- **Types**: Strict TypeScript; define interfaces in `api/endpoints.ts`
+
+### TypeScript Config
+- Target: ES2023, strict mode enabled
+- `noUnusedLocals`, `noUnusedParameters` enabled
+- JSX: react-jsx transform
+
+---
+
+## Key Rules
+
+1. **Cycle Selection Required**: Login redirects to `/ciclos`. User must select a cycle before accessing other pages.
+2. **Active Cycle**: Stored in `Configuracion` DB table, NOT localStorage.
+3. **All entities have FK to Ciclo**: Alumno, Profesor, Taller, Horario all require a ciclo.
+4. **Receipts can be multi-student**: `alumno` field is nullable; use `ReciboMatricula` junction table.
+5. **Matricula states**: Active by default, can be marked `concluida` (disappears from schedule view).
+6. **JWT Tokens**: Access (8h), Refresh (7d) with blacklisting on rotation.
+7. **localStorage**: Always wrap in try-catch (fails in private/incognito mode).
+8. **Language**: All user-facing text in Spanish.
+9. **Horarios filter required**: Taller/instrumento filter is mandatory - no "show all" option.
+10. **Pagos Profesores**: Always filter by ciclo + date range to avoid duplicates.
+
+---
+
+## Contexts & Hooks
+
+### CicloContext
 ```typescript
 const { cicloActual, ciclos, setCicloActual, seleccionarCiclo, recargar, isLoading } = useCiclo();
 ```
+- `cicloActual`: Currently selected cycle object
+- `seleccionarCiclo(ciclo)`: Select cycle + redirect to /dashboard
+- `setCicloActual(ciclo)`: Set cycle without redirect
+- `recargar()`: Reload cycle data
 
 ---
 
-## Reglas de Desarrollo
+## Extensibility
 
-### Backend
-1. **Validaciones**: Todas las validaciones deben estar en los serializadores, nunca en las vistas
-2. **Consultas**: Usar `select_related` y `prefetch_related` para optimizar queries
-3. **Autenticación**: JWT con tokens de acceso (8h) y refresh (7 días)
+### Adding a new entity
+1. Create model in `core/models/<entity>.py`, export in `__init__.py`
+2. Create serializer in `core/serializers/<entity>.py`, export in `__init__.py`
+3. Create ViewSet in `core/views/<entity>_view.py`, export in `__init__.py`
+4. Register in `core/urls.py` (router + cycle-filtered routes)
+5. Create migration: `python manage.py makemigrations`
+6. Add endpoint function in `frontend/src/api/endpoints.ts`
+7. Create page in `frontend/src/pages/<Entity>.tsx`
+8. Add route in `App.tsx` + sidebar link
 
-### Frontend
-1. **HTTP**: Usar `fetch` nativo (no axios por problemas de build)
-2. **Estilos**: Estilos inline (Tailwind eliminado por errores de PostCSS)
-3. **Flujo**:
-   - Login → Redirige a `/ciclos`
-   - Usuario debe seleccionar ciclo
-   - Solo después puede ver dashboard y otras secciones
-
----
-
-## Ejecución del Proyecto
-
-### Backend
-```bash
-cd panel-asistencia
-python manage.py runserver
-# Servidor en http://localhost:8000
-```
-
-### Frontend
-```bash
-cd frontend
-npm run dev
-# Servidor en http://localhost:5173
-```
-
----
-
-## Notas Importantes
-
-1. **Ciclo activo**: Se guarda en la tabla `Configuracion` de la base de datos, NO en localStorage
-2. **Protección de rutas**: El componente `ProtectedRoute` verifica que exista token
-3. **Flujo de navegación**:
-   - Login → `/` (Selección de ciclos - pantalla completa)
-   - Selección de ciclo → `/dashboard` (con sidebar oscuro)
-   - El sidebar muestra el ciclo actual en la sección "CICLO ACTIVO"
-4. **Estructura**: Todas las entidades (Alumnos, Profesores, Talleres) tienen FK obligatoria a Ciclo
-5. **Idioma**: Toda la aplicación debe responder en español
-6. **Optimizaciones**: Componentes memoizados con `memo()` para evitar re-renders innecesarios
-
----
-
-## Comandos de Ejecución
-
-### Backend (Django)
-```bash
-cd panel-asistencia
-python manage.py runserver         # Iniciar servidor en puerto 8000
-python manage.py shell            # Abrir shell de Django
-python manage.py makemigrations   # Crear migraciones
-python manage.py migrate          # Aplicar migraciones
-python manage.py test             # Ejecutar tests (si están configurados)
-```
-
-### Frontend (React + Vite)
-```bash
-cd frontend
-npm run dev      # Iniciar servidor de desarrollo (puerto 5173)
-npm run build   # Build de producción
-npm run lint    # Ejecutar ESLint
-npm run preview # Preview del build
-```
-
-### Testing
-**Backend**: Agregar pytest para ejecutar tests:
-```bash
-# Instalar
-pip install pytest pytest-django
-
-# Ejecutar todos los tests
-pytest
-
-# Ejecutar un test específico
-pytest core/tests.py::NombreTest::test_metodo
-
-# Con coverage
-pytest --cov
-```
-
-**Frontend**: Agregar Vitest para ejecutar tests:
-```bash
-# Instalar
-npm install -D vitest @testing-library/react jsdom
-
-# Ejecutar tests
-npx vitest run
-
-# Modo watch
-npx vitest
-```
-
----
-
-## Guías de Estilo de Código
-
-### Backend (Django)
-- **Validaciones**: Todas en serializers, nunca en vistas
-- **Consultas**: Usar `select_related` y `prefetch_related` para optimizar queries
-- **Modelos**: FK obligatoria a Ciclo para todas las entidades
-- **API**: Usar ViewSets con Serializers para CRUD
-- **Errores**: Manejar exceptions con try-catch y retornar respuestas apropiadas
-
-### Frontend (React + TypeScript)
-- **HTTP**: Usar `fetch` nativo (NO axios por problemas de build)
-- **Estilos**: Estilos inline (Tailwind eliminado)
-- **Componentes**: Memoizar con `memo()` para evitar re-renders innecesarios
-- **Tipos**: TypeScript strict, evitar `any` implícito
-- **Estados**: Usar Zustand para estados globales
-- **Formularios**: react-hook-form + zod para validación
-- **Datos**: Usar React Query para fetching/caching
-
-### Naming Conventions
-- Python: `snake_case` (modelos, métodos, variables)
-- TypeScript/React: `camelCase` (variables, funciones), `PascalCase` (componentes, tipos)
-- Archivos: `kebab-case.tsx`
-
-### Errores y Manejo
-- **localStorage**: Siempre envolver en try-catch (falla en modo privado)
-- **API**: Manejar errores HTTP apropiadamente
-- **Formularios**: Validar con Zod antes de enviar
-
----
-
-### Notas Adicionales
-
-7. **Protección de rutas**: El componente `ProtectedRoute` verifica que exista token
-8. **Sidebar**: Muestra el ciclo actual en la sección "CICLO ACTIVO"
+### Adding a new payment calculation system
+1. Update `calcular_pago_profesor` in `core/views/pago_profesor_view.py`
+2. Add/remove fields to `PagoProfesor` model if needed
+3. Create `PagoProfesorDetalle` model for per-class breakdown
+4. Update serializer in `core/serializers/pago_profesor.py`
+5. Create new frontend endpoint if additional data is needed
+6. Update `PagosProfesores.tsx` page with new UI

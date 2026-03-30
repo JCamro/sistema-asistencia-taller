@@ -21,6 +21,10 @@ class PagoProfesor(models.Model):
     horas_calculadas = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     monto_calculado = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     monto_final = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    fecha_inicio = models.DateField(null=True, blank=True)
+    fecha_fin = models.DateField(null=True, blank=True)
+    total_alumnos_asistencias = models.PositiveIntegerField(default=0)
+    ganancia_taller = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     fecha_pago = models.DateField(null=True, blank=True)
     estado = models.CharField(max_length=20, choices=ESTADO, default='calculado')
     observacion = models.TextField(blank=True)
@@ -28,7 +32,6 @@ class PagoProfesor(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ['profesor', 'ciclo']
         ordering = ['-created_at']
 
     def __str__(self):

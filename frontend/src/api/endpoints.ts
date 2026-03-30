@@ -74,7 +74,6 @@ export interface Matricula {
   sesiones_contratadas: number;
   precio_total: number;
   precio_por_sesion: number;
-  modalidad: string;
   activo: boolean;
   concluida: boolean;
   sesiones_consumidas: number;
@@ -213,8 +212,8 @@ export const marcarReciboPagado = (id: number, monto?: number) =>
 
 // Pagos Profesores
 export const getPagosProfesores = () => api.get<PagoProfesor[]>('/pagos-profesores/');
-export const calcularPagosProfesores = (cicloId: number) => 
-  api.post('/pagos-profesores/calcular/', { ciclo_id: cicloId });
+export const calcularPagosProfesores = (cicloId: number, fechaInicio: string, fechaFin: string) => 
+  api.post('/pagos-profesores/calcular-periodo/', { ciclo_id: cicloId, fecha_inicio: fechaInicio, fecha_fin: fechaFin });
 
 // Reportes
 export const getResumenCiclo = (id: number) => api.get(`/ciclos/${id}/resumen/`);

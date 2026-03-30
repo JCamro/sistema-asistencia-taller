@@ -22,7 +22,8 @@ class HorarioSerializer(serializers.ModelSerializer):
         from ..models import MatriculaHorario
         matriculas = MatriculaHorario.objects.filter(
             horario=obj,
-            matricula__activo=True
+            matricula__activo=True,
+            matricula__concluida=False
         ).select_related('matricula__alumno')
         return [
             {
@@ -59,7 +60,8 @@ class HorarioListSerializer(serializers.ModelSerializer):
         from ..models import MatriculaHorario
         matriculas = MatriculaHorario.objects.filter(
             horario=obj,
-            matricula__activo=True
+            matricula__activo=True,
+            matricula__concluida=False
         ).select_related('matricula__alumno')
         return [
             {
@@ -74,5 +76,6 @@ class HorarioListSerializer(serializers.ModelSerializer):
         from ..models import MatriculaHorario
         return MatriculaHorario.objects.filter(
             horario=obj,
-            matricula__activo=True
+            matricula__activo=True,
+            matricula__concluida=False
         ).count()

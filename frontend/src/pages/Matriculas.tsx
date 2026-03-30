@@ -53,9 +53,10 @@ interface Matricula {
   sesiones_contratadas: number;
   precio_total: number;
   precio_por_sesion: number;
-  modalidad: string;
+  metodo_pago: string;
   activo: boolean;
   concluida: boolean;
+  estado_calculado: 'activa' | 'inactiva' | 'concluida' | 'no_procesado';
   sesiones_consumidas: number;
   sesiones_disponibles: number;
   fecha_matricula: string;
@@ -69,7 +70,6 @@ interface MatriculaFormData {
   horarios: number[];
   sesiones_contratadas: number;
   precio_total: string;
-  modalidad: string;
   metodo_pago: string;
   activo: boolean;
   concluida: boolean;
@@ -104,7 +104,6 @@ const initialFormData: MatriculaFormData = {
   horarios: [],
   sesiones_contratadas: 8,
   precio_total: '',
-  modalidad: 'presencial',
   metodo_pago: 'efectivo',
   activo: true,
   concluida: false,
@@ -142,6 +141,8 @@ function MatriculasPage() {
   const [verHorarioMatriculaId, setVerHorarioMatriculaId] = useState<number | null>(null);
   const [horariosDetalle, setHorariosDetalle] = useState<HorarioDetalle[]>([]);
   const [menuAbierto, setMenuAbierto] = useState<number | null>(null);
+  const [precioSugerido, setPrecioSugerido] = useState<number | null>(null);
+  const [calculandoPrecio, setCalculandoPrecio] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!cicloActual) return;
@@ -249,6 +250,37 @@ function MatriculasPage() {
     }
   }, [formData.taller, fetchHorarios]);
 
+  useEffect(() => {
+    if (!formData.taller || !formData.sesiones_contratadas || formData.sesiones_contratadas < 1) {
+      setPrecioSugerido(null);
+      return;
+    }
+    let cancelled = false;
+    const calcular = async () => {
+      setCalculandoPrecio(true);
+      const token = localStorage.getItem('access_token');
+      try {
+        const res = await fetch(
+          `/api/matriculas/calcular-precio/?taller_id=${formData.taller}&sesiones=${formData.sesiones_contratadas}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const data = await res.json();
+        if (!cancelled) {
+          setPrecioSugerido(data.precio_total > 0 ? data.precio_total : null);
+          if (data.precio_total > 0) {
+            setFormData(prev => ({ ...prev, precio_total: data.precio_total.toString() }));
+          }
+        }
+      } catch {
+        if (!cancelled) setPrecioSugerido(null);
+      } finally {
+        if (!cancelled) setCalculandoPrecio(false);
+      }
+    };
+    calcular();
+    return () => { cancelled = true; };
+  }, [formData.taller, formData.sesiones_contratadas]);
+
   const filteredAlumnos = useMemo(() => {
     if (!alumnoSearch) return [];
     const searchLower = alumnoSearch.toLowerCase();
@@ -263,9 +295,10 @@ function MatriculasPage() {
     const coincideBusqueda = m.alumno_nombre.toLowerCase().includes(search.toLowerCase()) || 
                              m.taller_nombre.toLowerCase().includes(search.toLowerCase());
     const coincideEstado = filtroEstado === 'todas' || 
-                          (filtroEstado === 'activa' && m.activo && !m.concluida) ||
-                          (filtroEstado === 'inactiva' && !m.activo) ||
-                          (filtroEstado === 'concluida' && m.concluida);
+                          (filtroEstado === 'activa' && m.estado_calculado === 'activa') ||
+                          (filtroEstado === 'inactiva' && m.estado_calculado === 'inactiva') ||
+                          (filtroEstado === 'concluida' && m.estado_calculado === 'concluida') ||
+                          (filtroEstado === 'no_procesado' && m.estado_calculado === 'no_procesado');
     return coincideBusqueda && coincideEstado;
   });
 
@@ -296,21 +329,32 @@ function MatriculasPage() {
       showToast('Por favor complete todos los campos requeridos', 'warning');
       return;
     }
+    if (!formData.precio_total || parseFloat(formData.precio_total) <= 0) {
+      showToast('El monto total debe ser mayor a 0', 'warning');
+      return;
+    }
     setSaving(true);
     const token = localStorage.getItem('access_token');
     try {
       const url = editingId ? `/api/matriculas/${editingId}/` : `/api/ciclos/${cicloActual.id}/matriculas/`;
       const method = editingId ? 'PATCH' : 'POST';
       
-      const payload = {
+      const payload: Record<string, unknown> = {
         alumno: formData.alumno,
         taller: formData.taller,
         sesiones_contratadas: formData.sesiones_contratadas,
         precio_total: parseFloat(formData.precio_total),
-        modalidad: formData.modalidad,
-        activo: formData.activo,
-        concluida: formData.concluida,
+        metodo_pago: formData.metodo_pago,
       };
+
+      if (editingId) {
+        payload.activo = formData.activo;
+        payload.concluida = formData.concluida;
+      }
+
+      if (!editingId && formData.horarios.length > 0) {
+        payload.horarios = formData.horarios;
+      }
 
       const res = await fetch(url, {
         method,
@@ -418,8 +462,7 @@ function MatriculasPage() {
       horarios: horariosExistentes,
       sesiones_contratadas: matricula.sesiones_contratadas,
       precio_total: matricula.precio_total.toString(),
-      modalidad: matricula.modalidad,
-      metodo_pago: 'efectivo',
+      metodo_pago: matricula.metodo_pago || 'efectivo',
       activo: matricula.activo,
       concluida: matricula.concluida,
     });
@@ -557,12 +600,13 @@ function MatriculasPage() {
       <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
         <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '0.75rem' }}>
           <input type="text" placeholder="Buscar por alumno o taller..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }} />
-          <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}>
-            <option value="todas">Todas</option>
-            <option value="activa">Activas</option>
-            <option value="inactiva">Inactivas</option>
-            <option value="concluida">Concluidas</option>
-          </select>
+            <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}>
+              <option value="todas">Todas</option>
+              <option value="activa">Activas</option>
+              <option value="no_procesado">No Procesado</option>
+              <option value="inactiva">Inactivas</option>
+              <option value="concluida">Concluidas</option>
+            </select>
         </div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -589,8 +633,15 @@ function MatriculasPage() {
                   </td>
                   <td style={{ padding: '1rem', textAlign: 'right', fontFamily: 'monospace', fontWeight: '600' }}>S/. {m.precio_total}</td>
                   <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '600', background: m.concluida ? '#fef3c7' : m.activo ? '#d1fae5' : '#f3f4f6', color: m.concluida ? '#b45309' : m.activo ? '#059669' : '#6b7280' }}>
-                      {m.concluida ? 'Concluida' : m.activo ? 'Activa' : 'Inactiva'}
+                    <span style={{ 
+                      padding: '0.25rem 0.75rem', 
+                      borderRadius: '9999px', 
+                      fontSize: '0.75rem', 
+                      fontWeight: '600',
+                      background: m.estado_calculado === 'no_procesado' ? '#fef3c7' : m.estado_calculado === 'activa' ? '#d1fae5' : m.estado_calculado === 'concluida' ? '#fcd34d' : '#f3f4f6',
+                      color: m.estado_calculado === 'no_procesado' ? '#b45309' : m.estado_calculado === 'activa' ? '#059669' : m.estado_calculado === 'concluida' ? '#92400e' : '#6b7280'
+                    }}>
+                      {m.estado_calculado === 'no_procesado' ? 'No Procesado' : m.estado_calculado === 'activa' ? 'Activa' : m.estado_calculado === 'concluida' ? 'Concluida' : 'Inactiva'}
                     </span>
                   </td>
                   <td style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', color: '#6b7280' }}>
@@ -758,6 +809,30 @@ function MatriculasPage() {
                         </table>
                       </div>
                     )}
+                    {formData.horarios.length > 0 && (
+                      <div style={{
+                        marginTop: '0.75rem', padding: '0.75rem',
+                        background: '#f0fdf4', border: '1px solid #bbf7d0',
+                        borderRadius: '8px',
+                      }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: '600', color: '#166534', marginBottom: '0.375rem' }}>
+                          {formData.horarios.length} horario{formData.horarios.length > 1 ? 's' : ''} seleccionado{formData.horarios.length > 1 ? 's' : ''}
+                        </div>
+                        {horarios.filter(h => formData.horarios.includes(h.id)).map((h) => {
+                          const diaLabel = DIAS_GRID.find(d => d.value === h.dia_semana)?.label ?? '';
+                          return (
+                            <div key={h.id} style={{
+                              fontSize: '0.75rem', color: '#166534', padding: '0.2rem 0',
+                              display: 'flex', justifyContent: 'space-between',
+                            }}>
+                              <span style={{ fontWeight: '500' }}>{diaLabel}</span>
+                              <span>{h.hora_inicio?.substring(0, 5)} – {h.hora_fin?.substring(0, 5)}</span>
+                              <span style={{ color: '#6b7280' }}>{h.profesor_nombre}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -788,14 +863,30 @@ function MatriculasPage() {
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Monto Total a Pagar (S/.)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={formData.precio_total}
-                        onChange={(e) => setFormData({ ...formData, precio_total: e.target.value })}
-                        required
-                        style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
-                      />
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={formData.precio_total}
+                          onChange={(e) => setFormData({ ...formData, precio_total: e.target.value })}
+                          required
+                          min={0.01}
+                          style={{ width: '100%', padding: '0.625rem', border: formData.precio_total && parseFloat(formData.precio_total) <= 0 ? '2px solid #dc2626' : '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
+                        />
+                        {calculandoPrecio && (
+                          <span style={{ position: 'absolute', right: '0.625rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: '#9ca3af' }}>
+                            Calculando...
+                          </span>
+                        )}
+                      </div>
+                      {precioSugerido !== null && (
+                        <div style={{
+                          marginTop: '0.25rem', fontSize: '0.75rem', color: '#059669',
+                          display: 'flex', alignItems: 'center', gap: '0.25rem',
+                        }}>
+                          ✓ Precio según paquete configurado
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -829,17 +920,19 @@ function MatriculasPage() {
                 </div>
               </div>
 
-              {/* Opciones adicionales */}
-              <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
-                  <input type="checkbox" checked={formData.activo} onChange={(e) => setFormData({ ...formData, activo: e.target.checked })} /> 
-                  Activa
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
-                  <input type="checkbox" checked={formData.concluida} onChange={(e) => setFormData({ ...formData, concluida: e.target.checked })} /> 
-                  Concluida
-                </label>
-              </div>
+              {/* Opciones adicionales - solo en modo editar */}
+              {editingId && (
+                <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                    <input type="checkbox" checked={formData.activo} onChange={(e) => setFormData({ ...formData, activo: e.target.checked })} /> 
+                    Activa
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                    <input type="checkbox" checked={formData.concluida} onChange={(e) => setFormData({ ...formData, concluida: e.target.checked })} /> 
+                    Concluida
+                  </label>
+                </div>
+              )}
 
               {/* Botones */}
               <div style={{ display: 'flex', gap: '0.75rem' }}>

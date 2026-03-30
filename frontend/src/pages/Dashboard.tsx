@@ -100,7 +100,7 @@ export function Dashboard() {
                   <tr key={recibo.id} style={{ borderTop: '1px solid #E5E7EB' }}>
                     <td style={{ padding: '1rem', color: '#111827' }}>{recibo.alumno_nombre}</td>
                     <td style={{ padding: '1rem', color: '#111827' }}>S/. {recibo.monto_total}</td>
-                    <td style={{ padding: '1rem', color: '#DC2626', fontWeight: '600' }}>S/. {recibo.saldo_pendiente}</td>
+                    <td style={{ padding: '1rem', color: '#DC2626', fontWeight: '600' }}>S/. {Number(recibo.saldo_pendiente).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>

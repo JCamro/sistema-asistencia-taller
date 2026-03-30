@@ -9,8 +9,10 @@ from .asistencia import Asistencia
 from .recibo import Recibo
 from .recibo_matricula import ReciboMatricula
 from .pago_profesor import PagoProfesor
+from .pago_profesor_detalle import PagoProfesorDetalle
 from .configuracion import Configuracion
 from .historial_traspaso import HistorialTraspaso
+from .precio_paquete import PrecioPaquete
 
 __all__ = [
     'Ciclo',
@@ -24,6 +26,8 @@ __all__ = [
     'Recibo',
     'ReciboMatricula',
     'PagoProfesor',
+    'PagoProfesorDetalle',
     'Configuracion',
     'HistorialTraspaso',
+    'PrecioPaquete',
 ]

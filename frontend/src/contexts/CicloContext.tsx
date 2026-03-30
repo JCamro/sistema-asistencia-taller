@@ -27,20 +27,34 @@ export function CicloProvider({ children }: { children: ReactNode }) {
   const recargar = useCallback(() => {
     const token = localStorage.getItem('access_token');
     if (!token) {
+      setCiclos([]);
       setIsLoading(false);
       return;
     }
 
-    Promise.all([
-      fetch('/api/ciclos/', {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(r => r.json()),
-      fetch('/api/config/', {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(r => r.json()).catch(() => ({ ciclo_activo: null }))
-    ])
+    const fetchCiclos = fetch('/api/ciclos/', {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(r => {
+      if (r.status === 401) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        throw new Error('Unauthorized');
+      }
+      return r.json();
+    });
+
+    const fetchConfig = fetch('/api/config/', {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(r => {
+      if (r.status === 401) {
+        return { ciclo_activo: null };
+      }
+      return r.json();
+    }).catch(() => ({ ciclo_activo: null }));
+
+    Promise.all([fetchCiclos, fetchConfig])
     .then(([ciclosData, configData]) => {
-      const results = ciclosData.results || ciclosData;
+      const results = Array.isArray(ciclosData) ? ciclosData : (ciclosData.results || []);
       setCiclos(results);
       
       let activo: Ciclo | null = null;
@@ -61,7 +75,11 @@ export function CicloProvider({ children }: { children: ReactNode }) {
       setCicloActualState(activo);
       setIsLoading(false);
     })
-    .catch(() => {
+    .catch((err) => {
+      if (err.message === 'Unauthorized') {
+        setCiclos([]);
+        window.location.href = '/login';
+      }
       setIsLoading(false);
     });
   }, []);

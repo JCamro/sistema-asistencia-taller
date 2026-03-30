@@ -6,7 +6,7 @@ from .views import (
     CicloViewSet, TallerViewSet, ProfesorViewSet, AlumnoViewSet,
     HorarioViewSet, MatriculaViewSet, MatriculaHorarioViewSet,
     AsistenciaViewSet, ReciboViewSet, PagoProfesorViewSet,
-    calcular_pago_profesor, resumen_ciclo, ConfiguracionViewSet,
+    calcular_pago_profesor, detalle_clase_pago, resumen_ciclo, ConfiguracionViewSet,
     asistencia_por_horario
 )
 
@@ -24,13 +24,13 @@ router.register(r'recibos', ReciboViewSet)
 router.register(r'pagos-profesores', PagoProfesorViewSet)
 
 urlpatterns = [
-    path('', include(router.urls)),
-    
+    # Custom paths FIRST (before router)
     path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/logout/', TokenBlacklistView.as_view(), name='token_blacklist'),
     
-    path('pagos-profesores/calcular/', calcular_pago_profesor, name='calcular_pago'),
+    path('pagos-profesores/calcular-periodo/', calcular_pago_profesor, name='calcular_pago'),
+    path('pagos-profesores/detalle-clase/', detalle_clase_pago, name='detalle_clase_pago'),
     path('ciclos/<int:pk>/resumen/', resumen_ciclo, name='resumen_ciclo'),
     
     # Endpoints por ciclo
@@ -49,4 +49,7 @@ urlpatterns = [
     
     # Endpoints anidados para matrículas
     path('matriculas/<int:matricula_id>/horarios/', MatriculaHorarioViewSet.as_view({'get': 'list'}), name='matricula-horarios'),
+    
+    # Router URLs LAST
+    path('', include(router.urls)),
 ]
