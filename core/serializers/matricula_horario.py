@@ -13,6 +13,9 @@ class MatriculaHorarioSerializer(serializers.ModelSerializer):
         matricula = data['matricula']
         horario = data['horario']
 
+        if MatriculaHorario.objects.filter(matricula=matricula, horario=horario).exists():
+            raise serializers.ValidationError("El estudiante ya está matriculado en este horario")
+
         if not matricula.activo:
             raise serializers.ValidationError("La matrícula no está activa")
 

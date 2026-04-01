@@ -383,7 +383,10 @@ function MatriculasPage() {
           
           if (!resMH.ok) {
             const errorData = await resMH.json();
-            throw new Error(JSON.stringify(errorData));
+            // Si ya existe, no es error crítico - el horario ya está asignado
+            if (!JSON.stringify(errorData).includes('ya está matriculado') && !JSON.stringify(errorData).includes('conjunto único')) {
+              throw new Error(JSON.stringify(errorData));
+            }
           }
         }
       } else if (editingId) {
@@ -421,7 +424,10 @@ function MatriculasPage() {
             
             if (!resMH.ok) {
               const errorData = await resMH.json();
-              throw new Error(JSON.stringify(errorData));
+              // Si ya existe, no es error crítico - el horario ya está asignado
+              if (!JSON.stringify(errorData).includes('ya está matriculado') && !JSON.stringify(errorData).includes('conjunto único')) {
+                throw new Error(JSON.stringify(errorData));
+              }
             }
           }
         }

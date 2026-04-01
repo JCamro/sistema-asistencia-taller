@@ -96,7 +96,7 @@ def calcular_pago_profesor(request):
             estado='asistio',
             fecha__gte=fecha_inicio,
             fecha__lte=fecha_fin
-        ).values('horario', 'fecha').annotate(
+        ).values('horario', 'fecha', 'profesor').annotate(
             num_alumnos=Count('id')
         ).distinct()
 
@@ -126,6 +126,7 @@ def calcular_pago_profesor(request):
             asistentes = Asistencia.objects.filter(
                 horario_id=clase['horario'],
                 fecha=clase['fecha'],
+                profesor=profesor,
                 estado='asistio'
             ).select_related('matricula', 'horario')
 
@@ -197,6 +198,7 @@ def calcular_pago_profesor(request):
 def detalle_clase_pago(request):
     horario_id = request.query_params.get('horario_id')
     fecha = request.query_params.get('fecha')
+    profesor_id = request.query_params.get('profesor_id')
 
     if not horario_id or not fecha:
         return Response(
@@ -217,10 +219,16 @@ def detalle_clase_pago(request):
     TOPE_MAXIMO = Decimal('35.00')
     PORCENTAJE_ADICIONAL = Decimal('0.50')
 
+    filtros = {
+        'horario_id': horario_id,
+        'fecha': fecha,
+        'estado': 'asistio'
+    }
+    if profesor_id:
+        filtros['profesor_id'] = profesor_id
+
     asistentes = Asistencia.objects.filter(
-        horario_id=horario_id,
-        fecha=fecha,
-        estado='asistio'
+        **filtros
     ).select_related('matricula__alumno', 'horario').order_by('id')
 
     num_alumnos = asistentes.count()

@@ -19,6 +19,8 @@ interface DetalleClase {
   horario: number;
   horario_info: string;
   fecha: string;
+  profesor_id?: number;
+  profesor_nombre?: string;
   num_alumnos: number;
   valor_generado: number | string;
   monto_base: number | string;
@@ -184,9 +186,10 @@ function PagosProfesoresPage() {
       if (!detallesCompletos[key]) {
         setLoadingAlumnos(prev => new Set(prev).add(key));
         const token = localStorage.getItem('access_token');
+        const profesorId = detalle.profesor_id ? `&profesor_id=${detalle.profesor_id}` : '';
         try {
           const res = await fetch(
-            `/api/pagos-profesores/detalle-clase/?horario_id=${detalle.horario}&fecha=${detalle.fecha}`,
+            `/api/pagos-profesores/detalle-clase/?horario_id=${detalle.horario}&fecha=${detalle.fecha}${profesorId}`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
           const data = await res.json();
