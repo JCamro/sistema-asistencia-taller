@@ -4,6 +4,17 @@ import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import TraspasoModal from '../components/ui/TraspasoModal';
 
+const HORAS_GRID = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+const DIAS_GRID = [
+  { value: 0, label: 'Lunes', abbr: 'Lun' },
+  { value: 1, label: 'Martes', abbr: 'Mar' },
+  { value: 2, label: 'Miércoles', abbr: 'Mié' },
+  { value: 3, label: 'Jueves', abbr: 'Jue' },
+  { value: 4, label: 'Viernes', abbr: 'Vie' },
+  { value: 5, label: 'Sábado', abbr: 'Sáb' },
+  { value: 6, label: 'Domingo', abbr: 'Dom' },
+];
+
 interface Alumno {
   id: number;
   nombre: string;
@@ -42,12 +53,15 @@ interface Matricula {
   sesiones_contratadas: number;
   precio_total: number;
   precio_por_sesion: number;
-  modalidad: string;
+  metodo_pago: string;
   activo: boolean;
   concluida: boolean;
+  estado_calculado: 'activa' | 'inactiva' | 'concluida' | 'no_procesado';
   sesiones_consumidas: number;
   sesiones_disponibles: number;
   fecha_matricula: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface MatriculaFormData {
@@ -56,7 +70,6 @@ interface MatriculaFormData {
   horarios: number[];
   sesiones_contratadas: number;
   precio_total: string;
-  modalidad: string;
   metodo_pago: string;
   activo: boolean;
   concluida: boolean;
@@ -70,6 +83,19 @@ interface AsistenciaDetalle {
   estado: string;
   observacion: string;
   es_recuperacion: boolean;
+  horario_hora_inicio: string;
+  horario_hora_fin: string;
+}
+
+interface HorarioDetalle {
+  id: number;
+  horario_detalle: {
+    taller: string;
+    profesor: string;
+    dia: string;
+    hora_inicio: string;
+    hora_fin: string;
+  };
 }
 
 const initialFormData: MatriculaFormData = {
@@ -78,7 +104,6 @@ const initialFormData: MatriculaFormData = {
   horarios: [],
   sesiones_contratadas: 8,
   precio_total: '',
-  modalidad: 'presencial',
   metodo_pago: 'efectivo',
   activo: true,
   concluida: false,
@@ -93,6 +118,7 @@ function MatriculasPage() {
   const [horarios, setHorarios] = useState<Horario[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('todas');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<MatriculaFormData>(initialFormData);
@@ -109,6 +135,14 @@ function MatriculasPage() {
   const [traspasandoNombre, setTraspasandoNombre] = useState<string>('');
   const [traspasandoTaller, setTraspasandoTaller] = useState<string>('');
   const [traspasandoLoading, setTraspasandoLoading] = useState(false);
+  const [eliminandoAsistenciaId, setEliminandoAsistenciaId] = useState<number | null>(null);
+  const [eliminandoAsistenciaInfo, setEliminandoAsistenciaInfo] = useState<string>('');
+  const [segundaConfirmacion, setSegundaConfirmacion] = useState(false);
+  const [verHorarioMatriculaId, setVerHorarioMatriculaId] = useState<number | null>(null);
+  const [horariosDetalle, setHorariosDetalle] = useState<HorarioDetalle[]>([]);
+  const [menuAbierto, setMenuAbierto] = useState<number | null>(null);
+  const [precioSugerido, setPrecioSugerido] = useState<number | null>(null);
+  const [calculandoPrecio, setCalculandoPrecio] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!cicloActual) return;
@@ -152,6 +186,17 @@ function MatriculasPage() {
     }
   }, [cicloActual]);
 
+  const horariosGrid = useMemo(() => {
+    const grid: { [key: string]: Horario[] } = {};
+    horarios.forEach((h) => {
+      const hora = h.hora_inicio ? h.hora_inicio.substring(0, 2) : '00';
+      const key = `${h.dia_semana}-${hora}`;
+      if (!grid[key]) grid[key] = [];
+      grid[key].push(h);
+    });
+    return grid;
+  }, [horarios]);
+
   const fetchAsistenciasDetalle = useCallback(async (matricula: Matricula) => {
     setViewMatricula(matricula);
     setLoadingDetalle(true);
@@ -174,7 +219,28 @@ function MatriculasPage() {
     }
   }, []);
 
+  const fetchHorariosDetalle = useCallback(async (matriculaId: number) => {
+    const token = localStorage.getItem('access_token');
+    try {
+      const res = await fetch(`/api/matriculas/${matriculaId}/horarios/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setHorariosDetalle((data.results || data) as HorarioDetalle[]);
+    } catch (err) {
+      console.error('Error:', err);
+    }
+  }, []);
+
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    const handleClickOutside = () => setMenuAbierto(null);
+    if (menuAbierto !== null) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [menuAbierto]);
 
   useEffect(() => {
     if (formData.taller) {
@@ -183,6 +249,37 @@ function MatriculasPage() {
       setHorarios([]);
     }
   }, [formData.taller, fetchHorarios]);
+
+  useEffect(() => {
+    if (!formData.taller || !formData.sesiones_contratadas || formData.sesiones_contratadas < 1) {
+      setPrecioSugerido(null);
+      return;
+    }
+    let cancelled = false;
+    const calcular = async () => {
+      setCalculandoPrecio(true);
+      const token = localStorage.getItem('access_token');
+      try {
+        const res = await fetch(
+          `/api/matriculas/calcular-precio/?taller_id=${formData.taller}&sesiones=${formData.sesiones_contratadas}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const data = await res.json();
+        if (!cancelled) {
+          setPrecioSugerido(data.precio_total > 0 ? data.precio_total : null);
+          if (data.precio_total > 0) {
+            setFormData(prev => ({ ...prev, precio_total: data.precio_total.toString() }));
+          }
+        }
+      } catch {
+        if (!cancelled) setPrecioSugerido(null);
+      } finally {
+        if (!cancelled) setCalculandoPrecio(false);
+      }
+    };
+    calcular();
+    return () => { cancelled = true; };
+  }, [formData.taller, formData.sesiones_contratadas]);
 
   const filteredAlumnos = useMemo(() => {
     if (!alumnoSearch) return [];
@@ -194,10 +291,16 @@ function MatriculasPage() {
     ).slice(0, 10);
   }, [alumnoSearch, alumnos]);
 
-  const filteredMatriculas = matriculas.filter((m) =>
-    m.alumno_nombre.toLowerCase().includes(search.toLowerCase()) ||
-    m.taller_nombre.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredMatriculas = matriculas.filter((m) => {
+    const coincideBusqueda = m.alumno_nombre.toLowerCase().includes(search.toLowerCase()) || 
+                             m.taller_nombre.toLowerCase().includes(search.toLowerCase());
+    const coincideEstado = filtroEstado === 'todas' || 
+                          (filtroEstado === 'activa' && m.estado_calculado === 'activa') ||
+                          (filtroEstado === 'inactiva' && m.estado_calculado === 'inactiva') ||
+                          (filtroEstado === 'concluida' && m.estado_calculado === 'concluida') ||
+                          (filtroEstado === 'no_procesado' && m.estado_calculado === 'no_procesado');
+    return coincideBusqueda && coincideEstado;
+  });
 
   const toggleHorario = (horarioId: number) => {
     const current = formData.horarios || [];
@@ -226,21 +329,32 @@ function MatriculasPage() {
       showToast('Por favor complete todos los campos requeridos', 'warning');
       return;
     }
+    if (!formData.precio_total || parseFloat(formData.precio_total) <= 0) {
+      showToast('El monto total debe ser mayor a 0', 'warning');
+      return;
+    }
     setSaving(true);
     const token = localStorage.getItem('access_token');
     try {
       const url = editingId ? `/api/matriculas/${editingId}/` : `/api/ciclos/${cicloActual.id}/matriculas/`;
       const method = editingId ? 'PATCH' : 'POST';
       
-      const payload = {
+      const payload: Record<string, unknown> = {
         alumno: formData.alumno,
         taller: formData.taller,
         sesiones_contratadas: formData.sesiones_contratadas,
         precio_total: parseFloat(formData.precio_total),
-        modalidad: formData.modalidad,
-        activo: formData.activo,
-        concluida: formData.concluida,
+        metodo_pago: formData.metodo_pago,
       };
+
+      if (editingId) {
+        payload.activo = formData.activo;
+        payload.concluida = formData.concluida;
+      }
+
+      if (!editingId && formData.horarios.length > 0) {
+        payload.horarios = formData.horarios;
+      }
 
       const res = await fetch(url, {
         method,
@@ -258,7 +372,7 @@ function MatriculasPage() {
       if (!editingId && formData.horarios.length > 0) {
         // Crear nuevos horarios para nueva matrícula
         for (const horarioId of formData.horarios) {
-          await fetch('/api/matriculas-horarios/', {
+          const resMH = await fetch('/api/matriculas-horarios/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({
@@ -266,6 +380,14 @@ function MatriculasPage() {
               horario: horarioId,
             }),
           });
+          
+          if (!resMH.ok) {
+            const errorData = await resMH.json();
+            // Si ya existe, no es error crítico - el horario ya está asignado
+            if (!JSON.stringify(errorData).includes('ya está matriculado') && !JSON.stringify(errorData).includes('conjunto único')) {
+              throw new Error(JSON.stringify(errorData));
+            }
+          }
         }
       } else if (editingId) {
         // Obtener horarios actuales y actualizarlos
@@ -291,7 +413,7 @@ function MatriculasPage() {
         // Agregar nuevos horarios
         for (const horarioId of formData.horarios) {
           if (!horariosActuales.includes(horarioId)) {
-            await fetch('/api/matriculas-horarios/', {
+            const resMH = await fetch('/api/matriculas-horarios/', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
               body: JSON.stringify({
@@ -299,6 +421,14 @@ function MatriculasPage() {
                 horario: horarioId,
               }),
             });
+            
+            if (!resMH.ok) {
+              const errorData = await resMH.json();
+              // Si ya existe, no es error crítico - el horario ya está asignado
+              if (!JSON.stringify(errorData).includes('ya está matriculado') && !JSON.stringify(errorData).includes('conjunto único')) {
+                throw new Error(JSON.stringify(errorData));
+              }
+            }
           }
         }
       }
@@ -338,8 +468,7 @@ function MatriculasPage() {
       horarios: horariosExistentes,
       sesiones_contratadas: matricula.sesiones_contratadas,
       precio_total: matricula.precio_total.toString(),
-      modalidad: matricula.modalidad,
-      metodo_pago: 'efectivo',
+      metodo_pago: matricula.metodo_pago || 'efectivo',
       activo: matricula.activo,
       concluida: matricula.concluida,
     });
@@ -369,6 +498,32 @@ function MatriculasPage() {
   const cancelDelete = () => {
     setDeletingId(null);
     setDeletingName('');
+  };
+
+  const confirmarEliminarAsistencia = (asistencia: AsistenciaDetalle) => {
+    setEliminandoAsistenciaId(asistencia.id);
+    setEliminandoAsistenciaInfo(`${asistencia.fecha} ${asistencia.horario_hora_inicio?.substring(0,5)} a ${asistencia.horario_hora_fin?.substring(0,5)}`);
+    setSegundaConfirmacion(false);
+  };
+
+  const handleEliminarAsistencia = async () => {
+    if (!eliminandoAsistenciaId || !segundaConfirmacion) return;
+    const token = localStorage.getItem('access_token');
+    try {
+      await fetch(`/api/asistencias/${eliminandoAsistenciaId}/`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      setAsistenciasDetalle(prev => prev.filter(a => a.id !== eliminandoAsistenciaId));
+      showToast('Asistencia eliminada', 'success');
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setEliminandoAsistenciaId(null);
+      setSegundaConfirmacion(false);
+    }
+  };
+
+  const cancelEliminarAsistencia = () => {
+    setEliminandoAsistenciaId(null);
+    setSegundaConfirmacion(false);
   };
 
   const handleTraspaso = async (alumnoDestinoId: number) => {
@@ -449,8 +604,15 @@ function MatriculasPage() {
       {alumnos.length === 0 && <div style={{ padding: '1rem', background: '#fef3c7', borderRadius: '8px', marginBottom: '1.5rem', color: '#b45309', fontSize: '0.875rem' }}>⚠️ Debes crear alumnos y talleres primero.</div>}
 
       <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-        <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
-          <input type="text" placeholder="Buscar por alumno o taller..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: '100%', padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }} />
+        <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '0.75rem' }}>
+          <input type="text" placeholder="Buscar por alumno o taller..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }} />
+            <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}>
+              <option value="todas">Todas</option>
+              <option value="activa">Activas</option>
+              <option value="no_procesado">No Procesado</option>
+              <option value="inactiva">Inactivas</option>
+              <option value="concluida">Concluidas</option>
+            </select>
         </div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -460,12 +622,13 @@ function MatriculasPage() {
               <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Sesiones</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Total</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Estado</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Registro</th>
               <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {filteredMatriculas.length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>No hay matrículas</td></tr>
+              <tr><td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>No hay matrículas</td></tr>
             ) : (
               filteredMatriculas.map((m) => (
                 <tr key={m.id} style={{ borderTop: '1px solid #e5e7eb' }}>
@@ -476,15 +639,39 @@ function MatriculasPage() {
                   </td>
                   <td style={{ padding: '1rem', textAlign: 'right', fontFamily: 'monospace', fontWeight: '600' }}>S/. {m.precio_total}</td>
                   <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '600', background: m.concluida ? '#fef3c7' : m.activo ? '#d1fae5' : '#f3f4f6', color: m.concluida ? '#b45309' : m.activo ? '#059669' : '#6b7280' }}>
-                      {m.concluida ? 'Concluida' : m.activo ? 'Activa' : 'Inactiva'}
+                    <span style={{ 
+                      padding: '0.25rem 0.75rem', 
+                      borderRadius: '9999px', 
+                      fontSize: '0.75rem', 
+                      fontWeight: '600',
+                      background: m.estado_calculado === 'no_procesado' ? '#fef3c7' : m.estado_calculado === 'activa' ? '#d1fae5' : m.estado_calculado === 'concluida' ? '#fcd34d' : '#f3f4f6',
+                      color: m.estado_calculado === 'no_procesado' ? '#b45309' : m.estado_calculado === 'activa' ? '#059669' : m.estado_calculado === 'concluida' ? '#92400e' : '#6b7280'
+                    }}>
+                      {m.estado_calculado === 'no_procesado' ? 'No Procesado' : m.estado_calculado === 'activa' ? 'Activa' : m.estado_calculado === 'concluida' ? 'Concluida' : 'Inactiva'}
                     </span>
                   </td>
-                  <td style={{ padding: '1rem', textAlign: 'right' }}>
-                    <button onClick={() => fetchAsistenciasDetalle(m)} style={{ background: 'none', border: 'none', color: '#8b5cf6', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500', marginRight: '1rem' }}>Asistencias</button>
-                    <button onClick={() => handleEdit(m)} style={{ background: 'none', border: 'none', color: '#40E0D0', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500', marginRight: '1rem' }}>Editar</button>
-                    {m.activo && <button onClick={() => openTraspaso(m)} style={{ background: 'none', border: 'none', color: '#2563EB', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500', marginRight: '1rem' }}>Traspasar</button>}
-                    <button onClick={() => handleDelete(m.id, m.alumno_nombre)} disabled={deletingId === m.id} style={{ background: 'none', border: 'none', color: deletingId === m.id ? '#9ca3af' : '#ef4444', cursor: deletingId === m.id ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: '500' }}>{deletingId === m.id ? '...' : 'Eliminar'}</button>
+                  <td style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', color: '#6b7280' }}>
+                    {m.created_at ? (() => {
+                      const d = new Date(m.created_at);
+                      const day = String(d.getDate()).padStart(2, '0');
+                      const month = String(d.getMonth() + 1).padStart(2, '0');
+                      const year = d.getFullYear();
+                      return `${day}/${month}/${year}`;
+                    })() : '-'}
+                  </td>
+                  <td style={{ padding: '1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <button onClick={() => { setVerHorarioMatriculaId(m.id); fetchHorariosDetalle(m.id); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500', marginRight: '0.75rem' }}>Ver</button>
+                    <button onClick={() => fetchAsistenciasDetalle(m)} style={{ background: 'none', border: 'none', color: '#8b5cf6', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500', marginRight: '0.75rem' }}>Asistencias</button>
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                      <button onClick={(e) => { e.stopPropagation(); setMenuAbierto(menuAbierto === m.id ? null : m.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: '#6b7280', padding: '0.25rem 0.5rem' }}>⋮</button>
+                      {menuAbierto === m.id && (
+                        <div style={{ position: 'absolute', right: 0, top: '100%', background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 50, minWidth: '130px', marginTop: '0.25rem' }}>
+                          <button onClick={() => { handleEdit(m); setMenuAbierto(null); }} style={{ display: 'block', width: '100%', padding: '0.625rem 1rem', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '0.875rem', color: '#40E0D0', fontWeight: '500' }}>Editar</button>
+                          {m.activo && <button onClick={() => { openTraspaso(m); setMenuAbierto(null); }} style={{ display: 'block', width: '100%', padding: '0.625rem 1rem', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '0.875rem', color: '#2563EB', fontWeight: '500' }}>Traspasar</button>}
+                          <button onClick={() => { handleDelete(m.id, m.alumno_nombre); setMenuAbierto(null); }} disabled={deletingId === m.id} style={{ display: 'block', width: '100%', padding: '0.625rem 1rem', background: 'none', border: 'none', textAlign: 'left', cursor: deletingId === m.id ? 'not-allowed' : 'pointer', fontSize: '0.875rem', color: deletingId === m.id ? '#9ca3af' : '#ef4444', fontWeight: '500' }}>{deletingId === m.id ? 'Eliminando...' : 'Eliminar'}</button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -567,44 +754,86 @@ function MatriculasPage() {
                     ) : horarios.length === 0 ? (
                       <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', background: '#f9fafb', borderRadius: '8px' }}>No hay horarios disponibles para este taller</div>
                     ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                        {horarios.map((horario) => {
-                          const isSelected = formData.horarios.includes(horario.id);
-                          const estaLleno = horario.cupo_disponible <= 0;
-                          const progreso = horario.cupo_maximo > 0 ? ((horario.cupo_maximo - horario.cupo_disponible) / horario.cupo_maximo) * 100 : 0;
-
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+                          <thead>
+                            <tr style={{ background: '#f9fafb' }}>
+                              <th style={{ padding: '0.5rem', width: '60px', fontSize: '0.7rem', fontWeight: '600', color: '#6b7280' }}>Hora</th>
+                              {DIAS_GRID.map(d => (
+                                <th key={d.value} style={{ padding: '0.5rem', textAlign: 'center', fontSize: '0.7rem', fontWeight: '600', color: '#6b7280' }}>{d.abbr}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {HORAS_GRID.map(hora => {
+                              const horaStr = hora.toString().padStart(2, '0');
+                              return (
+                                <tr key={hora}>
+                                  <td style={{ padding: '0.25rem', textAlign: 'center', fontSize: '0.7rem', color: '#6b7280', borderRight: '1px solid #e5e7eb' }}>
+                                    {horaStr}:00
+                                  </td>
+                                  {DIAS_GRID.map(dia => {
+                                    const key = `${dia.value}-${horaStr}`;
+                                    const horariosEnCelda = horariosGrid[key] || [];
+                                    
+                                    return (
+                                      <td key={key} style={{ padding: '0.25rem', border: '1px solid #e5e7eb', minHeight: '50px', verticalAlign: 'top', background: '#fafafa' }}>
+                                        {horariosEnCelda.map(h => {
+                                          const isSelected = formData.horarios.includes(h.id);
+                                          const estaLleno = h.cupo_disponible <= 0;
+                                          
+                                          return (
+                                            <div
+                                              key={h.id}
+                                              onClick={() => !estaLleno && toggleHorario(h.id)}
+                                              style={{
+                                                padding: '0.25rem',
+                                                marginBottom: '0.25rem',
+                                                borderRadius: '4px',
+                                                cursor: estaLleno ? 'not-allowed' : 'pointer',
+                                                background: isSelected ? '#dbeafe' : estaLleno ? '#fef2f2' : '#ecfdf5',
+                                                border: isSelected ? '2px solid #40E0D0' : '1px solid #86efac',
+                                              }}
+                                            >
+                                              <div style={{ fontWeight: '600', fontSize: '0.65rem', color: '#111827' }}>
+                                                {h.hora_inicio?.substring(0, 5)}-{h.hora_fin?.substring(0, 5)}
+                                              </div>
+                                              <div style={{ fontSize: '0.55rem', color: '#6b7280' }}>{h.profesor_nombre}</div>
+                                              <div style={{ fontSize: '0.55rem', fontWeight: '500', color: estaLleno ? '#dc2626' : '#059669' }}>
+                                                {estaLleno ? 'LLENO' : `${h.cupo_disponible}/${h.cupo_maximo}`}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {formData.horarios.length > 0 && (
+                      <div style={{
+                        marginTop: '0.75rem', padding: '0.75rem',
+                        background: '#f0fdf4', border: '1px solid #bbf7d0',
+                        borderRadius: '8px',
+                      }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: '600', color: '#166534', marginBottom: '0.375rem' }}>
+                          {formData.horarios.length} horario{formData.horarios.length > 1 ? 's' : ''} seleccionado{formData.horarios.length > 1 ? 's' : ''}
+                        </div>
+                        {horarios.filter(h => formData.horarios.includes(h.id)).map((h) => {
+                          const diaLabel = DIAS_GRID.find(d => d.value === h.dia_semana)?.label ?? '';
                           return (
-                            <div
-                              key={horario.id}
-                              onClick={() => !estaLleno && toggleHorario(horario.id)}
-                              style={{
-                                padding: '1rem',
-                                borderRadius: '8px',
-                                border: isSelected ? '2px solid #40E0D0' : `1px solid ${estaLleno ? '#fecaca' : '#d1d5db'}`,
-                                background: isSelected ? '#eff6ff' : estaLleno ? '#fef2f2' : 'white',
-                                cursor: estaLleno ? 'not-allowed' : 'pointer',
-                                opacity: estaLleno ? 0.7 : 1,
-                                transition: 'all 0.15s',
-                              }}
-                            >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                <span style={{ fontWeight: '600', color: '#111827', fontSize: '0.875rem' }}>{horario.dia_nombre}</span>
-                                <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>{horario.hora_inicio?.substring(0, 5)}</span>
-                              </div>
-                              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>{horario.profesor_nombre}</div>
-                              <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.25rem' }}>
-                                  <span style={{ color: estaLleno ? '#dc2626' : '#059669', fontWeight: '500' }}>
-                                    {estaLleno ? 'LLENO' : `${horario.cupo_disponible} cupos`}
-                                  </span>
-                                </div>
-                                <div style={{ height: '4px', background: '#e5e7eb', borderRadius: '2px', overflow: 'hidden' }}>
-                                  <div style={{ height: '100%', width: `${progreso}%`, background: estaLleno ? '#dc2626' : '#22c55e', transition: 'width 0.3s' }} />
-                                </div>
-                              </div>
-                              {isSelected && (
-                                <div style={{ marginTop: '0.5rem', textAlign: 'center', fontSize: '0.75rem', color: '#40E0D0', fontWeight: '500' }}>✓ Seleccionado</div>
-                              )}
+                            <div key={h.id} style={{
+                              fontSize: '0.75rem', color: '#166534', padding: '0.2rem 0',
+                              display: 'flex', justifyContent: 'space-between',
+                            }}>
+                              <span style={{ fontWeight: '500' }}>{diaLabel}</span>
+                              <span>{h.hora_inicio?.substring(0, 5)} – {h.hora_fin?.substring(0, 5)}</span>
+                              <span style={{ color: '#6b7280' }}>{h.profesor_nombre}</span>
                             </div>
                           );
                         })}
@@ -640,14 +869,30 @@ function MatriculasPage() {
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Monto Total a Pagar (S/.)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={formData.precio_total}
-                        onChange={(e) => setFormData({ ...formData, precio_total: e.target.value })}
-                        required
-                        style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
-                      />
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={formData.precio_total}
+                          onChange={(e) => setFormData({ ...formData, precio_total: e.target.value })}
+                          required
+                          min={0.01}
+                          style={{ width: '100%', padding: '0.625rem', border: formData.precio_total && parseFloat(formData.precio_total) <= 0 ? '2px solid #dc2626' : '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
+                        />
+                        {calculandoPrecio && (
+                          <span style={{ position: 'absolute', right: '0.625rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: '#9ca3af' }}>
+                            Calculando...
+                          </span>
+                        )}
+                      </div>
+                      {precioSugerido !== null && (
+                        <div style={{
+                          marginTop: '0.25rem', fontSize: '0.75rem', color: '#059669',
+                          display: 'flex', alignItems: 'center', gap: '0.25rem',
+                        }}>
+                          ✓ Precio según paquete configurado
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -681,17 +926,19 @@ function MatriculasPage() {
                 </div>
               </div>
 
-              {/* Opciones adicionales */}
-              <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
-                  <input type="checkbox" checked={formData.activo} onChange={(e) => setFormData({ ...formData, activo: e.target.checked })} /> 
-                  Activa
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
-                  <input type="checkbox" checked={formData.concluida} onChange={(e) => setFormData({ ...formData, concluida: e.target.checked })} /> 
-                  Concluida
-                </label>
-              </div>
+              {/* Opciones adicionales - solo en modo editar */}
+              {editingId && (
+                <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                    <input type="checkbox" checked={formData.activo} onChange={(e) => setFormData({ ...formData, activo: e.target.checked })} /> 
+                    Activa
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                    <input type="checkbox" checked={formData.concluida} onChange={(e) => setFormData({ ...formData, concluida: e.target.checked })} /> 
+                    Concluida
+                  </label>
+                </div>
+              )}
 
               {/* Botones */}
               <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -738,9 +985,10 @@ function MatriculasPage() {
                   <thead>
                     <tr style={{ background: '#f9fafb', position: 'sticky', top: 0 }}>
                       <th style={{ padding: '0.5rem 1rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Fecha</th>
-                      <th style={{ padding: '0.5rem 1rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Hora</th>
+                      <th style={{ padding: '0.5rem 1rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Horario</th>
                       <th style={{ padding: '0.5rem 1rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Estado</th>
                       <th style={{ padding: '0.5rem 1rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Profesor</th>
+                      <th style={{ padding: '0.5rem 1rem', textAlign: 'center', fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', width: '60px' }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -753,7 +1001,7 @@ function MatriculasPage() {
                       return (
                         <tr key={a.id} style={{ borderTop: '1px solid #e5e7eb' }}>
                           <td style={{ padding: '0.625rem 1rem', fontSize: '0.8rem', color: '#111827', fontWeight: '500' }}>{a.fecha}</td>
-                          <td style={{ padding: '0.625rem 1rem', fontSize: '0.8rem', color: '#6b7280' }}>{a.hora?.substring(0, 5)}</td>
+                          <td style={{ padding: '0.625rem 1rem', fontSize: '0.8rem', color: '#6b7280' }}>{a.horario_hora_inicio?.substring(0,5)} a {a.horario_hora_fin?.substring(0,5)}</td>
                           <td style={{ padding: '0.625rem 1rem' }}>
                             <span style={{ padding: '0.125rem 0.5rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '600', background: estadoInfo.bg, color: estadoInfo.color }}>
                               {estadoInfo.label}
@@ -763,6 +1011,9 @@ function MatriculasPage() {
                             )}
                           </td>
                           <td style={{ padding: '0.625rem 1rem', fontSize: '0.8rem', color: '#374151' }}>{a.profesor_nombre}</td>
+                          <td style={{ padding: '0.625rem 1rem', textAlign: 'center' }}>
+                            <button onClick={() => confirmarEliminarAsistencia(a)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '500' }} title="Eliminar">✕</button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -799,6 +1050,63 @@ function MatriculasPage() {
         onCancel={cancelTraspaso}
         isLoading={traspasandoLoading}
       />
+
+      {!segundaConfirmacion ? (
+        <ConfirmModal
+          isOpen={eliminandoAsistenciaId !== null}
+          title="Eliminar Asistencia"
+          message="¿Estás seguro de que deseas eliminar esta asistencia?"
+          itemName={eliminandoAsistenciaInfo}
+          confirmLabel="Confirmar"
+          cancelLabel="Cancelar"
+          onConfirm={() => setSegundaConfirmacion(true)}
+          onCancel={cancelEliminarAsistencia}
+          isLoading={false}
+        />
+      ) : (
+        <ConfirmModal
+          isOpen={eliminandoAsistenciaId !== null}
+          title="⚠️ Confirmar Eliminación"
+          message="Esta acción es IRREVERSIBLE. ¿Realmente deseas eliminar esta asistencia?"
+          itemName={`${eliminandoAsistenciaInfo} (ID: ${eliminandoAsistenciaId})`}
+          confirmLabel="ELIMINAR DEFINITIVAMENTE"
+          cancelLabel="Cancelar"
+          onConfirm={handleEliminarAsistencia}
+          onCancel={cancelEliminarAsistencia}
+          isLoading={false}
+        />
+      )}
+
+      {verHorarioMatriculaId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb', background: '#f9fafb', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontSize: '1.125rem', fontWeight: '700', color: '#111827' }}>Horario del Alumno</h2>
+              <button onClick={() => setVerHorarioMatriculaId(null)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1 }}>&times;</button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
+              {horariosDetalle.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>No hay horarios registrados</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {horariosDetalle.map((h) => (
+                    <div key={h.id} style={{ padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb' }}>
+                      <div style={{ fontWeight: '600', color: '#111827', marginBottom: '0.25rem' }}>{h.horario_detalle.taller}</div>
+                      <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                        {h.horario_detalle.dia} · {h.horario_detalle.hora_inicio} a {h.horario_detalle.hora_fin}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '0.25rem' }}>Profesor: {h.horario_detalle.profesor}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ padding: '1rem', borderTop: '1px solid #e5e7eb' }}>
+              <button onClick={() => setVerHorarioMatriculaId(null)} style={{ width: '100%', padding: '0.625rem', background: '#f3f4f6', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

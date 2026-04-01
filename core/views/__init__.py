@@ -9,4 +9,4 @@ from .asistencia_view import AsistenciaViewSet, asistencia_por_horario
 from .recibo_view import ReciboViewSet
 from .ciclo_view import CicloViewSet
 from .configuracion_view import ConfiguracionViewSet
-from .pago_profesor_view import PagoProfesorViewSet, calcular_pago_profesor, resumen_ciclo
+from .pago_profesor_view import PagoProfesorViewSet, calcular_pago_profesor, detalle_clase_pago, resumen_ciclo

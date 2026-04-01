@@ -8,18 +8,22 @@ interface Taller {
   id: number;
   ciclo: number;
   nombre: string;
+  tipo: string;
+  tipo_display: string;
   descripcion: string;
   activo: boolean;
 }
 
 interface TallerFormData {
   nombre: string;
+  tipo: string;
   descripcion: string;
   activo: boolean;
 }
 
 const initialFormData: TallerFormData = {
   nombre: '',
+  tipo: 'taller',
   descripcion: '',
   activo: true,
 };
@@ -31,6 +35,7 @@ function TalleresPage() {
   const [talleres, setTalleres] = useState<Taller[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filterTipo, setFilterTipo] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<TallerFormData>(initialFormData);
@@ -58,9 +63,11 @@ function TalleresPage() {
     fetchTalleres();
   }, [fetchTalleres]);
 
-  const filteredTalleres = talleres.filter((t) =>
-    t.nombre.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredTalleres = talleres.filter((t) => {
+    const matchesSearch = t.nombre.toLowerCase().includes(search.toLowerCase());
+    const matchesTipo = !filterTipo || t.tipo === filterTipo;
+    return matchesSearch && matchesTipo;
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,6 +107,7 @@ function TalleresPage() {
     setEditingId(taller.id);
     setFormData({
       nombre: taller.nombre,
+      tipo: taller.tipo || 'taller',
       descripcion: taller.descripcion || '',
       activo: taller.activo,
     });
@@ -185,14 +193,14 @@ function TalleresPage() {
         </button>
       </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
         <input
           type="text"
           placeholder="Buscar talleres..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{
-            width: '100%',
+            flex: 1,
             maxWidth: '400px',
             padding: '0.625rem 1rem',
             border: '1px solid #d1d5db',
@@ -201,14 +209,30 @@ function TalleresPage() {
             outline: 'none',
           }}
         />
+        <select
+          value={filterTipo}
+          onChange={(e) => setFilterTipo(e.target.value)}
+          style={{
+            padding: '0.625rem 1rem',
+            border: '1px solid #d1d5db',
+            borderRadius: '8px',
+            fontSize: '0.875rem',
+            outline: 'none',
+            background: 'white',
+          }}
+        >
+          <option value="">Todos los tipos</option>
+          <option value="instrumento">Instrumento</option>
+          <option value="taller">Taller</option>
+        </select>
       </div>
 
       {filteredTalleres.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '4rem', background: 'white', borderRadius: '12px', border: '1px dashed #d1d5db' }}>
           <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
-            {search ? 'No se encontraron talleres' : 'No hay talleres registrados'}
+            {search || filterTipo ? 'No se encontraron talleres' : 'No hay talleres registrados'}
           </p>
-          {!search && (
+          {!search && !filterTipo && (
             <button onClick={openCreateModal} style={{ padding: '0.625rem 1.25rem', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
               Crear primer taller
             </button>
@@ -229,20 +253,32 @@ function TalleresPage() {
                 cursor: 'pointer',
               }}
             >
-              <div style={{ height: '8px', background: colores[index % colores.length] }} />
+              <div style={{ height: '8px', background: taller.tipo === 'instrumento' ? '#8b5cf6' : colores[index % colores.length] }} />
               <div style={{ padding: '1.25rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827' }}>{taller.nombre}</h3>
-                  <span style={{
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '9999px',
-                    fontSize: '0.625rem',
-                    fontWeight: '600',
-                    background: taller.activo ? '#d1fae5' : '#f3f4f6',
-                    color: taller.activo ? '#059669' : '#6b7280',
-                  }}>
-                    {taller.activo ? 'Activo' : 'Inactivo'}
-                  </span>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <span style={{
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.625rem',
+                      fontWeight: '600',
+                      background: taller.tipo === 'instrumento' ? '#ede9fe' : '#fef3c7',
+                      color: taller.tipo === 'instrumento' ? '#7c3aed' : '#b45309',
+                    }}>
+                      {taller.tipo === 'instrumento' ? 'Instrumento' : 'Taller'}
+                    </span>
+                    <span style={{
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.625rem',
+                      fontWeight: '600',
+                      background: taller.activo ? '#d1fae5' : '#f3f4f6',
+                      color: taller.activo ? '#059669' : '#6b7280',
+                    }}>
+                      {taller.activo ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </div>
                 </div>
                 <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', lineHeight: '1.5' }}>
                   {taller.descripcion || 'Sin descripción'}
@@ -340,6 +376,18 @@ function TalleresPage() {
                     placeholder="Ej: Piano, Guitarra, Dibujo..."
                     style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
                   />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Tipo</label>
+                  <select
+                    value={formData.tipo}
+                    onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                    required
+                    style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white' }}
+                  >
+                    <option value="instrumento">Instrumento</option>
+                    <option value="taller">Taller</option>
+                  </select>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Descripción</label>

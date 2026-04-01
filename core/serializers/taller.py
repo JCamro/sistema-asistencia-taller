@@ -11,7 +11,8 @@ class TallerSerializer(serializers.ModelSerializer):
 
 class TallerListSerializer(serializers.ModelSerializer):
     ciclo_nombre = serializers.CharField(source='ciclo.nombre', read_only=True)
+    tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
 
     class Meta:
         model = Taller
-        fields = ['id', 'ciclo', 'ciclo_nombre', 'nombre', 'descripcion', 'activo']
+        fields = ['id', 'ciclo', 'ciclo_nombre', 'nombre', 'tipo', 'tipo_display', 'descripcion', 'activo']

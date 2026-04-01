@@ -7,6 +7,7 @@ interface Horario {
   id: number;
   taller: number;
   taller_nombre: string;
+  profesor: number;
   profesor_nombre: string;
   dia_semana: number;
   dia_nombre: string;
@@ -73,7 +74,10 @@ function AsistenciasPage() {
   const [profesores, setProfesores] = useState<any[]>([]);
   const [profesorSeleccionado, setProfesorSeleccionado] = useState<number | null>(null);
   const [editandoAsistencia, setEditandoAsistencia] = useState<Asistencia | null>(null);
+  const [editandoProfesorOriginal, setEditandoProfesorOriginal] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showConfirmProfesor1, setShowConfirmProfesor1] = useState(false);
+  const [showConfirmProfesor2, setShowConfirmProfesor2] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!cicloActual) return;
@@ -141,6 +145,15 @@ function AsistenciasPage() {
       setHorarioSeleccionado(null);
     }
   }, [talleres, tallerSeleccionado, horarioSeleccionado, horariosFiltrados]);
+
+  useEffect(() => {
+    if (horarioSeleccionado) {
+      const horario = horarios.find(h => h.id === horarioSeleccionado);
+      if (horario) {
+        setProfesorSeleccionado(horario.profesor);
+      }
+    }
+  }, [horarioSeleccionado, horarios]);
 
   const fetchAlumnosHorario = useCallback(async () => {
     if (!cicloActual || !horarioSeleccionado || !fecha) return;
@@ -304,6 +317,7 @@ function AsistenciasPage() {
 
   const handleEditAsistencia = (asistencia: Asistencia) => {
     setEditandoAsistencia(asistencia);
+    setEditandoProfesorOriginal(asistencia.profesor);
   };
 
   const guardarEdicionAsistencia = async () => {
@@ -320,6 +334,7 @@ function AsistenciasPage() {
           estado: editandoAsistencia.estado,
           observacion: editandoAsistencia.observacion,
           hora: horaActual,
+          profesor: editandoAsistencia.profesor,
         }),
       });
       
@@ -332,6 +347,7 @@ function AsistenciasPage() {
       }
       
       setEditandoAsistencia(null);
+      setEditandoProfesorOriginal(null);
       await fetchAlumnosHorario();
       const resList = await fetch(`/api/ciclos/${cicloActual.id}/asistencias/`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -429,13 +445,24 @@ function AsistenciasPage() {
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Profesor</label>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>
+              {horarioSeleccionado ? 'Docente (asignado al horario)' : 'Profesor'}
+            </label>
             <select
               value={profesorSeleccionado || ''}
               onChange={(e) => setProfesorSeleccionado(e.target.value ? parseInt(e.target.value) : null)}
-              style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
+              disabled={!!horarioSeleccionado}
+              style={{ 
+                width: '100%', 
+                padding: '0.625rem', 
+                border: '1px solid #d1d5db', 
+                borderRadius: '8px', 
+                fontSize: '0.875rem',
+                opacity: horarioSeleccionado ? 0.7 : 1,
+                background: horarioSeleccionado ? '#f9fafb' : 'white',
+              }}
             >
-              <option value="">Seleccionar profesor</option>
+              <option value="">{horarioSeleccionado ? 'Docente del horario' : 'Seleccionar profesor'}</option>
               {profesores.map((p) => (
                 <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>
               ))}
@@ -634,7 +661,22 @@ function AsistenciasPage() {
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ fontWeight: '500', marginBottom: '0.5rem' }}>{editandoAsistencia.alumno_nombre}</div>
               <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{editandoAsistencia.fecha} {editandoAsistencia.hora?.substring(0, 5)}</div>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Prof. {editandoAsistencia.profesor_nombre}</div>
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Docente</label>
+              <select
+                value={editandoAsistencia.profesor || ''}
+                onChange={(e) => {
+                  const nuevoProfesor = e.target.value ? parseInt(e.target.value) : null;
+                  setEditandoAsistencia({ ...editandoAsistencia, profesor: nuevoProfesor });
+                }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
+              >
+                <option value="">Seleccionar docente</option>
+                {profesores.map((p) => (
+                  <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>
+                ))}
+              </select>
             </div>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Estado</label>
@@ -668,14 +710,57 @@ function AsistenciasPage() {
               />
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button onClick={() => setEditandoAsistencia(null)} style={{ flex: 1, padding: '0.75rem', background: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={guardarEdicionAsistencia} disabled={saving} style={{ flex: 1, padding: '0.75rem', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer' }}>
+              <button onClick={() => { setEditandoAsistencia(null); setEditandoProfesorOriginal(null); }} style={{ flex: 1, padding: '0.75rem', background: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => {
+                if (editandoAsistencia.profesor !== editandoProfesorOriginal && editandoProfesorOriginal !== null) {
+                  setShowConfirmProfesor1(true);
+                } else {
+                  guardarEdicionAsistencia();
+                }
+              }} disabled={saving} style={{ flex: 1, padding: '0.75rem', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer' }}>
                 {saving ? 'Guardando...' : 'Guardar'}
               </button>
             </div>
           </div>
         </div>
-      )}
+        )}
+
+        {showConfirmProfesor1 && (
+          <ConfirmModal
+            isOpen={showConfirmProfesor1}
+            title="Cambiar Docente"
+            message={`¿Está seguro que desea cambiar el docente de esta asistencia de "${editandoAsistencia?.profesor_nombre}"?`}
+            confirmLabel="Sí, cambiar"
+            cancelLabel="Cancelar"
+            onConfirm={() => { setShowConfirmProfesor1(false); setShowConfirmProfesor2(true); }}
+            onCancel={() => { 
+              setShowConfirmProfesor1(false); 
+              if (editandoAsistencia && editandoProfesorOriginal !== null) {
+                setEditandoAsistencia({ ...editandoAsistencia, profesor: editandoProfesorOriginal });
+              }
+            }}
+          />
+        )}
+
+        {showConfirmProfesor2 && (
+          <ConfirmModal
+            isOpen={showConfirmProfesor2}
+            title="Confirmar Cambio de Docente"
+            message="Esta acción modificará el registro de asistencia. ¿Está completamente seguro?"
+            confirmLabel="Sí, confirmar cambio"
+            cancelLabel="Volver"
+            onConfirm={() => { 
+              setShowConfirmProfesor2(false);
+              guardarEdicionAsistencia();
+            }}
+            onCancel={() => { 
+              setShowConfirmProfesor2(false); 
+              if (editandoAsistencia && editandoProfesorOriginal !== null) {
+                setEditandoAsistencia({ ...editandoAsistencia, profesor: editandoProfesorOriginal });
+              }
+            }}
+          />
+        )}
     </div>
   );
 }

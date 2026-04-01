@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from ..models import Matricula, MatriculaHorario, Asistencia, HistorialTraspaso
+from ..models import Matricula, MatriculaHorario, Asistencia, HistorialTraspaso, Taller, PrecioPaquete
 from ..serializers import MatriculaSerializer, MatriculaListSerializer, TraspasoSerializer
 
 
@@ -105,7 +105,6 @@ class MatriculaViewSet(viewsets.ModelViewSet):
                     taller_id=matricula_origen.taller_id,
                     sesiones_contratadas=matricula_origen.sesiones_contratadas,
                     precio_total=matricula_origen.precio_total,
-                    modalidad=matricula_origen.modalidad,
                     activo=True,
                     concluida=False,
                 )
@@ -144,3 +143,40 @@ class MatriculaViewSet(viewsets.ModelViewSet):
                 {'detail': f'Error al realizar el traspaso: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=False, methods=['get'], url_path='calcular-precio')
+    def calcular_precio(self, request):
+        taller_id = request.query_params.get('taller_id')
+        sesiones = request.query_params.get('sesiones')
+
+        if not taller_id or not sesiones:
+            return Response(
+                {'detail': 'Se requiere taller_id y sesiones.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            taller = Taller.objects.get(id=taller_id)
+            sesiones = int(sesiones)
+        except (Taller.DoesNotExist, ValueError):
+            return Response(
+                {'detail': 'Taller no encontrado o sesiones inválidas.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        precio = PrecioPaquete.get_precio_individual(taller.tipo, sesiones)
+
+        if precio:
+            return Response({
+                'precio_total': precio['precio_total'],
+                'precio_por_sesion': precio['precio_por_sesion'],
+                'tipo_taller': taller.tipo,
+                'cantidad_clases': sesiones,
+            })
+        return Response({
+            'precio_total': 0,
+            'precio_por_sesion': 0,
+            'tipo_taller': taller.tipo,
+            'cantidad_clases': sesiones,
+            'detail': 'No se encontró precio configurado para esta combinación.',
+        })

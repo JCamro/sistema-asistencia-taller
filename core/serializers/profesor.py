@@ -18,7 +18,7 @@ class ProfesorListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profesor
-        fields = ['id', 'ciclo', 'ciclo_nombre', 'nombre', 'apellido', 'nombre_completo', 'dni', 'telefono', 'email', 'fecha_nacimiento', 'edad', 'activo', 'es_gerente']
+        fields = ['id', 'ciclo', 'ciclo_nombre', 'nombre', 'apellido', 'nombre_completo', 'dni', 'telefono', 'email', 'fecha_nacimiento', 'edad', 'activo', 'es_gerente', 'created_at', 'updated_at']
 
     def get_nombre_completo(self, obj):
         return f"{obj.apellido}, {obj.nombre}"
