@@ -21,6 +21,7 @@ interface Profesor {
 interface Horario {
   id: number;
   taller: number;
+  taller_nombre?: string;
   profesor: number;
   profesor_nombre: string;
   dia_semana: number;

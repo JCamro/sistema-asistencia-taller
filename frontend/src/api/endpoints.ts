@@ -217,3 +217,7 @@ export const calcularPagosProfesores = (cicloId: number, fechaInicio: string, fe
 
 // Reportes
 export const getResumenCiclo = (id: number) => api.get(`/ciclos/${id}/resumen/`);
+
+// Dashboard KPIs
+export const getDashboardKpis = (cicloId: number) => 
+  api.get(`/ciclos/${cicloId}/dashboard/`);

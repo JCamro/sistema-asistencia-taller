@@ -33,7 +33,7 @@ def asistencia_por_horario(request, ciclo_id):
     alumnos_regulares_ids = set()
     
     for mh in matriculas_horario:
-        if not mh.matricula.activo:
+        if not mh.matricula.activo or mh.matricula.concluida:
             continue
         asistencia = Asistencia.objects.filter(
             matricula=mh.matricula,
@@ -130,7 +130,7 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
         
         resultados = []
         for mh in matriculas_horario:
-            if not mh.matricula.activo:
+            if not mh.matricula.activo or mh.matricula.concluida:
                 continue
             asistencia = Asistencia.objects.filter(
                 matricula=mh.matricula,

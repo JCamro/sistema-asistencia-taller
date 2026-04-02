@@ -10,3 +10,4 @@ from .recibo_view import ReciboViewSet
 from .ciclo_view import CicloViewSet
 from .configuracion_view import ConfiguracionViewSet
 from .pago_profesor_view import PagoProfesorViewSet, calcular_pago_profesor, detalle_clase_pago, resumen_ciclo
+from .dashboard_view import dashboard_kpis

@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from django.db import transaction
 from ..models import Matricula, MatriculaHorario
+from ..services import MatriculaService
 
 
 class MatriculaSerializer(serializers.ModelSerializer):
@@ -24,40 +24,13 @@ class MatriculaSerializer(serializers.ModelSerializer):
         from django.conf import settings
         return None
 
-    @transaction.atomic
     def create(self, validated_data):
         horarios_ids = validated_data.pop('horarios', [])
-        matricula = Matricula.objects.create(**validated_data)
-        
-        for horario_id in horarios_ids:
-            from ..models import Horario
-            try:
-                horario = Horario.objects.get(id=horario_id)
-                MatriculaHorario.objects.create(matricula=matricula, horario=horario)
-            except Horario.DoesNotExist:
-                pass
-        
-        return matricula
+        return MatriculaService.create(validated_data, horarios_ids)
 
-    @transaction.atomic
     def update(self, instance, validated_data):
         horarios_ids = validated_data.pop('horarios', None)
-        
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        
-        if horarios_ids is not None:
-            instance.horarios.all().delete()
-            for horario_id in horarios_ids:
-                from ..models import Horario
-                try:
-                    horario = Horario.objects.get(id=horario_id)
-                    MatriculaHorario.objects.create(matricula=instance, horario=horario)
-                except Horario.DoesNotExist:
-                    pass
-        
-        return instance
+        return MatriculaService.update(instance, validated_data, horarios_ids)
 
     def get_estado_calculado(self, obj):
         if not obj.activo:

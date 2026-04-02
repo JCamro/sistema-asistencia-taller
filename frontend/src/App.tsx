@@ -2,6 +2,7 @@ import { useState, useEffect, memo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { CicloProvider, useCiclo } from './contexts/CicloContext';
 import { ToastProvider } from './contexts/ToastContext';
+import DashboardPage from './pages/Dashboard';
 import AlumnosPage from './pages/Alumnos';
 import ProfesoresPage from './pages/Profesores';
 import TalleresPage from './pages/Talleres';
@@ -567,39 +568,7 @@ function SeleccionCiclos() {
 
 const SeleccionCiclosMemo = memo(SeleccionCiclos);
 
-function Dashboard() {
-  const { cicloActual, isLoading } = useCiclo();
-
-  if (isLoading) return <Loading />;
-
-  return (
-    <div>
-      <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#111827' }}>
-        Dashboard - {cicloActual?.nombre}
-      </h1>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Alumnos</p>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827' }}>-</p>
-        </div>
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Profesores</p>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827' }}>-</p>
-        </div>
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Talleres</p>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827' }}>-</p>
-        </div>
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Matrículas</p>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827' }}>-</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const DashboardMemo = memo(Dashboard);
+const DashboardMemo = memo(DashboardPage);
 
 export default function App() {
   return (
