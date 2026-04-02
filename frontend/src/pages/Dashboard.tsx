@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCiclo } from '../contexts/CicloContext';
 import { getDashboardKpis } from '../api/endpoints';
+import CalculadoraPrecios from './CalculadoraPrecios';
 
 interface KpiData {
   alumnos_sin_asistencia_hoy: number;
@@ -135,6 +136,11 @@ export default function Dashboard() {
           color="#10b981"
           onClick={() => navigate('/recibos')}
         />
+      </div>
+
+      {/* Calculadora de Precios */}
+      <div style={{ marginTop: 32 }}>
+        <CalculadoraPrecios />
       </div>
     </div>
   );
