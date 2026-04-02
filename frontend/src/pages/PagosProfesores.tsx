@@ -81,6 +81,7 @@ function PagosProfesoresPage() {
     return d.toISOString().split('T')[0];
   });
   const [fechaFin, setFechaFin] = useState(() => new Date().toISOString().split('T')[0]);
+  const [orden, setOrden] = useState<string>('az');
 
   const fmt = (val: number | string | undefined | null): string => {
     if (val === undefined || val === null) return '0.00';
@@ -210,7 +211,14 @@ function PagosProfesoresPage() {
   const totalMonto = resultados.reduce((sum, r) => sum + r.monto_profesor, 0);
   const totalGanancia = resultados.reduce((sum, r) => sum + r.ganancia_taller, 0);
   const totalClases = resultados.reduce((sum, r) => sum + r.clases_dictadas, 0);
-  const totalAlumnos = resultados.reduce((sum, r) => sum + r.total_alumnos_asistencias, 0);
+
+  const resultadosOrdenados = [...resultados].sort((a, b) => {
+    if (orden === 'az') return a.profesor.localeCompare(b.profesor);
+    if (orden === 'za') return b.profesor.localeCompare(a.profesor);
+    if (orden === 'mas_clases') return b.clases_dictadas - a.clases_dictadas;
+    if (orden === 'menos_clases') return a.clases_dictadas - b.clases_dictadas;
+    return 0;
+  });
 
   if (isCicloLoading || loading) {
     return (
@@ -276,20 +284,31 @@ function PagosProfesoresPage() {
         >
           {calculando ? 'Calculando...' : 'Calcular Pagos'}
         </button>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.375rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Ordenar por
+          </label>
+          <select
+            value={orden}
+            onChange={(e) => setOrden(e.target.value)}
+            style={{ padding: '0.625rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '160px' }}
+          >
+            <option value="az">Profesor (A-Z)</option>
+            <option value="za">Profesor (Z-A)</option>
+            <option value="mas_clases">Más clases dictadas</option>
+            <option value="menos_clases">Menos clases dictadas</option>
+          </select>
+        </div>
       </div>
 
       {/* Resumen total */}
       {resultados.length > 0 && (
         <div style={{ 
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem',
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem',
         }}>
           <div style={{ background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)', borderRadius: '12px', border: '1px solid #c7d2fe', padding: '1.25rem', textAlign: 'center' }}>
             <div style={{ fontSize: '2rem', fontWeight: '800', color: '#4338ca' }}>{totalClases}</div>
             <div style={{ fontSize: '0.8rem', color: '#6366f1', fontWeight: '600', marginTop: '0.25rem' }}>Clases Dictadas</div>
-          </div>
-          <div style={{ background: 'linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%)', borderRadius: '12px', border: '1px solid #f5d0fe', padding: '1.25rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '2rem', fontWeight: '800', color: '#a855f7' }}>{totalAlumnos}</div>
-            <div style={{ fontSize: '0.8rem', color: '#c084fc', fontWeight: '600', marginTop: '0.25rem' }}>Asistencias</div>
           </div>
           <div style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', borderRadius: '12px', border: '1px solid #bbf7d0', padding: '1.25rem', textAlign: 'center' }}>
             <div style={{ fontSize: '2rem', fontWeight: '800', color: '#16a34a' }}>S/. {fmt(totalMonto)}</div>
@@ -309,7 +328,6 @@ function PagosProfesoresPage() {
             <tr style={{ background: 'linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)' }}>
               <th style={{ padding: '0.875rem 1rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Profesor</th>
               <th style={{ padding: '0.875rem 1rem', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Clases</th>
-              <th style={{ padding: '0.875rem 1rem', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Alumnos</th>
               <th style={{ padding: '0.875rem 1rem', textAlign: 'right', fontSize: '0.7rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Monto Profesor</th>
               <th style={{ padding: '0.875rem 1rem', textAlign: 'right', fontSize: '0.7rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ganancia Taller</th>
               <th style={{ padding: '0.875rem 1rem', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Acciones</th>
@@ -317,13 +335,12 @@ function PagosProfesoresPage() {
           </thead>
           <tbody>
             {resultados.length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>No hay pagos calculados. Seleccione un rango de fechas y clic en "Calcular Pagos"</td></tr>
+              <tr><td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>No hay pagos calculados. Seleccione un rango de fechas y clic en "Calcular Pagos"</td></tr>
             ) : (
-              resultados.map((r) => (
+              resultadosOrdenados.map((r) => (
                 <tr key={r.pago_id} style={{ borderTop: '1px solid #e5e7eb', transition: 'background 0.15s' }}>
                   <td style={{ padding: '1rem', fontWeight: '600', color: '#111827' }}>{r.profesor}</td>
                   <td style={{ padding: '1rem', textAlign: 'center' }}><span style={{ background: '#eef2ff', color: '#4338ca', padding: '0.25rem 0.625rem', borderRadius: '9999px', fontSize: '0.8rem', fontWeight: '600' }}>{r.clases_dictadas}</span></td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}><span style={{ background: '#fdf4ff', color: '#a855f7', padding: '0.25rem 0.625rem', borderRadius: '9999px', fontSize: '0.8rem', fontWeight: '600' }}>{r.total_alumnos_asistencias}</span></td>
                   <td style={{ padding: '1rem', textAlign: 'right', fontFamily: 'monospace', fontWeight: '700', color: '#16a34a', fontSize: '0.95rem' }}>S/. {fmt(r.monto_profesor)}</td>
                   <td style={{ padding: '1rem', textAlign: 'right', fontFamily: 'monospace', fontWeight: '700', color: '#d97706', fontSize: '0.95rem' }}>S/. {fmt(r.ganancia_taller)}</td>
                   <td style={{ padding: '1rem', textAlign: 'center' }}>
@@ -445,7 +462,7 @@ function PagosProfesoresPage() {
                                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.75rem' }}>
                                         <div><span style={{ color: '#6b7280' }}>Valor sesión:</span> <span style={{ fontFamily: 'monospace', fontWeight: '500', color: '#111827' }}>S/. {fmt(alumno.precio_sesion)}</span></div>
                                         <div><span style={{ color: '#6b7280' }}>Aporte taller:</span> <span style={{ fontFamily: 'monospace', fontWeight: '500', color: '#d97706' }}>S/. {fmt(alumno.aporte_generado - alumno.aporte_profesor)}</span></div>
-                                        <div><span style={{ color: '#6b7280' }}>A profesor:</span> <span style={{ fontFamily: 'monospace', fontWeight: '600', color: '#16a34a' }}>S/. {fmt(alumno.es_adicional ? 17 + (alumno.precio_sesion * 0.5) : 17)}</span></div>
+                                        <div><span style={{ color: '#6b7280' }}>A profesor:</span> <span style={{ fontFamily: 'monospace', fontWeight: '600', color: '#16a34a' }}>S/. {fmt(alumno.aporte_profesor)}</span></div>
                                         <div><span style={{ color: '#6b7280' }}>Generado:</span> <span style={{ fontFamily: 'monospace', fontWeight: '500', color: '#111827' }}>S/. {fmt(alumno.aporte_generado)}</span></div>
                                       </div>
                                     </div>

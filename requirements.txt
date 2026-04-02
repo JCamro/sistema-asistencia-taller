@@ -22,3 +22,6 @@ charset-normalizer==3.4.6
 idna==3.11
 urllib3==2.6.3
 tzdata==2025.3
+whitenoise>=6.7
+dj-database-url>=2.2
+gunicorn>=22.0

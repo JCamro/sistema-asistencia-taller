@@ -130,6 +130,19 @@ export interface Configuracion {
   updated_at: string;
 }
 
+export interface PrecioPaquete {
+  id: number;
+  ciclo: number | null;
+  ciclo_nombre: string | null;
+  tipo_taller: 'instrumento' | 'taller';
+  tipo_paquete: string;
+  cantidad_clases: number;
+  cantidad_clases_secundaria: number | null;
+  precio_total: number;
+  precio_por_sesion: number;
+  activo: boolean;
+}
+
 // API Functions
 export const login = async (username: string, password: string) => {
   const response = await api.post('/auth/login/', { username, password });
@@ -221,3 +234,12 @@ export const getResumenCiclo = (id: number) => api.get(`/ciclos/${id}/resumen/`)
 // Dashboard KPIs
 export const getDashboardKpis = (cicloId: number) => 
   api.get(`/ciclos/${cicloId}/dashboard/`);
+
+// Precios Paquete
+export const getPrecios = (cicloId?: number) =>
+  cicloId ? api.get<PrecioPaquete[]>(`/ciclos/${cicloId}/precios/`) : api.get<PrecioPaquete[]>('/precios/');
+export const getPreciosActivos = (cicloId: number) =>
+  api.get<PrecioPaquete[]>(`/precios/activos/?ciclo_id=${cicloId}`);
+export const createPrecio = (data: Partial<PrecioPaquete>) => api.post('/precios/', data);
+export const updatePrecio = (id: number, data: Partial<PrecioPaquete>) => api.patch(`/precios/${id}/`, data);
+export const deletePrecio = (id: number) => api.delete(`/precios/${id}/`);

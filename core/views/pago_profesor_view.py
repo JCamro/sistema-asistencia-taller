@@ -33,7 +33,7 @@ class PagoProfesorViewSet(viewsets.ModelViewSet):
         pago = self.get_object()
         detalles = pago.detalles.all().order_by('-fecha')
         serializer = PagoProfesorDetalleSerializer(detalles, many=True)
-        return Response(serializer.data)
+        return Response({'detalles': serializer.data})
 
 
 @api_view(['POST'])

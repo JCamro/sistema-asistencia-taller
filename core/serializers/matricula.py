@@ -29,7 +29,27 @@ class MatriculaSerializer(serializers.ModelSerializer):
         return MatriculaService.create(validated_data, horarios_ids)
 
     def update(self, instance, validated_data):
+        from decimal import Decimal
+
         horarios_ids = validated_data.pop('horarios', None)
+
+        sesiones_nuevo = validated_data.get('sesiones_contratadas')
+        precio_total_nuevo = validated_data.get('precio_total')
+
+        # Lógica de recálculo para mantener consistencia
+        if sesiones_nuevo is not None and precio_total_nuevo is not None:
+            # Ambos cambiaron → precio_total manda, recalcular precio_por_sesion
+            if sesiones_nuevo > 0:
+                validated_data['precio_por_sesion'] = Decimal(str(precio_total_nuevo)) / sesiones_nuevo
+        elif sesiones_nuevo is not None and precio_total_nuevo is None:
+            # Solo cambiaron sesiones → recalcular precio_total desde precio_por_sesion
+            validated_data['precio_total'] = instance.precio_por_sesion * sesiones_nuevo
+        elif precio_total_nuevo is not None and sesiones_nuevo is None:
+            # Solo cambió precio_total → recalcular precio_por_sesion
+            sesiones = instance.sesiones_contratadas
+            if sesiones > 0:
+                validated_data['precio_por_sesion'] = Decimal(str(precio_total_nuevo)) / sesiones
+
         return MatriculaService.update(instance, validated_data, horarios_ids)
 
     def get_estado_calculado(self, obj):

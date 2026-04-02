@@ -2,6 +2,10 @@ from django.db import models
 
 
 class Horario(models.Model):
+    TIPO_PAGO = [
+        ('dinamico', 'Dinámico'),
+        ('fijo', 'Fijo'),
+    ]
     DIA_SEMANA = [
         (0, 'Lunes'),
         (1, 'Martes'),
@@ -30,6 +34,8 @@ class Horario(models.Model):
     dia_semana = models.IntegerField(choices=DIA_SEMANA)
     hora_inicio = models.TimeField()
     hora_fin = models.TimeField()
+    tipo_pago = models.CharField(max_length=10, choices=TIPO_PAGO, default='dinamico')
+    monto_fijo = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     cupo_maximo = models.PositiveIntegerField(default=10)
     activo = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -138,7 +138,13 @@ class CalcularPrecioSerializer(serializers.Serializer):
                     matricula.taller.tipo,
                     matricula.sesiones_contratadas
                 )
-                precio_val = precio['precio_total'] if precio else 0
+                # Si no hay precio configurado, usar precio_por_sesion de la matrícula
+                if precio:
+                    precio_val = precio['precio_total']
+                else:
+                    # Fallback: calcular desde precio_por_sesion de la matrícula
+                    precio_por_sesion = matricula.precio_por_sesion or 0
+                    precio_val = float(precio_por_sesion) * matricula.sesiones_contratadas
                 total += precio_val
                 detalles.append({
                     'matricula_id': mid,

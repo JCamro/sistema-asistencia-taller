@@ -89,6 +89,7 @@ class TestDistributeAmounts(TestCase):
             taller=self.taller_inst,
             sesiones_contratadas=10,
             precio_total=Decimal('200.00'),
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True
         )
@@ -99,6 +100,7 @@ class TestDistributeAmounts(TestCase):
             taller=self.taller_inst,
             sesiones_contratadas=10,
             precio_total=Decimal('200.00'),
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True
         )
@@ -180,6 +182,7 @@ class TestDistributeAmounts(TestCase):
             taller=self.taller_inst,
             sesiones_contratadas=10,
             precio_total=Decimal('200.00'),
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True
         )
@@ -191,6 +194,7 @@ class TestDistributeAmounts(TestCase):
             taller=self.taller_taller,
             sesiones_contratadas=8,
             precio_total=Decimal('160.00'),
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True
         )
@@ -297,6 +301,7 @@ class TestReciboServiceCreate(TestCase):
             taller=self.taller,
             sesiones_contratadas=10,
             precio_total=Decimal('200.00'),
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True
         )
@@ -378,6 +383,7 @@ class TestReciboServiceUpdate(TestCase):
             taller=self.taller,
             sesiones_contratadas=10,
             precio_total=Decimal('200.00'),
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True
         )
@@ -435,6 +441,7 @@ class TestReciboServiceUpdate(TestCase):
             taller=self.taller,
             sesiones_contratadas=10,
             precio_total=Decimal('200.00'),
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True
         )
@@ -494,6 +501,7 @@ class TestReciboServiceUpdateDiscount(TestCase):
             taller=self.taller,
             sesiones_contratadas=10,
             precio_total=Decimal('200.00'),
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True
         )
@@ -615,6 +623,7 @@ class TestActualizarPreciosMatriculas(TestCase):
             taller=self.taller,
             sesiones_contratadas=10,
             precio_total=Decimal('200.00'),
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True
         )
@@ -625,6 +634,7 @@ class TestActualizarPreciosMatriculas(TestCase):
             taller=self.taller,
             sesiones_contratadas=10,
             precio_total=Decimal('200.00'),
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True
         )
@@ -697,6 +707,7 @@ class TestActualizarPreciosMatriculas(TestCase):
             taller=taller_teatro,
             sesiones_contratadas=8,
             precio_total=Decimal('160.00'),
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True
         )

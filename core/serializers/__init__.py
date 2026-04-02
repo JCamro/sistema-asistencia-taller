@@ -10,3 +10,4 @@ from .recibo import ReciboSerializer, ReciboListSerializer, CalcularPrecioSerial
 from .pago_profesor import PagoProfesorSerializer, PagoProfesorListSerializer, PagoProfesorDetalleSerializer
 from .configuracion import ConfiguracionSerializer
 from .traspaso import TraspasoSerializer, HistorialTraspasoSerializer
+from .precio_paquete import PrecioPaqueteSerializer

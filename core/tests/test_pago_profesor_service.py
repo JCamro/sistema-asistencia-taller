@@ -90,7 +90,8 @@ class TestCalcularPagoClase(TestCase):
         
         # Fórmula: 17 + 10 + 10 = 37, capped a 35
         self.assertEqual(resultado['monto_profesor'], TOPE_MAXIMO)  # 35.00
-        self.assertEqual(resultado['monto_adicional'], Decimal('20.00'))
+        # monto_adicional real = 35 - 17 = 18 (respeta tope)
+        self.assertEqual(resultado['monto_adicional'], Decimal('18.00'))
 
     def test_cinco_alumnos_capped(self):
         """5 estudiantes, session_value=20 cada uno → payment=35.00 (capped), profit=65.00"""
@@ -239,6 +240,7 @@ class TestPagoProfesorServiceIntegration(TestCase):
             taller=self.taller,
             sesiones_contratadas=10,
             precio_total=Decimal('200.00'),  # 20 por sesión
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True,
             concluida=False
@@ -304,6 +306,7 @@ class TestPagoProfesorServiceIntegration(TestCase):
             taller=self.taller,
             sesiones_contratadas=10,
             precio_total=Decimal('200.00'),
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True,
             concluida=False
@@ -400,6 +403,7 @@ class TestCalcularPeriodo(TestCase):
             taller=self.taller,
             sesiones_contratadas=10,
             precio_total=Decimal('200.00'),
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True,
             concluida=False
@@ -644,6 +648,7 @@ class TestDetalleClaseEdgeCases(TestCase):
             taller=self.taller,
             sesiones_contratadas=10,
             precio_total=Decimal('200.00'),
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True,
             concluida=False

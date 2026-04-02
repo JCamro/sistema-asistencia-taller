@@ -265,6 +265,7 @@ class TestMatriculaServiceUpdate(TestCase):
             taller=self.taller,
             sesiones_contratadas=10,
             precio_total=Decimal('200.00'),
+            precio_por_sesion=Decimal('20.00'),
             metodo_pago='efectivo',
             activo=True,
             concluida=False

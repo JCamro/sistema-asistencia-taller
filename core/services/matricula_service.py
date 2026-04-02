@@ -4,6 +4,8 @@ Servicio para la lógica de negocio de Matrículas.
 Maneja la creación y actualización de matrículas,
 incluyendo la gestión de horarios asociados.
 """
+from decimal import Decimal
+
 from django.db import transaction
 
 from ..models import Horario, Matricula, MatriculaHorario
@@ -26,6 +28,13 @@ class MatriculaService:
             Matricula: La matrícula creada
         """
         horarios_ids = horarios_ids or []
+
+        # Calcular precio_por_sesion al crear
+        precio_total = validated_data.get('precio_total', Decimal('0'))
+        sesiones = validated_data.get('sesiones_contratadas', 1)
+        if sesiones > 0:
+            validated_data['precio_por_sesion'] = precio_total / sesiones
+
         matricula = Matricula.objects.create(**validated_data)
         
         for horario_id in horarios_ids:
