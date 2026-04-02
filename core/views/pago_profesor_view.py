@@ -3,15 +3,15 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from django.conf import settings
 from django.db import models
 from django.db.models import Count
 from django.db.models.functions import ExtractMonth
 from decimal import Decimal
 from datetime import datetime
 
-from ..models import PagoProfesor, PagoProfesorDetalle, Asistencia, Profesor, Ciclo
+from ..models import PagoProfesor, PagoProfesorDetalle, Profesor, Ciclo
 from ..serializers import PagoProfesorSerializer, PagoProfesorListSerializer, PagoProfesorDetalleSerializer
+from ..services import PagoProfesorService
 
 
 class PagoProfesorViewSet(viewsets.ModelViewSet):
@@ -33,7 +33,7 @@ class PagoProfesorViewSet(viewsets.ModelViewSet):
         pago = self.get_object()
         detalles = pago.detalles.all().order_by('-fecha')
         serializer = PagoProfesorDetalleSerializer(detalles, many=True)
-        return Response(serializer.data)
+        return Response({'detalles': serializer.data})
 
 
 @api_view(['POST'])
@@ -70,127 +70,9 @@ def calcular_pago_profesor(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    BASE_PAGO = Decimal('17.00')
-    TOPE_MAXIMO = Decimal('35.00')
-    PORCENTAJE_ADICIONAL = Decimal('0.50')
-
-    PagoProfesorDetalle.objects.filter(
-        pago_profesor__ciclo=ciclo,
-        fecha__gte=fecha_inicio,
-        fecha__lte=fecha_fin
-    ).delete()
-    
-    PagoProfesor.objects.filter(
-        ciclo=ciclo,
-        fecha_inicio=fecha_inicio,
-        fecha_fin=fecha_fin
-    ).delete()
-
-    profesores = Profesor.objects.filter(activo=True, es_gerente=False)
-
-    resultados = []
-    for profesor in profesores:
-        clases = Asistencia.objects.filter(
-            horario__ciclo=ciclo,
-            profesor=profesor,
-            estado='asistio',
-            fecha__gte=fecha_inicio,
-            fecha__lte=fecha_fin
-        ).values('horario', 'fecha', 'profesor').annotate(
-            num_alumnos=Count('id')
-        ).distinct()
-
-        total_clases = len(clases)
-        
-        if total_clases == 0:
-            continue
-        
-        total_alumnos = 0
-        monto_total_profesor = Decimal('0.00')
-        monto_total_ganancia = Decimal('0.00')
-
-        pago = PagoProfesor.objects.create(
-            profesor=profesor,
-            ciclo=ciclo,
-            fecha_inicio=fecha_inicio,
-            fecha_fin=fecha_fin,
-            horas_calculadas=total_clases,
-            monto_calculado=Decimal('0.00'),
-            monto_final=Decimal('0.00'),
-            total_alumnos_asistencias=0,
-            ganancia_taller=Decimal('0.00'),
-            estado='calculado'
-        )
-
-        for clase in clases:
-            asistentes = Asistencia.objects.filter(
-                horario_id=clase['horario'],
-                fecha=clase['fecha'],
-                profesor=profesor,
-                estado='asistio'
-            ).select_related('matricula', 'horario')
-
-            num_alumnos = asistentes.count()
-            total_alumnos += num_alumnos
-
-            if num_alumnos == 0:
-                monto_profesor = Decimal('0.00')
-                monto_adicional = Decimal('0.00')
-            elif num_alumnos == 1:
-                monto_profesor = BASE_PAGO
-                monto_adicional = Decimal('0.00')
-            else:
-                monto_profesor = BASE_PAGO
-                monto_adicional = Decimal('0.00')
-                for asistente in asistentes[1:]:
-                    valor_sesion = asistente.matricula.precio_por_sesion
-                    if valor_sesion:
-                        monto_adicional += valor_sesion * PORCENTAJE_ADICIONAL
-                monto_profesor = min(monto_profesor + monto_adicional, TOPE_MAXIMO)
-
-            valor_generado = sum(
-                float(a.matricula.precio_por_sesion or 0)
-                for a in asistentes
-            )
-            ganancia_taller = Decimal(str(valor_generado)) - monto_profesor
-
-            PagoProfesorDetalle.objects.create(
-                pago_profesor=pago,
-                horario_id=clase['horario'],
-                fecha=clase['fecha'],
-                num_alumnos=num_alumnos,
-                valor_generado=valor_generado,
-                monto_base=BASE_PAGO if num_alumnos > 0 else Decimal('0.00'),
-                monto_adicional=monto_adicional,
-                monto_profesor=monto_profesor,
-                ganancia_taller=ganancia_taller
-            )
-
-            monto_total_profesor += monto_profesor
-            monto_total_ganancia += ganancia_taller
-
-        pago.monto_calculado = monto_total_profesor
-        pago.monto_final = monto_total_profesor
-        pago.total_alumnos_asistencias = total_alumnos
-        pago.ganancia_taller = monto_total_ganancia
-        pago.save()
-
-        resultados.append({
-            'profesor_id': profesor.id,
-            'profesor': f"{profesor.apellido}, {profesor.nombre}",
-            'pago_id': pago.id,
-            'clases_dictadas': total_clases,
-            'total_alumnos_asistencias': total_alumnos,
-            'monto_profesor': float(monto_total_profesor),
-            'ganancia_taller': float(monto_total_ganancia)
-        })
-
-    return Response({
-        'ciclo': ciclo.nombre,
-        'fecha_inicio': fecha_inicio.isoformat(),
-        'fecha_fin': fecha_fin.isoformat(),
-        'resultados': resultados
-    })
+    # Delegar al servicio
+    resultados = PagoProfesorService.calcular_periodo(ciclo, fecha_inicio, fecha_fin)
+    return Response(resultados)
 
 
 @api_view(['GET'])
@@ -207,85 +89,13 @@ def detalle_clase_pago(request):
         )
 
     try:
-        from ..models import Horario, Asistencia
-        horario = Horario.objects.select_related('taller').get(id=horario_id)
-    except Horario.DoesNotExist:
+        resultado = PagoProfesorService.detalle_clase(int(horario_id), fecha, int(profesor_id) if profesor_id else None)
+        return Response(resultado)
+    except ValueError as e:
         return Response(
-            {'error': 'Horario no encontrado'},
+            {'error': str(e)},
             status=status.HTTP_404_NOT_FOUND
         )
-
-    BASE_PAGO = Decimal('17.00')
-    TOPE_MAXIMO = Decimal('35.00')
-    PORCENTAJE_ADICIONAL = Decimal('0.50')
-
-    filtros = {
-        'horario_id': horario_id,
-        'fecha': fecha,
-        'estado': 'asistio'
-    }
-    if profesor_id:
-        filtros['profesor_id'] = profesor_id
-
-    asistentes = Asistencia.objects.filter(
-        **filtros
-    ).select_related('matricula__alumno', 'horario').order_by('id')
-
-    num_alumnos = asistentes.count()
-    if num_alumnos == 0:
-        monto_profesor = Decimal('0.00')
-        monto_base = Decimal('0.00')
-        monto_adicional = Decimal('0.00')
-        valor_generado = Decimal('0.00')
-    elif num_alumnos == 1:
-        monto_base = BASE_PAGO
-        monto_adicional = Decimal('0.00')
-        monto_profesor = BASE_PAGO
-        valor_generado = Decimal(str(asistentes.first().matricula.precio_por_sesion or 0))
-    else:
-        monto_base = BASE_PAGO
-        monto_adicional = Decimal('0.00')
-        valor_generado = Decimal('0.00')
-        
-        for i, asistencia in enumerate(asistentes):
-            valor_sesion = asistencia.matricula.precio_por_sesion or 0
-            valor_generado += Decimal(str(valor_sesion))
-            if i > 0:
-                monto_adicional += Decimal(str(valor_sesion)) * PORCENTAJE_ADICIONAL
-        
-        monto_profesor = min(monto_base + monto_adicional, TOPE_MAXIMO)
-
-    ganancia_taller = valor_generado - monto_profesor
-
-    alumnos_data = []
-    for i, asistencia in enumerate(asistentes):
-        matricula = asistencia.matricula
-        precio_sesion = matricula.precio_por_sesion or 0
-        es_adicional = i > 0
-        aporte_profesor = Decimal('0.00') if not es_adicional else Decimal(str(precio_sesion)) * PORCENTAJE_ADICIONAL
-        
-        alumnos_data.append({
-            'alumno_id': matricula.alumno.id,
-            'alumno_nombre': f"{matricula.alumno.apellido}, {matricula.alumno.nombre}",
-            'precio_sesion': float(precio_sesion),
-            'es_adicional': es_adicional,
-            'aporte_profesor': float(aporte_profesor),
-            'aporte_generado': float(precio_sesion)
-        })
-
-    return Response({
-        'horario_info': f"{horario.taller.nombre} - {horario.get_dia_semana_display()} {horario.hora_inicio.strftime('%H:%M')}-{horario.hora_fin.strftime('%H:%M')}",
-        'fecha': fecha,
-        'alumnos': alumnos_data,
-        'resumen': {
-            'num_alumnos': num_alumnos,
-            'valor_total_generado': float(valor_generado),
-            'monto_base': float(monto_base),
-            'monto_adicional': float(monto_adicional),
-            'monto_profesor': float(monto_profesor),
-            'ganancia_taller': float(ganancia_taller)
-        }
-    })
 
 
 @api_view(['GET'])
@@ -300,6 +110,7 @@ def resumen_ciclo(request, pk):
         )
 
     from ..models import Recibo, PagoProfesor
+    from django.conf import settings
 
     ingresos = Recibo.objects.filter(
         ciclo=ciclo,

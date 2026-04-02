@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from django.db import transaction
 from ..models import Matricula, MatriculaHorario
+from ..services import MatriculaService
 
 
 class MatriculaSerializer(serializers.ModelSerializer):
@@ -24,40 +24,33 @@ class MatriculaSerializer(serializers.ModelSerializer):
         from django.conf import settings
         return None
 
-    @transaction.atomic
     def create(self, validated_data):
         horarios_ids = validated_data.pop('horarios', [])
-        matricula = Matricula.objects.create(**validated_data)
-        
-        for horario_id in horarios_ids:
-            from ..models import Horario
-            try:
-                horario = Horario.objects.get(id=horario_id)
-                MatriculaHorario.objects.create(matricula=matricula, horario=horario)
-            except Horario.DoesNotExist:
-                pass
-        
-        return matricula
+        return MatriculaService.create(validated_data, horarios_ids)
 
-    @transaction.atomic
     def update(self, instance, validated_data):
+        from decimal import Decimal
+
         horarios_ids = validated_data.pop('horarios', None)
-        
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        
-        if horarios_ids is not None:
-            instance.horarios.all().delete()
-            for horario_id in horarios_ids:
-                from ..models import Horario
-                try:
-                    horario = Horario.objects.get(id=horario_id)
-                    MatriculaHorario.objects.create(matricula=instance, horario=horario)
-                except Horario.DoesNotExist:
-                    pass
-        
-        return instance
+
+        sesiones_nuevo = validated_data.get('sesiones_contratadas')
+        precio_total_nuevo = validated_data.get('precio_total')
+
+        # Lógica de recálculo para mantener consistencia
+        if sesiones_nuevo is not None and precio_total_nuevo is not None:
+            # Ambos cambiaron → precio_total manda, recalcular precio_por_sesion
+            if sesiones_nuevo > 0:
+                validated_data['precio_por_sesion'] = Decimal(str(precio_total_nuevo)) / sesiones_nuevo
+        elif sesiones_nuevo is not None and precio_total_nuevo is None:
+            # Solo cambiaron sesiones → recalcular precio_total desde precio_por_sesion
+            validated_data['precio_total'] = instance.precio_por_sesion * sesiones_nuevo
+        elif precio_total_nuevo is not None and sesiones_nuevo is None:
+            # Solo cambió precio_total → recalcular precio_por_sesion
+            sesiones = instance.sesiones_contratadas
+            if sesiones > 0:
+                validated_data['precio_por_sesion'] = Decimal(str(precio_total_nuevo)) / sesiones
+
+        return MatriculaService.update(instance, validated_data, horarios_ids)
 
     def get_estado_calculado(self, obj):
         if not obj.activo:

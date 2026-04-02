@@ -1,34 +1,27 @@
-import { useState, memo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
+import { useCiclo } from '../contexts/CicloContext';
+import { getPreciosActivos, type PrecioPaquete } from '../api/endpoints';
 
-// Precios base
-const PRECIOS = {
-  instrumento: {
-    1: { total: 20, sesion: 20 },
-    8: { total: 160, sesion: 20 },
-    12: { total: 200, sesion: 16.67 },
-    20: { total: 300, sesion: 15 }, // Intensivo
-  },
-  taller: {
-    1: { total: 17.50, sesion: 17.50 },
-    8: { total: 140, sesion: 17.50 },
-    12: { total: 180, sesion: 15 },
-    20: { total: 250, sesion: 12.50 }, // Intensivo
-  },
-};
+interface PrecioEntry {
+  total: number;
+  sesion: number;
+}
 
-// Paquetes promocionales
-const PROMOS = {
-  combo_musical: {
-    '12+12': { total: 360, descuento: 40 },
-    '8+8': { total: 290, descuento: 30 },
-    '12+8': { total: 330, descuento: 30 },
-  },
-  mixto: {
-    '12+12': { total: 340, descuento: 40 },
-    '8+8': { total: 270, descuento: 30 },
-    '12+8': { total: 310, descuento: 30 },
-  },
-};
+interface PreciosMap {
+  instrumento: Record<number, PrecioEntry>;
+  taller: Record<number, PrecioEntry>;
+}
+
+interface PromoEntry {
+  total: number;
+  descuento: number;
+}
+
+interface PromosMap {
+  combo_musical: Record<string, PromoEntry>;
+  mixto: Record<string, PromoEntry>;
+  intensivo: Record<string, PromoEntry>;
+}
 
 interface ItemSeleccionado {
   id: number;
@@ -37,18 +30,118 @@ interface ItemSeleccionado {
   clases: number;
 }
 
+// Precios por defecto (fallback)
+const PRECIOS_DEFAULT: PreciosMap = {
+  instrumento: {
+    1: { total: 20, sesion: 20 },
+    8: { total: 160, sesion: 20 },
+    12: { total: 200, sesion: 16.67 },
+    20: { total: 300, sesion: 15 },
+  },
+  taller: {
+    1: { total: 17.50, sesion: 17.50 },
+    8: { total: 140, sesion: 17.50 },
+    12: { total: 180, sesion: 15 },
+    20: { total: 250, sesion: 12.50 },
+  },
+};
+
+function construirPreciosDesdeAPI(data: PrecioPaquete[]): PreciosMap {
+  const precios: PreciosMap = { instrumento: {}, taller: {} };
+
+  for (const p of data) {
+    if (p.tipo_paquete === 'individual' && p.activo) {
+      precios[p.tipo_taller][p.cantidad_clases] = {
+        total: Number(p.precio_total),
+        sesion: Number(p.precio_por_sesion),
+      };
+    }
+  }
+
+  // Si no hay precios de algún tipo, usar defaults
+  if (Object.keys(precios.instrumento).length === 0) {
+    precios.instrumento = { ...PRECIOS_DEFAULT.instrumento };
+  }
+  if (Object.keys(precios.taller).length === 0) {
+    precios.taller = { ...PRECIOS_DEFAULT.taller };
+  }
+
+  return precios;
+}
+
+function construirPromosDesdeAPI(data: PrecioPaquete[]): PromosMap {
+  const promos: PromosMap = { combo_musical: {}, mixto: {}, intensivo: {} };
+
+  for (const p of data) {
+    if (!p.activo) continue;
+
+    if (p.tipo_paquete === 'combo_musical') {
+      const key = p.cantidad_clases_secundaria
+        ? `${p.cantidad_clases}+${p.cantidad_clases_secundaria}`
+        : `${p.cantidad_clases}`;
+      promos.combo_musical[key] = {
+        total: Number(p.precio_total),
+        descuento: 0,
+      };
+    } else if (p.tipo_paquete === 'mixto') {
+      const key = p.cantidad_clases_secundaria
+        ? `${p.cantidad_clases}+${p.cantidad_clases_secundaria}`
+        : `${p.cantidad_clases}`;
+      promos.mixto[key] = {
+        total: Number(p.precio_total),
+        descuento: 0,
+      };
+    } else if (p.tipo_paquete === 'intensivo') {
+      // Key: tipo_taller (instrumento/taller)
+      promos.intensivo[p.tipo_taller] = {
+        total: Number(p.precio_total),
+        descuento: 0,
+      };
+    }
+  }
+
+  return promos;
+}
+
 function CalculadoraPrecios() {
+  const { cicloActual } = useCiclo();
+  const [precios, setPrecios] = useState<PreciosMap>(PRECIOS_DEFAULT);
+  const [promos, setPromos] = useState<PromosMap>({ combo_musical: {}, mixto: {}, intensivo: {} });
+  const [loadingPrecios, setLoadingPrecios] = useState(true);
   const [items, setItems] = useState<ItemSeleccionado[]>([]);
   const [nuevoTipo, setNuevoTipo] = useState<'instrumento' | 'taller'>('instrumento');
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [nuevoClases, setNuevoClases] = useState<number>(12);
   const [cantidadSuelta, setCantidadSuelta] = useState<number>(1);
 
+  const cargarPrecios = useCallback(async () => {
+    if (!cicloActual) {
+      setLoadingPrecios(false);
+      return;
+    }
+    setLoadingPrecios(true);
+    try {
+      const response = await getPreciosActivos(cicloActual.id);
+      if (response.data.length > 0) {
+        setPrecios(construirPreciosDesdeAPI(response.data));
+        setPromos(construirPromosDesdeAPI(response.data));
+      }
+    } catch (error) {
+      console.error('Error cargando precios:', error);
+      // Mantener precios por defecto
+    } finally {
+      setLoadingPrecios(false);
+    }
+  }, [cicloActual]);
+
+  useEffect(() => {
+    cargarPrecios();
+  }, [cargarPrecios]);
+
   const agregarItem = () => {
     if (!nuevoNombre.trim()) return;
-    
+
     if (nuevoClases === 1) {
-      // Agregar múltiples clases sueltas
       const nuevosItems: ItemSeleccionado[] = [];
       for (let i = 0; i < cantidadSuelta; i++) {
         nuevosItems.push({
@@ -89,7 +182,7 @@ function CalculadoraPrecios() {
 
     // Calcular precio bruto individual
     for (const item of items) {
-      const precio = PRECIOS[item.tipo][item.clases as keyof typeof PRECIOS['instrumento']];
+      const precio = precios[item.tipo][item.clases];
       if (precio) {
         precioBruto += precio.total;
         desglose.push({
@@ -101,35 +194,34 @@ function CalculadoraPrecios() {
       }
     }
 
-    // Detectar Combo Musical (2+ instrumentos)
+    // Detectar Combo Musical (2+ instrumentos) - usa promos de API si existen
     if (instrumentos.length >= 2) {
       const clases = instrumentos.map(i => i.clases).sort((a, b) => b - a);
-      const key = `${clases[0]}+${clases[1]}` as keyof typeof PROMOS.combo_musical;
-      if (PROMOS.combo_musical[key]) {
-        const promo = PROMOS.combo_musical[key];
-        descuento = precioBruto - promo.total;
-        promoAplicada = `Combo Musical ${key}`;
+      // Key: "primaria+secundaria" (ej: "12+8", "12+12", "8+8")
+      const key = `${clases[0]}+${clases[1]}`;
+      if (promos.combo_musical[key]) {
+        descuento = precioBruto - promos.combo_musical[key].total;
+        promoAplicada = `Combo Musical (${clases[0]} + ${clases[1]} clases)`;
       }
     }
     // Detectar Mixto (1 instrumento + 1 taller)
     else if (instrumentos.length === 1 && talleres.length === 1) {
-      const key = `${instrumentos[0].clases}+${talleres[0].clases}` as keyof typeof PROMOS.mixto;
-      if (PROMOS.mixto[key]) {
-        const promo = PROMOS.mixto[key];
-        descuento = precioBruto - promo.total;
-        promoAplicada = `Mixto ${key}`;
+      const primaria = Math.max(instrumentos[0].clases, talleres[0].clases);
+      const secundaria = Math.min(instrumentos[0].clases, talleres[0].clases);
+      const key = `${primaria}+${secundaria}`;
+      if (promos.mixto[key]) {
+        descuento = precioBruto - promos.mixto[key].total;
+        promoAplicada = `Mixto (${primaria} + ${secundaria} clases)`;
       }
     }
     // Detectar Intensivo (20 clases)
     else if (items.some(i => i.clases === 20)) {
       const item20 = items.find(i => i.clases === 20);
-      if (item20) {
-        const precioIndividual = PRECIOS[item20.tipo][20];
-        const precioIntensivo = item20.tipo === 'instrumento' ? 300 : 250;
-        if (precioIndividual) {
-          descuento = precioIndividual.total - precioIntensivo;
-          promoAplicada = `Intensivo ${item20.tipo}`;
-        }
+      if (item20 && promos.intensivo[item20.tipo]) {
+        const precioIndividual = precios[item20.tipo][20]?.total ?? 0;
+        const precioPromo = promos.intensivo[item20.tipo].total;
+        descuento = precioIndividual - precioPromo;
+        promoAplicada = `Intensivo ${item20.tipo} (20 clases)`;
       }
     }
 
@@ -143,6 +235,7 @@ function CalculadoraPrecios() {
   };
 
   const resultado = calcularPrecio();
+  const precioSueltaRef = precios[nuevoTipo][1]?.total ?? 0;
 
   return (
     <div>
@@ -151,7 +244,7 @@ function CalculadoraPrecios() {
           Calculadora de Precios
         </h1>
         <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-          Simula precios y paquetes promocionales
+          {loadingPrecios ? 'Cargando precios...' : `Precios del ciclo: ${cicloActual?.nombre ?? 'No seleccionado'}`}
         </p>
       </div>
 
@@ -214,14 +307,10 @@ function CalculadoraPrecios() {
                         type="button"
                         onClick={() => setCantidadSuelta(Math.max(1, cantidadSuelta - 1))}
                         style={{
-                          width: '36px',
-                          height: '36px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '8px',
-                          background: 'white',
-                          cursor: 'pointer',
-                          fontSize: '1.25rem',
-                          fontWeight: '600',
+                          width: '36px', height: '36px',
+                          border: '1px solid #d1d5db', borderRadius: '8px',
+                          background: 'white', cursor: 'pointer',
+                          fontSize: '1.25rem', fontWeight: '600',
                         }}
                       >
                         -
@@ -232,32 +321,25 @@ function CalculadoraPrecios() {
                         onChange={(e) => setCantidadSuelta(Math.max(1, parseInt(e.target.value) || 1))}
                         min={1}
                         style={{
-                          width: '60px',
-                          padding: '0.5rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '8px',
-                          textAlign: 'center',
-                          fontWeight: '600',
+                          width: '60px', padding: '0.5rem',
+                          border: '1px solid #d1d5db', borderRadius: '8px',
+                          textAlign: 'center', fontWeight: '600',
                         }}
                       />
                       <button
                         type="button"
                         onClick={() => setCantidadSuelta(cantidadSuelta + 1)}
                         style={{
-                          width: '36px',
-                          height: '36px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '8px',
-                          background: 'white',
-                          cursor: 'pointer',
-                          fontSize: '1.25rem',
-                          fontWeight: '600',
+                          width: '36px', height: '36px',
+                          border: '1px solid #d1d5db', borderRadius: '8px',
+                          background: 'white', cursor: 'pointer',
+                          fontSize: '1.25rem', fontWeight: '600',
                         }}
                       >
                         +
                       </button>
                       <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                        = S/. {(cantidadSuelta * PRECIOS[nuevoTipo][1].total).toFixed(2)} total
+                        = S/. {(cantidadSuelta * precioSueltaRef).toFixed(2)} total
                       </span>
                     </div>
                   </div>
@@ -296,9 +378,7 @@ function CalculadoraPrecios() {
                   <div
                     key={item.id}
                     style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: '0.75rem',
                       background: item.tipo === 'instrumento' ? '#ede9fe' : '#fef3c7',
                       borderRadius: '8px',
@@ -355,23 +435,17 @@ function CalculadoraPrecios() {
 
                 {/* Descuento si aplica */}
                 {resultado.descuento > 0 && (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', color: '#059669' }}>
-                      <span>Promoción: {resultado.promoAplicada}</span>
-                      <span style={{ fontFamily: 'monospace' }}>-S/. {resultado.descuento.toFixed(2)}</span>
-                    </div>
-                  </>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', color: '#059669' }}>
+                    <span>Promoción: {resultado.promoAplicada}</span>
+                    <span style={{ fontFamily: 'monospace' }}>-S/. {resultado.descuento.toFixed(2)}</span>
+                  </div>
                 )}
 
                 {/* Total */}
                 <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '1rem',
-                  marginTop: '1rem',
-                  background: '#f0fdf4',
-                  borderRadius: '8px',
-                  border: '1px solid #86efac',
+                  display: 'flex', justifyContent: 'space-between',
+                  padding: '1rem', marginTop: '1rem',
+                  background: '#f0fdf4', borderRadius: '8px', border: '1px solid #86efac',
                 }}>
                   <span style={{ fontWeight: '700', color: '#111827', fontSize: '1.125rem' }}>TOTAL</span>
                   <span style={{ fontFamily: 'monospace', fontWeight: '700', fontSize: '1.25rem', color: '#059669' }}>
@@ -382,53 +456,91 @@ function CalculadoraPrecios() {
             )}
           </div>
 
-          {/* Tabla de precios de referencia */}
+          {/* Tabla de precios de referencia (desde API) */}
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem', marginTop: '1rem' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem', color: '#111827' }}>
               Tabla de Precios
             </h3>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead>
-                <tr style={{ background: '#f9fafb' }}>
-                  <th style={{ padding: '0.5rem', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>Tipo</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: '600', color: '#6b7280' }}>1</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: '600', color: '#6b7280' }}>8</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: '600', color: '#6b7280' }}>12</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: '600', color: '#6b7280' }}>20</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={{ padding: '0.5rem', fontWeight: '500', color: '#8b5cf6' }}>Instrumento</td>
-                  <td style={{ padding: '0.5rem', textAlign: 'center' }}>20</td>
-                  <td style={{ padding: '0.5rem', textAlign: 'center' }}>160</td>
-                  <td style={{ padding: '0.5rem', textAlign: 'center' }}>200</td>
-                  <td style={{ padding: '0.5rem', textAlign: 'center' }}>300</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '0.5rem', fontWeight: '500', color: '#f59e0b' }}>Taller</td>
-                  <td style={{ padding: '0.5rem', textAlign: 'center' }}>17.50</td>
-                  <td style={{ padding: '0.5rem', textAlign: 'center' }}>140</td>
-                  <td style={{ padding: '0.5rem', textAlign: 'center' }}>180</td>
-                  <td style={{ padding: '0.5rem', textAlign: 'center' }}>250</td>
-                </tr>
-              </tbody>
-            </table>
+            {loadingPrecios ? (
+              <p style={{ color: '#9ca3af', textAlign: 'center', padding: '1rem', fontSize: '0.875rem' }}>Cargando...</p>
+            ) : (
+              <>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead>
+                    <tr style={{ background: '#f9fafb' }}>
+                      <th style={{ padding: '0.5rem', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>Tipo</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: '600', color: '#6b7280' }}>1</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: '600', color: '#6b7280' }}>8</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: '600', color: '#6b7280' }}>12</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: '600', color: '#6b7280' }}>20</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: '0.5rem', fontWeight: '500', color: '#8b5cf6' }}>Instrumento</td>
+                      {[1, 8, 12, 20].map(n => (
+                        <td key={n} style={{ padding: '0.5rem', textAlign: 'center' }}>
+                          {precios.instrumento[n]?.total.toFixed(2) ?? '-'}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '0.5rem', fontWeight: '500', color: '#f59e0b' }}>Taller</td>
+                      {[1, 8, 12, 20].map(n => (
+                        <td key={n} style={{ padding: '0.5rem', textAlign: 'center' }}>
+                          {precios.taller[n]?.total.toFixed(2) ?? '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
 
-            <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginTop: '1rem', marginBottom: '0.5rem', color: '#111827' }}>
-              Promociones
-            </h4>
-            <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.75rem' }}>
-              <div style={{ padding: '0.5rem', background: '#ede9fe', borderRadius: '6px' }}>
-                <strong>Combo Musical (2 Instrumentos):</strong> 12+12 = S/. 360 | 8+8 = S/. 290 | 12+8 = S/. 330
-              </div>
-              <div style={{ padding: '0.5rem', background: '#fef3c7', borderRadius: '6px' }}>
-                <strong>Mixto (Instrumento + Taller):</strong> 12+12 = S/. 340 | 8+8 = S/. 270 | 12+8 = S/. 310
-              </div>
-              <div style={{ padding: '0.5rem', background: '#fee2e2', borderRadius: '6px' }}>
-                <strong>Intensivo:</strong> 20 Instrumento = S/. 300 | 20 Taller = S/. 250
-              </div>
-            </div>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginTop: '1rem', marginBottom: '0.5rem', color: '#111827' }}>
+                  Promociones
+                </h4>
+                <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.75rem' }}>
+                  {Object.keys(promos.combo_musical).length > 0 && (
+                    <div style={{ padding: '0.5rem', background: '#ede9fe', borderRadius: '6px' }}>
+                      <strong>Combo Musical (2 Instrumentos):</strong>
+                      {Object.entries(promos.combo_musical)
+                        .sort(([a], [b]) => {
+                          const [a1] = a.split('+').map(Number);
+                          const [b1] = b.split('+').map(Number);
+                          return b1 - a1;
+                        })
+                        .map(([clases, promo]) => ` ${clases} clases = S/. ${promo.total.toFixed(2)}`)
+                        .join(' | ')}
+                    </div>
+                  )}
+                  {Object.keys(promos.mixto).length > 0 && (
+                    <div style={{ padding: '0.5rem', background: '#fef3c7', borderRadius: '6px' }}>
+                      <strong>Mixto (Instrumento + Taller):</strong>
+                      {Object.entries(promos.mixto)
+                        .sort(([a], [b]) => {
+                          const [a1] = a.split('+').map(Number);
+                          const [b1] = b.split('+').map(Number);
+                          return b1 - a1;
+                        })
+                        .map(([clases, promo]) => ` ${clases} clases = S/. ${promo.total.toFixed(2)}`)
+                        .join(' | ')}
+                    </div>
+                  )}
+                  {Object.keys(promos.intensivo).length > 0 && (
+                    <div style={{ padding: '0.5rem', background: '#fee2e2', borderRadius: '6px' }}>
+                      <strong>Intensivo (20 clases):</strong>
+                      {Object.entries(promos.intensivo)
+                        .map(([tipo, promo]) => ` ${tipo} = S/. ${promo.total.toFixed(2)}`)
+                        .join(' | ')}
+                    </div>
+                  )}
+                  {Object.keys(promos.combo_musical).length === 0 && Object.keys(promos.mixto).length === 0 && Object.keys(promos.intensivo).length === 0 && (
+                    <div style={{ padding: '0.5rem', background: '#f3f4f6', borderRadius: '6px', color: '#6b7280' }}>
+                      No hay promociones configuradas. Configuralas en <strong>Precios → Paquetes Promocionales</strong>.
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

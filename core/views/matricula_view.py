@@ -172,11 +172,16 @@ class MatriculaViewSet(viewsets.ModelViewSet):
                 'precio_por_sesion': precio['precio_por_sesion'],
                 'tipo_taller': taller.tipo,
                 'cantidad_clases': sesiones,
+                'origen': 'paquete'
             })
+        
+        # Fallback: si no hay precio configurado, no devolvemos nada
+        # El usuario debe configurar precios en Configuración de Precios
         return Response({
-            'precio_total': 0,
-            'precio_por_sesion': 0,
+            'precio_total': None,
+            'precio_por_sesion': None,
             'tipo_taller': taller.tipo,
             'cantidad_clases': sesiones,
-            'detail': 'No se encontró precio configurado para esta combinación.',
+            'origen': 'no_configurado',
+            'detail': 'No hay precio configurado para este tipo de taller y cantidad de clases.'
         })

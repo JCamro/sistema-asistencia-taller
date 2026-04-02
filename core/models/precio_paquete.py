@@ -21,6 +21,14 @@ class PrecioPaquete(models.Model):
         (20, 'Paquete 20 clases'),
     ]
 
+    ciclo = models.ForeignKey(
+        'Ciclo',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='precios_paquete',
+        verbose_name='Ciclo'
+    )
     tipo_taller = models.CharField(
         max_length=20,
         choices=TIPO_TALLER_CHOICES,
@@ -35,6 +43,13 @@ class PrecioPaquete(models.Model):
     cantidad_clases = models.IntegerField(
         choices=CANTIDAD_CLASES_CHOICES,
         verbose_name='Cantidad de Clases'
+    )
+    cantidad_clases_secundaria = models.IntegerField(
+        choices=CANTIDAD_CLASES_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name='Cantidad de Clases Secundaria',
+        help_text='Solo para combo_musical y mixto. Ej: combo 12+8 → principal=12, secundaria=8'
     )
     precio_total = models.DecimalField(
         max_digits=10,
@@ -51,19 +66,42 @@ class PrecioPaquete(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['tipo_paquete', 'tipo_taller', 'cantidad_clases']
-        unique_together = ['tipo_taller', 'tipo_paquete', 'cantidad_clases']
+        ordering = ['ciclo', 'tipo_paquete', 'tipo_taller', 'cantidad_clases']
+        unique_together = ['ciclo', 'tipo_taller', 'tipo_paquete', 'cantidad_clases', 'cantidad_clases_secundaria']
         verbose_name = 'Precio de Paquete'
         verbose_name_plural = 'Precios de Paquetes'
 
     def __str__(self):
-        return f"{self.get_tipo_paquete_display()} - {self.get_tipo_taller_display()} - {self.cantidad_clases} clases: S/. {self.precio_total}"
+        ciclo_nombre = self.ciclo.nombre if self.ciclo else 'Global'
+        clases = str(self.cantidad_clases)
+        if self.cantidad_clases_secundaria:
+            clases = f"{self.cantidad_clases}+{self.cantidad_clases_secundaria}"
+        return f"{ciclo_nombre} - {self.get_tipo_paquete_display()} - {self.get_tipo_taller_display()} - {clases} clases: S/. {self.precio_total}"
 
     @classmethod
-    def get_precio_individual(cls, tipo_taller, cantidad_clases):
-        """Obtiene precio para un paquete individual"""
+    def get_precio_individual(cls, tipo_taller, cantidad_clases, ciclo_id=None):
+        """Obtiene precio para un paquete individual. Busca primero por ciclo, luego global."""
+        # Try cycle-specific first
+        if ciclo_id:
+            try:
+                precio = cls.objects.get(
+                    ciclo_id=ciclo_id,
+                    tipo_taller=tipo_taller,
+                    tipo_paquete='individual',
+                    cantidad_clases=cantidad_clases,
+                    activo=True
+                )
+                return {
+                    'precio_total': float(precio.precio_total),
+                    'precio_por_sesion': float(precio.precio_por_sesion)
+                }
+            except cls.DoesNotExist:
+                pass
+        
+        # Fallback to global (ciclo=None)
         try:
             precio = cls.objects.get(
+                ciclo__isnull=True,
                 tipo_taller=tipo_taller,
                 tipo_paquete='individual',
                 cantidad_clases=cantidad_clases,
@@ -77,12 +115,13 @@ class PrecioPaquete(models.Model):
             return None
 
     @classmethod
-    def calcular_precio_recomendado(cls, matriculas_data):
+    def calcular_precio_recomendado(cls, matriculas_data, ciclo_id=None):
         """
         Calcula el precio recomendado basado en las matrículas.
         Detecta automáticamente paquetes promocionales.
 
         matriculas_data: lista de dicts con 'tipo_taller', 'cantidad_clases'
+        ciclo_id: ID del ciclo para buscar precios específicos (opcional)
         """
         if not matriculas_data:
             return None
@@ -98,13 +137,13 @@ class PrecioPaquete(models.Model):
 
         # Calcular precio bruto individual
         for m in matriculas_data:
-            precio = cls.get_precio_individual(m['tipo_taller'], m['cantidad_clases'])
+            precio = cls.get_precio_individual(m['tipo_taller'], m['cantidad_clases'], ciclo_id)
             if precio:
                 total_bruto += precio['precio_total']
 
         # Detectar Combo Musical (2 instrumentos)
         if len(instrumentos) >= 2:
-            combos = cls._detectar_combo_musical(instrumentos)
+            combos = cls._detectar_combo_musical(instrumentos, ciclo_id)
             if combos['aplica']:
                 descuento = combos['descuento']
                 paquete_detectado = combos['tipo']
@@ -112,7 +151,7 @@ class PrecioPaquete(models.Model):
 
         # Detectar Mixto (1 instrumento + 1 taller)
         elif len(instrumentos) == 1 and len(talleres) == 1:
-            mixto = cls._detectar_mixto(instrumentos[0], talleres[0])
+            mixto = cls._detectar_mixto(instrumentos[0], talleres[0], ciclo_id)
             if mixto['aplica']:
                 descuento = mixto['descuento']
                 paquete_detectado = mixto['tipo']
@@ -120,7 +159,7 @@ class PrecioPaquete(models.Model):
 
         # Detectar Intensivo (20 clases)
         elif any(m['cantidad_clases'] == 20 for m in matriculas_data):
-            intensivo = cls._detectar_intensivo(matriculas_data)
+            intensivo = cls._detectar_intensivo(matriculas_data, ciclo_id)
             if intensivo['aplica']:
                 descuento = intensivo['descuento']
                 paquete_detectado = intensivo['tipo']
@@ -129,7 +168,7 @@ class PrecioPaquete(models.Model):
         # Si no hay promoción, usar precios individuales
         if not desglose:
             for m in matriculas_data:
-                precio = cls.get_precio_individual(m['tipo_taller'], m['cantidad_clases'])
+                precio = cls.get_precio_individual(m['tipo_taller'], m['cantidad_clases'], ciclo_id)
                 if precio:
                     desglose.append({
                         'tipo_taller': m['tipo_taller'],
@@ -148,176 +187,112 @@ class PrecioPaquete(models.Model):
         }
 
     @classmethod
-    def _detectar_combo_musical(cls, instrumentos):
-        """Detecta combo musical (2 instrumentos)"""
-        # Ordenar por cantidad de clases para buscar coincidencias
+    def _detectar_combo_musical(cls, instrumentos, ciclo_id=None):
+        """Detecta combo musical (2 instrumentos) usando cantidad_clases_secundaria"""
         inst_ordenados = sorted(instrumentos, key=lambda x: x['cantidad_clases'], reverse=True)
+        inst1 = inst_ordenados[0]
+        inst2 = inst_ordenados[1] if len(inst_ordenados) >= 2 else inst_ordenados[0]
+        primaria = inst1['cantidad_clases']
+        secundaria = inst2['cantidad_clases']
 
-        # Buscar 12+12
-        if len([i for i in inst_ordenados if i['cantidad_clases'] == 12]) >= 2:
-            try:
-                combo = cls.objects.get(
-                    tipo_paquete='combo_musical',
-                    cantidad_clases=12,
-                    activo=True
-                )
-                precio_individual = sum(
-                    cls.get_precio_individual(i['tipo_taller'], 12)['precio_total']
-                    for i in inst_ordenados[:2]
-                )
-                descuento = precio_individual - float(combo.precio_total)
-                return {
-                    'aplica': True,
-                    'tipo': 'combo_musical_12',
-                    'descuento': descuento,
-                    'desglose': [
-                        {'tipo_taller': 'instrumento', 'cantidad_clases': 12, 'precio': float(combo.precio_total) / 2},
-                        {'tipo_taller': 'instrumento', 'cantidad_clases': 12, 'precio': float(combo.precio_total) / 2}
-                    ]
-                }
-            except cls.DoesNotExist:
-                pass
-
-        # Buscar 8+8
-        if len([i for i in inst_ordenados if i['cantidad_clases'] == 8]) >= 2:
-            try:
-                combo = cls.objects.get(
-                    tipo_paquete='combo_musical',
-                    cantidad_clases=8,
-                    activo=True
-                )
-                precio_individual = sum(
-                    cls.get_precio_individual(i['tipo_taller'], 8)['precio_total']
-                    for i in inst_ordenados[:2]
-                )
-                descuento = precio_individual - float(combo.precio_total)
-                return {
-                    'aplica': True,
-                    'tipo': 'combo_musical_8',
-                    'descuento': descuento,
-                    'desglose': [
-                        {'tipo_taller': 'instrumento', 'cantidad_clases': 8, 'precio': float(combo.precio_total) / 2},
-                        {'tipo_taller': 'instrumento', 'cantidad_clases': 8, 'precio': float(combo.precio_total) / 2}
-                    ]
-                }
-            except cls.DoesNotExist:
-                pass
-
-        # Buscar 12+8
-        if any(i['cantidad_clases'] == 12 for i in inst_ordenados) and any(i['cantidad_clases'] == 8 for i in inst_ordenados):
-            try:
-                combo = cls.objects.get(
-                    tipo_paquete='combo_musical',
-                    cantidad_clases=12,  # Usamos 12 como referencia para 12+8
-                    activo=True
-                )
-                precio_individual = (
-                    cls.get_precio_individual('instrumento', 12)['precio_total'] +
-                    cls.get_precio_individual('instrumento', 8)['precio_total']
-                )
-                # Precio especial para 12+8
-                precio_combo = 330.00
-                descuento = precio_individual - precio_combo
-                return {
-                    'aplica': True,
-                    'tipo': 'combo_musical_12_8',
-                    'descuento': descuento,
-                    'desglose': [
-                        {'tipo_taller': 'instrumento', 'cantidad_clases': 12, 'precio': 165.00},
-                        {'tipo_taller': 'instrumento', 'cantidad_clases': 8, 'precio': 165.00}
-                    ]
-                }
-            except cls.DoesNotExist:
-                pass
-
-        return {'aplica': False, 'descuento': 0, 'desglose': []}
-
-    @classmethod
-    def _detectar_mixto(cls, instrumento, taller):
-        """Detecta mixto (instrumento + taller)"""
-        # Buscar 12+12
-        if instrumento['cantidad_clases'] == 12 and taller['cantidad_clases'] == 12:
-            try:
-                mixto = cls.objects.get(
-                    tipo_paquete='mixto',
-                    cantidad_clases=12,
-                    activo=True
-                )
-                precio_individual = (
-                    cls.get_precio_individual('instrumento', 12)['precio_total'] +
-                    cls.get_precio_individual('taller', 12)['precio_total']
-                )
-                descuento = precio_individual - float(mixto.precio_total)
-                return {
-                    'aplica': True,
-                    'tipo': 'mixto_12',
-                    'descuento': descuento,
-                    'desglose': [
-                        {'tipo_taller': 'instrumento', 'cantidad_clases': 12, 'precio': 200.00},
-                        {'tipo_taller': 'taller', 'cantidad_clases': 12, 'precio': 140.00}
-                    ]
-                }
-            except cls.DoesNotExist:
-                pass
-
-        # Buscar 8+8
-        if instrumento['cantidad_clases'] == 8 and taller['cantidad_clases'] == 8:
-            try:
-                mixto = cls.objects.get(
-                    tipo_paquete='mixto',
-                    cantidad_clases=8,
-                    activo=True
-                )
-                precio_individual = (
-                    cls.get_precio_individual('instrumento', 8)['precio_total'] +
-                    cls.get_precio_individual('taller', 8)['precio_total']
-                )
-                descuento = precio_individual - float(mixto.precio_total)
-                return {
-                    'aplica': True,
-                    'tipo': 'mixto_8',
-                    'descuento': descuento,
-                    'desglose': [
-                        {'tipo_taller': 'instrumento', 'cantidad_clases': 8, 'precio': 145.00},
-                        {'tipo_taller': 'taller', 'cantidad_clases': 8, 'precio': 125.00}
-                    ]
-                }
-            except cls.DoesNotExist:
-                pass
-
-        # Buscar 12+8
-        if instrumento['cantidad_clases'] == 12 and taller['cantidad_clases'] == 8:
-            precio_individual = (
-                cls.get_precio_individual('instrumento', 12)['precio_total'] +
-                cls.get_precio_individual('taller', 8)['precio_total']
-            )
-            precio_mixto = 310.00
-            descuento = precio_individual - precio_mixto
-            return {
-                'aplica': True,
-                'tipo': 'mixto_12_8',
-                'descuento': descuento,
-                'desglose': [
-                    {'tipo_taller': 'instrumento', 'cantidad_clases': 12, 'precio': 170.00},
-                    {'tipo_taller': 'taller', 'cantidad_clases': 8, 'precio': 140.00}
-                ]
+        def _buscar_combo(cid):
+            filtro = {
+                'tipo_paquete': 'combo_musical',
+                'cantidad_clases': primaria,
+                'cantidad_clases_secundaria': secundaria,
+                'activo': True,
             }
+            if cid:
+                return cls.objects.get(ciclo_id=cid, **filtro)
+            return cls.objects.get(ciclo__isnull=True, **filtro)
 
-        return {'aplica': False, 'descuento': 0, 'desglose': []}
+        try:
+            combo = _buscar_combo(ciclo_id)
+        except cls.DoesNotExist:
+            try:
+                combo = _buscar_combo(None)
+            except cls.DoesNotExist:
+                return {'aplica': False, 'descuento': 0, 'desglose': []}
+
+        precio_individual = (
+            cls.get_precio_individual('instrumento', primaria, ciclo_id)['precio_total'] +
+            cls.get_precio_individual('instrumento', secundaria, ciclo_id)['precio_total']
+        )
+        descuento = precio_individual - float(combo.precio_total)
+        mitad = float(combo.precio_total) / 2
+        return {
+            'aplica': True,
+            'tipo': f'combo_musical_{primaria}_{secundaria}',
+            'descuento': descuento,
+            'desglose': [
+                {'tipo_taller': 'instrumento', 'cantidad_clases': primaria, 'precio': mitad},
+                {'tipo_taller': 'instrumento', 'cantidad_clases': secundaria, 'precio': mitad}
+            ]
+        }
 
     @classmethod
-    def _detectar_intensivo(cls, matriculas_data):
+    def _detectar_mixto(cls, instrumento, taller, ciclo_id=None):
+        """Detecta mixto (instrumento + taller) usando cantidad_clases_secundaria"""
+        primaria = max(instrumento['cantidad_clases'], taller['cantidad_clases'])
+        secundaria = min(instrumento['cantidad_clases'], taller['cantidad_clases'])
+
+        def _buscar_mixto(cid):
+            filtro = {
+                'tipo_paquete': 'mixto',
+                'cantidad_clases': primaria,
+                'cantidad_clases_secundaria': secundaria,
+                'activo': True,
+            }
+            if cid:
+                return cls.objects.get(ciclo_id=cid, **filtro)
+            return cls.objects.get(ciclo__isnull=True, **filtro)
+
+        try:
+            mixto = _buscar_mixto(ciclo_id)
+        except cls.DoesNotExist:
+            try:
+                mixto = _buscar_mixto(None)
+            except cls.DoesNotExist:
+                return {'aplica': False, 'descuento': 0, 'desglose': []}
+
+        precio_individual = (
+            cls.get_precio_individual('instrumento', instrumento['cantidad_clases'], ciclo_id)['precio_total'] +
+            cls.get_precio_individual('taller', taller['cantidad_clases'], ciclo_id)['precio_total']
+        )
+        descuento = precio_individual - float(mixto.precio_total)
+        return {
+            'aplica': True,
+            'tipo': f'mixto_{primaria}_{secundaria}',
+            'descuento': descuento,
+            'desglose': [
+                {'tipo_taller': 'instrumento', 'cantidad_clases': instrumento['cantidad_clases'], 'precio': float(mixto.precio_total) / 2},
+                {'tipo_taller': 'taller', 'cantidad_clases': taller['cantidad_clases'], 'precio': float(mixto.precio_total) / 2}
+            ]
+        }
+
+    @classmethod
+    def _detectar_intensivo(cls, matriculas_data, ciclo_id=None):
         """Detecta paquete intensivo (20 clases)"""
         for m in matriculas_data:
             if m['cantidad_clases'] == 20:
                 try:
-                    intensivo = cls.objects.get(
-                        tipo_paquete='intensivo',
-                        tipo_taller=m['tipo_taller'],
-                        cantidad_clases=20,
-                        activo=True
-                    )
-                    precio_individual = cls.get_precio_individual(m['tipo_taller'], 20)
+                    if ciclo_id:
+                        intensivo = cls.objects.get(
+                            ciclo_id=ciclo_id,
+                            tipo_paquete='intensivo',
+                            tipo_taller=m['tipo_taller'],
+                            cantidad_clases=20,
+                            activo=True
+                        )
+                    else:
+                        intensivo = cls.objects.get(
+                            ciclo__isnull=True,
+                            tipo_paquete='intensivo',
+                            tipo_taller=m['tipo_taller'],
+                            cantidad_clases=20,
+                            activo=True
+                        )
+                    precio_individual = cls.get_precio_individual(m['tipo_taller'], 20, ciclo_id)
                     if precio_individual:
                         descuento = precio_individual['precio_total'] - float(intensivo.precio_total)
                         return {

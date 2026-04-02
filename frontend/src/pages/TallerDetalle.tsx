@@ -21,6 +21,7 @@ interface Profesor {
 interface Horario {
   id: number;
   taller: number;
+  taller_nombre?: string;
   profesor: number;
   profesor_nombre: string;
   dia_semana: number;
@@ -30,7 +31,9 @@ interface Horario {
   cupo_disponible: number;
   ocupacion: number;
   activo: boolean;
-  alumnos: { id: number; nombre: string; apellido: string }[];
+  alumnos: { id: number; nombre: string; apellido: string; edad: number | null }[];
+  tipo_pago?: 'dinamico' | 'fijo';
+  monto_fijo?: number | null;
 }
 
 interface HorarioFormData {
@@ -66,6 +69,13 @@ function TallerDetalle() {
   const [, setCeldaSeleccionada] = useState<{ dia: number; hora: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [editandoProfesor, setEditandoProfesor] = useState(false);
+  const [nuevoProfesorId, setNuevoProfesorId] = useState<number | ''>('');
+  const [guardandoProfesor, setGuardandoProfesor] = useState(false);
+  const [editandoPago, setEditandoPago] = useState(false);
+  const [tipoPagoSeleccionado, setTipoPagoSeleccionado] = useState<'dinamico' | 'fijo'>('dinamico');
+  const [montoFijo, setMontoFijo] = useState<string>('');
+  const [guardandoPago, setGuardandoPago] = useState(false);
   const [formData, setFormData] = useState<HorarioFormData>({
     dia_semana: 0,
     hora_inicio: '',
@@ -178,6 +188,7 @@ function TallerDetalle() {
     if (gridHorarios[key]) {
       setHorarioSeleccionado(gridHorarios[key]);
       setPanelEstado('detalle');
+      setEditandoPago(false);
     } else {
       setCeldaSeleccionada({ dia, hora });
       setFormData({
@@ -264,6 +275,77 @@ function TallerDetalle() {
 
   const cancelDeleteHorario = () => {
     setShowDeleteModal(false);
+  };
+
+  const handleCambiarProfesor = async () => {
+    if (!horarioSeleccionado || !nuevoProfesorId) return;
+    setGuardandoProfesor(true);
+    const token = localStorage.getItem('access_token');
+    try {
+      const res = await fetch(`/api/horarios/${horarioSeleccionado.id}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ profesor: nuevoProfesorId }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(JSON.stringify(errorData));
+      }
+      showToast('Profesor actualizado', 'success');
+      setEditandoProfesor(false);
+      await fetchData();
+      // Actualizar horario seleccionado con el nuevo profesor
+      const profesorNuevo = profesores.find(p => p.id === nuevoProfesorId);
+      if (profesorNuevo && horarioSeleccionado) {
+        setHorarioSeleccionado({
+          ...horarioSeleccionado,
+          profesor: nuevoProfesorId as number,
+          profesor_nombre: `${profesorNuevo.nombre} ${profesorNuevo.apellido}`,
+        });
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      showApiError(err);
+    } finally {
+      setGuardandoProfesor(false);
+    }
+  };
+
+  const handleCambiarTipoPago = async () => {
+    if (!horarioSeleccionado) return;
+    setGuardandoPago(true);
+    const token = localStorage.getItem('access_token');
+    try {
+      const payload: Record<string, unknown> = { tipo_pago: tipoPagoSeleccionado };
+      if (tipoPagoSeleccionado === 'fijo' && montoFijo) {
+        payload.monto_fijo = parseFloat(montoFijo);
+      }
+      const res = await fetch(`/api/horarios/${horarioSeleccionado.id}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(JSON.stringify(errorData));
+      }
+      showToast('Tipo de pago actualizado', 'success');
+      setEditandoPago(false);
+      await fetchData();
+      // Actualizar horario seleccionado
+      if (horarioSeleccionado) {
+        setHorarioSeleccionado({
+          ...horarioSeleccionado,
+          tipo_pago: tipoPagoSeleccionado,
+          monto_fijo: tipoPagoSeleccionado === 'fijo' ? parseFloat(montoFijo) : null,
+        });
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      showApiError(err);
+    } finally {
+      setGuardandoPago(false);
+    }
   };
 
   const getHoraLabel = (hora: number) => {
@@ -501,13 +583,86 @@ function TallerDetalle() {
                     Detalle del Horario
                   </h3>
                   <button
-                    onClick={() => { setPanelEstado('vacio'); setHorarioSeleccionado(null); }}
+                    onClick={() => { setPanelEstado('vacio'); setHorarioSeleccionado(null); setEditandoProfesor(false); setEditandoPago(false); }}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#9ca3af' }}
                   >
                     ×
                   </button>
                 </div>
-                
+
+                <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Tipo de Pago</div>
+                    {!editandoPago && (
+                      <button
+                        onClick={() => { 
+                          setEditandoPago(true); 
+                          setTipoPagoSeleccionado(horarioSeleccionado.tipo_pago || 'dinamico'); 
+                          setMontoFijo(horarioSeleccionado.monto_fijo?.toString() || ''); 
+                        }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#6366f1', fontWeight: '500' }}
+                      >
+                        Configurar
+                      </button>
+                    )}
+                  </div>
+                  {editandoPago ? (
+                    <div>
+                      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => setTipoPagoSeleccionado('dinamico')}
+                          style={{ flex: 1, padding: '0.5rem', background: tipoPagoSeleccionado === 'dinamico' ? '#6366f1' : '#f3f4f6', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '500', cursor: 'pointer', color: tipoPagoSeleccionado === 'dinamico' ? 'white' : '#374151' }}
+                        >
+                          Dinámico
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTipoPagoSeleccionado('fijo')}
+                          style={{ flex: 1, padding: '0.5rem', background: tipoPagoSeleccionado === 'fijo' ? '#6366f1' : '#f3f4f6', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '500', cursor: 'pointer', color: tipoPagoSeleccionado === 'fijo' ? 'white' : '#374151' }}
+                        >
+                          Fijo
+                        </button>
+                      </div>
+                      {tipoPagoSeleccionado === 'fijo' && (
+                        <div style={{ marginBottom: '0.5rem' }}>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="Monto fijo (S/.)"
+                            value={montoFijo}
+                            onChange={(e) => setMontoFijo(e.target.value)}
+                            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem' }}
+                          />
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => setEditandoPago(false)}
+                          style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '500', cursor: 'pointer', color: '#374151' }}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={handleCambiarTipoPago}
+                          disabled={guardandoPago || (tipoPagoSeleccionado === 'fijo' && !montoFijo)}
+                          style={{ flex: 1, padding: '0.5rem', background: guardandoPago || (tipoPagoSeleccionado === 'fijo' && !montoFijo) ? '#93c5fc' : '#6366f1', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '500', cursor: (guardandoPago || (tipoPagoSeleccionado === 'fijo' && !montoFijo)) ? 'not-allowed' : 'pointer', color: 'white' }}
+                        >
+                          {guardandoPago ? 'Guardando...' : 'Guardar'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#111827' }}>
+                      {horarioSeleccionado.tipo_pago === 'fijo' ? (
+                        <span>Fijo {horarioSeleccionado.monto_fijo ? `(S/. ${horarioSeleccionado.monto_fijo})` : ''}</span>
+                      ) : (
+                        <span>Dinámico</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Día y Hora</div>
                   <div style={{ fontSize: '1rem', fontWeight: '600', color: '#111827' }}>
@@ -516,10 +671,49 @@ function TallerDetalle() {
                 </div>
 
                 <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Profesor</div>
-                  <div style={{ fontSize: '1rem', fontWeight: '600', color: '#111827' }}>
-                    {horarioSeleccionado.profesor_nombre}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Profesor</div>
+                    {!editandoProfesor && (
+                      <button
+                        onClick={() => { setEditandoProfesor(true); setNuevoProfesorId(horarioSeleccionado.profesor); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#6366f1', fontWeight: '500' }}
+                      >
+                        Cambiar
+                      </button>
+                    )}
                   </div>
+                  {editandoProfesor ? (
+                    <div>
+                      <select
+                        value={nuevoProfesorId}
+                        onChange={(e) => setNuevoProfesorId(e.target.value ? parseInt(e.target.value) : '')}
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem', marginBottom: '0.5rem' }}
+                      >
+                        {profesores.map((p) => (
+                          <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>
+                        ))}
+                      </select>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => setEditandoProfesor(false)}
+                          style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '500', cursor: 'pointer', color: '#374151' }}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={handleCambiarProfesor}
+                          disabled={guardandoProfesor || nuevoProfesorId === horarioSeleccionado.profesor}
+                          style={{ flex: 1, padding: '0.5rem', background: guardandoProfesor ? '#93c5fc' : '#6366f1', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '500', cursor: guardandoProfesor ? 'not-allowed' : 'pointer', color: 'white' }}
+                        >
+                          {guardandoProfesor ? 'Guardando...' : 'Guardar'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#111827' }}>
+                      {horarioSeleccionado.profesor_nombre}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
@@ -544,7 +738,7 @@ function TallerDetalle() {
                     <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                       {horarioSeleccionado.alumnos.map((alumno) => (
                         <div key={alumno.id} style={{ padding: '0.5rem', background: '#f9fafb', borderRadius: '6px', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
-                          {alumno.nombre} {alumno.apellido}
+                          {alumno.nombre} {alumno.apellido} {alumno.edad !== null ? `(${alumno.edad} años)` : ''}
                         </div>
                       ))}
                     </div>

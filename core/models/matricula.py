@@ -26,6 +26,7 @@ class Matricula(models.Model):
     )
     sesiones_contratadas = models.PositiveIntegerField()
     precio_total = models.DecimalField(max_digits=10, decimal_places=2)
+    precio_por_sesion = models.DecimalField(max_digits=10, decimal_places=2)
     metodo_pago = models.CharField(max_length=20, choices=METODO_PAGO, default='efectivo')
     observaciones = models.TextField(blank=True)
     fecha_matricula = models.DateTimeField(auto_now_add=True)
@@ -48,8 +49,4 @@ class Matricula(models.Model):
     def sesiones_disponibles(self):
         return max(0, self.sesiones_contratadas - self.sesiones_consumidas)
 
-    @property
-    def precio_por_sesion(self):
-        if self.sesiones_contratadas > 0:
-            return self.precio_total / self.sesiones_contratadas
-        return 0
+

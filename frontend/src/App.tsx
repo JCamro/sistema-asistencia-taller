@@ -2,6 +2,7 @@ import { useState, useEffect, memo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { CicloProvider, useCiclo } from './contexts/CicloContext';
 import { ToastProvider } from './contexts/ToastContext';
+import DashboardPage from './pages/Dashboard';
 import AlumnosPage from './pages/Alumnos';
 import ProfesoresPage from './pages/Profesores';
 import TalleresPage from './pages/Talleres';
@@ -10,13 +11,12 @@ import HorariosPage from './pages/Horarios';
 import MatriculasPage from './pages/Matriculas';
 import AsistenciasPage from './pages/Asistencias';
 import RecibosPage from './pages/Recibos';
-import CalculadoraPrecios from './pages/CalculadoraPrecios';
 import PagosProfesoresPage from './pages/PagosProfesores';
 
 const Loading = memo(function Loading() {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB' }}>
-      <div style={{ width: '48px', height: '48px', border: '4px solid #e5e7eb', borderTop: '4px solid #22C55E', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0a0a0a 0%, #141414 100%)' }}>
+      <div style={{ width: '48px', height: '48px', border: '4px solid rgba(212, 175, 55, 0.2)', borderTop: '4px solid #d4af37', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
       <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
     </div>
   );
@@ -45,96 +45,39 @@ function Sidebar({ cicloNombre }: { cicloNombre: string }) {
     { to: '/matriculas', label: 'Matrículas', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' },
     { to: '/asistencias', label: 'Asistencias', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
     { to: '/recibos', label: 'Recibos', icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z' },
-    { to: '/calculadora', label: 'Precios', icon: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z' },
     { to: '/pagos-profesores', label: 'Pagos Profesores', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
   ];
 
   return (
-    <aside style={{ width: '260px', minHeight: '100vh', background: '#0F0F23', color: '#F8FAFC', display: 'flex', flexDirection: 'column', position: 'fixed', left: 0, top: 0 }}>
-      {/* Logo */}
-      <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+    <aside style={{ width: '260px', minHeight: '100vh', background: 'linear-gradient(180deg, #0a0a0a 0%, #141414 100%)', color: '#ffffff', display: 'flex', flexDirection: 'column', position: 'fixed', left: 0, top: 0, borderRight: '1px solid rgba(212, 175, 55, 0.15)' }}>
+      <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(212, 175, 55, 0.15)', background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, transparent 100%)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ width: '40px', height: '40px', background: 'linear-gradient(135deg, #1E1B4B 0%, #4338CA 100%)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
-          </div>
+          <img 
+            src="/src/assets/logo-taller.png" 
+            alt="Logo Taller de Música Elguera"
+            style={{ width: '40px', height: '40px', borderRadius: '10px', objectFit: 'contain' }}
+          />
           <div>
-            <span style={{ fontSize: '1.125rem', fontWeight: '700', color: '#FFFFFF', display: 'block' }}>Taller de Música Elguera</span>
-            <span style={{ fontSize: '0.6875rem', color: '#22C55E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Admin</span>
+            <span style={{ fontSize: '1rem', fontWeight: '700', color: '#d4af37', display: 'block', fontFamily: "'Inter', sans-serif" }}>Taller de Música</span>
+            <span style={{ fontSize: '1rem', fontWeight: '700', color: '#c41e3a', display: 'block', fontFamily: "'Inter', sans-serif" }}>Elguera</span>
           </div>
         </div>
       </div>
       
-      {/* Ciclo Actual */}
-      <div style={{ padding: '1rem 1.5rem', background: 'rgba(30, 27, 75, 0.5)', borderBottom: '1px solid rgba(248, 250, 252, 0.1)' }}>
-        <p style={{ fontSize: '0.6875rem', color: '#22C55E', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Ciclo Activo</p>
-        <p style={{ fontSize: '0.9375rem', fontWeight: '600', color: '#FFFFFF', marginBottom: '0.75rem' }}>{cicloNombre}</p>
-        <button
-          onClick={handleCambiarCiclo}
-          style={{
-            padding: '0.5rem 0.75rem',
-            background: 'rgba(248, 250, 252, 0.1)',
-            color: '#F8FAFC',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '0.75rem',
-            cursor: 'pointer',
-            width: '100%',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
-            e.currentTarget.style.color = 'white';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-            e.currentTarget.style.color = '#A5B4FC';
-          }}
-        >
+      <div style={{ padding: '1rem 1.5rem', background: 'linear-gradient(135deg, rgba(196, 30, 58, 0.08) 0%, rgba(212, 175, 55, 0.04) 100%)', borderBottom: '1px solid rgba(212, 175, 55, 0.1)' }}>
+        <p style={{ fontSize: '0.6875rem', color: '#d4af37', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Ciclo Activo</p>
+        <p style={{ fontSize: '0.9375rem', fontWeight: '600', color: '#ffffff', marginBottom: '0.75rem' }}>{cicloNombre}</p>
+        <button onClick={handleCambiarCiclo} style={{ padding: '0.5rem 0.75rem', background: 'rgba(212, 175, 55, 0.1)', color: '#d4af37', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer', width: '100%', transition: 'all 0.15s ease' }}>
           ← Cambiar ciclo
         </button>
       </div>
 
-      {/* Navigation */}
       <nav style={{ flex: 1, padding: '1rem 0.75rem', overflowY: 'auto' }}>
         {navItems.map(item => {
           const isActive = location.pathname === item.to;
           return (
-            <Link
-              key={item.to}
-              to={item.to}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                padding: '0.75rem 1rem',
-                borderRadius: '10px',
-                fontSize: '0.9375rem',
-                fontWeight: '500',
-                color: isActive ? '#22C55E' : '#F8FAFC',
-                backgroundColor: isActive ? 'rgba(30, 27, 75, 0.5)' : 'transparent',
-                textDecoration: 'none',
-                marginBottom: '0.25rem',
-                transition: 'all 0.15s ease',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={e => {
-                if (!isActive) {
-                  e.currentTarget.style.backgroundColor = 'rgba(30, 27, 75, 0.3)';
-                  e.currentTarget.style.color = '#F8FAFC';
-                }
-              }}
-              onMouseLeave={e => {
-                if (!isActive) {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = '#F8FAFC';
-                }
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <Link key={item.to} to={item.to} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', borderRadius: '10px', fontSize: '0.9375rem', fontWeight: '500', color: isActive ? '#d4af37' : '#a1a1a1', backgroundColor: isActive ? 'rgba(212, 175, 55, 0.15)' : 'transparent', textDecoration: 'none', marginBottom: '0.25rem', transition: 'all 0.15s ease', cursor: 'pointer' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={isActive ? '#d4af37' : 'currentColor'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d={item.icon} />
               </svg>
               {item.label}
@@ -143,34 +86,8 @@ function Sidebar({ cicloNombre }: { cicloNombre: string }) {
         })}
       </nav>
 
-      {/* Footer - Logout */}
-      <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid rgba(248, 250, 252, 0.1)' }}>
-        <button
-          onClick={handleLogout}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            width: '100%',
-            padding: '0.75rem 1rem',
-            backgroundColor: 'transparent',
-            border: 'none',
-            borderRadius: '10px',
-            fontSize: '0.9375rem',
-            fontWeight: '500',
-            color: '#F8FAFC',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-            e.currentTarget.style.color = '#EF4444';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = '#F8FAFC';
-          }}
-        >
+      <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid rgba(212, 175, 55, 0.1)' }}>
+        <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem 1rem', backgroundColor: 'transparent', border: '1px solid rgba(196, 30, 58, 0.2)', borderRadius: '10px', fontSize: '0.9375rem', fontWeight: '500', color: '#c41e3a', cursor: 'pointer', transition: 'all 0.15s ease' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
@@ -191,7 +108,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9FAFB' }}>
+    <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
       <SidebarMemo cicloNombre={cicloActual.nombre} />
       <main style={{ marginLeft: '260px', padding: '1.5rem 2rem', minHeight: '100vh' }}>
         {children}
@@ -253,13 +170,23 @@ function Login() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0F0F23' }}>
-      <form onSubmit={handleLogin} style={{ background: '#1E1B4B', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '400px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', border: '1px solid rgba(248, 250, 252, 0.1)' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', textAlign: 'center', marginBottom: '1.5rem', color: '#F8FAFC' }}>Taller de Música Elguera</h1>
-        {error && <div style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: '8px', marginBottom: '1rem', border: '1px solid rgba(239, 68, 68, 0.2)' }}>{error}</div>}
-        <input type="text" placeholder="Usuario" value={username} onChange={e => setUsername(e.target.value)} required style={{ width: '100%', padding: '0.75rem', marginBottom: '1rem', border: '1px solid rgba(248, 250, 252, 0.2)', borderRadius: '8px', background: 'rgba(248, 250, 252, 0.05)', color: '#F8FAFC' }} />
-        <input type="password" placeholder="Contraseña" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '0.75rem', marginBottom: '1rem', border: '1px solid rgba(248, 250, 252, 0.2)', borderRadius: '8px', background: 'rgba(248, 250, 252, 0.05)', color: '#F8FAFC' }} />
-        <button type="submit" disabled={loading} style={{ width: '100%', padding: '0.75rem', background: loading ? '#4338CA' : '#22C55E', color: '#F8FAFC', border: 'none', borderRadius: '8px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: '600', transition: 'all 0.15s ease' }}>{loading ? 'Cargando...' : 'Iniciar sesión'}</button>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0a0a0a 0%, #141414 100%)', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: '-30%', right: '-15%', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: '-20%', left: '-10%', width: '500px', height: '500px', background: 'radial-gradient(circle, rgba(196, 30, 58, 0.06) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+      <form onSubmit={handleLogin} style={{ background: 'linear-gradient(145deg, #141414 0%, #1c1c1c 100%)', padding: '2rem', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6)', border: '1px solid rgba(212, 175, 55, 0.15)' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <img 
+            src="/src/assets/logo-taller.png" 
+            alt="Logo Taller de Música Elguera"
+            style={{ width: '64px', height: '64px', borderRadius: '16px', margin: '0 auto 1rem', objectFit: 'contain', boxShadow: '0 8px 24px rgba(212, 175, 55, 0.35)' }}
+          />
+          <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#d4af37', fontFamily: "'Inter', sans-serif" }}>Taller de Música</h1>
+          <p style={{ fontSize: '1.25rem', fontWeight: '700', color: '#c41e3a', fontFamily: "'Inter', sans-serif" }}>Elguera</p>
+        </div>
+        {error && <div style={{ padding: '0.75rem', background: 'rgba(196, 30, 58, 0.15)', color: '#e63950', borderRadius: '8px', marginBottom: '1rem', border: '1px solid rgba(196, 30, 58, 0.3)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{error}</div>}
+        <input type="text" placeholder="Usuario" value={username} onChange={e => setUsername(e.target.value)} required style={{ width: '100%', padding: '0.875rem 1rem', marginBottom: '1rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.03)', color: '#ffffff', fontSize: '1rem' }} />
+        <input type="password" placeholder="Contraseña" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '0.875rem 1rem', marginBottom: '1.25rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.03)', color: '#ffffff', fontSize: '1rem' }} />
+        <button type="submit" disabled={loading} style={{ width: '100%', padding: '0.875rem', background: loading ? 'rgba(212, 175, 55, 0.5)' : 'linear-gradient(135deg, #d4af37 0%, #b8962e 100%)', color: '#0a0a0a', border: 'none', borderRadius: '10px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '1rem', boxShadow: loading ? 'none' : '0 4px 12px rgba(212, 175, 55, 0.3)' }}>{loading ? 'Cargando...' : 'Iniciar sesión'}</button>
       </form>
     </div>
   );
@@ -455,50 +382,55 @@ function SeleccionCiclos() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9FAFB', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.5rem' }}>Bienvenido a Taller de Música Elguera</h1>
-        <p style={{ fontSize: '1.125rem', color: '#6b7280' }}>Selecciona un ciclo para continuar</p>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0a 0%, #141414 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+      <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+        <img 
+          src="/src/assets/logo-taller.png" 
+          alt="Logo Taller de Música Elguera"
+          style={{ width: '80px', height: '80px', borderRadius: '20px', margin: '0 auto 1.5rem', objectFit: 'contain', boxShadow: '0 8px 24px rgba(212, 175, 55, 0.35)' }}
+        />
+        <h1 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#d4af37', fontFamily: "'Inter', sans-serif" }}>Taller de Música Elguera</h1>
+        <p style={{ fontSize: '1rem', color: '#a1a1a1', letterSpacing: '0.05em' }}>Selecciona un ciclo para continuar</p>
       </div>
       
       {(mostrarForm || mostrarEditar) && (
-        <form onSubmit={mostrarEditar ? handleGuardarEdicion : handleCrear} style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid #e5e7eb', width: '100%', maxWidth: '600px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ marginBottom: '1rem', fontWeight: '600', color: '#111827' }}>{mostrarEditar ? 'Editar ciclo' : 'Crear nuevo ciclo'}</h3>
+        <form onSubmit={mostrarEditar ? handleGuardarEdicion : handleCrear} style={{ background: '#1c1c1c', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid rgba(212, 175, 55, 0.15)', width: '100%', maxWidth: '600px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+          <h3 style={{ marginBottom: '1rem', fontWeight: '600', color: '#d4af37', fontFamily: "'Inter', sans-serif" }}>{mostrarEditar ? 'Editar ciclo' : 'Crear nuevo ciclo'}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#374151' }}>Nombre</label>
-              <input type="text" placeholder="Ej: Ciclo Anual 2026" value={nombre} onChange={e => setNombre(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', color: '#111827' }} />
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#a1a1a1' }}>Nombre</label>
+              <input type="text" placeholder="Ej: Ciclo Anual 2026" value={nombre} onChange={e => setNombre(e.target.value)} required style={{ width: '100%', padding: '0.625rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }} />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#374151' }}>Tipo</label>
-              <select value={tipo} onChange={e => setTipo(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', color: '#111827' }}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#a1a1a1' }}>Tipo</label>
+              <select value={tipo} onChange={e => setTipo(e.target.value)} style={{ width: '100%', padding: '0.625rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }}>
                 <option value="anual">Anual</option>
                 <option value="verano">Verano</option>
                 <option value="otro">Otro</option>
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#374151' }}>Fecha inicio</label>
-              <input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', color: '#111827' }} />
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#a1a1a1' }}>Fecha inicio</label>
+              <input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} required style={{ width: '100%', padding: '0.625rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }} />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#374151' }}>Fecha fin</label>
-              <input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', color: '#111827' }} />
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#a1a1a1' }}>Fecha fin</label>
+              <input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} required style={{ width: '100%', padding: '0.625rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }} />
             </div>
             {mostrarEditar && (
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#374151', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={activo} onChange={e => setActivo(e.target.checked)} style={{ width: '16px', height: '16px', accentColor: '#22C55E' }} />
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#a1a1a1', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={activo} onChange={e => setActivo(e.target.checked)} style={{ width: '16px', height: '16px', accentColor: '#d4af37' }} />
                   Ciclo activo
                 </label>
               </div>
             )}
           </div>
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-            <button type="submit" disabled={guardando} style={{ padding: '0.5rem 1.5rem', background: '#22C55E', color: 'white', border: 'none', borderRadius: '6px', cursor: guardando ? 'not-allowed' : 'pointer', fontWeight: '500' }}>
+            <button type="submit" disabled={guardando} style={{ padding: '0.625rem 1.5rem', background: 'linear-gradient(135deg, #d4af37 0%, #b8962e 100%)', color: '#0a0a0a', border: 'none', borderRadius: '8px', cursor: guardando ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
               {guardando ? 'Guardando...' : 'Guardar'}
             </button>
-            <button type="button" onClick={() => { setMostrarForm(false); setMostrarEditar(false); setCicloEditando(null); }} style={{ padding: '0.5rem 1.5rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>
+            <button type="button" onClick={() => { setMostrarForm(false); setMostrarEditar(false); setCicloEditando(null); }} style={{ padding: '0.625rem 1.5rem', background: 'rgba(255,255,255,0.05)', color: '#a1a1a1', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', cursor: 'pointer', fontWeight: 500 }}>
               Cancelar
             </button>
           </div>
@@ -506,9 +438,14 @@ function SeleccionCiclos() {
       )}
       
       {ciclos.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '3rem', background: 'white', borderRadius: '12px', border: '1px dashed #d1d5db', maxWidth: '400px' }}>
-          <p style={{ color: '#6b7280', marginBottom: '1rem' }}>No hay ciclos creados</p>
-          <button onClick={abrirFormulario} style={{ padding: '0.75rem 1.5rem', background: '#22C55E', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>
+        <div style={{ textAlign: 'center', padding: '3rem', background: 'rgba(28, 28, 28, 0.8)', borderRadius: '16px', border: '2px dashed rgba(212, 175, 55, 0.3)', maxWidth: '400px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+          <div style={{ width: '64px', height: '64px', background: 'rgba(212, 175, 55, 0.1)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </div>
+          <p style={{ color: '#a1a1a1', marginBottom: '1.25rem' }}>No hay ciclos creados</p>
+          <button onClick={abrirFormulario} style={{ padding: '0.75rem 1.5rem', background: 'linear-gradient(135deg, #d4af37 0%, #b8962e 100%)', color: '#0a0a0a', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, boxShadow: '0 4px 12px rgba(212, 175, 55, 0.3)' }}>
             Crear primer ciclo
           </button>
         </div>
@@ -519,43 +456,43 @@ function SeleccionCiclos() {
               key={ciclo.id}
               onClick={() => handleSeleccionar(ciclo)}
               style={{ 
-                background: 'white', 
+                background: cicloActual?.id === ciclo.id ? 'linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(28, 28, 28, 0.9) 100%)' : '#1c1c1c', 
                 padding: '1.5rem', 
                 borderRadius: '12px', 
-                border: cicloActual?.id === ciclo.id ? '2px solid #22C55E' : '1px solid #e5e7eb',
+                border: cicloActual?.id === ciclo.id ? '2px solid #d4af37' : '1px solid rgba(255,255,255,0.08)',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: cicloActual?.id === ciclo.id ? '0 0 0 4px rgba(34, 197, 94, 0.1)' : '0 1px 3px rgba(0,0,0,0.05)'
+                transition: 'all 0.25s ease',
+                boxShadow: cicloActual?.id === ciclo.id ? '0 0 24px rgba(212, 175, 55, 0.2), 0 8px 24px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.2)'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div style={{ width: '56px', height: '56px', borderRadius: '12px', background: ciclo.activo ? '#d1fae5' : '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: ciclo.activo ? '#22C55E' : '#6b7280' }}>
+                  <div style={{ width: '56px', height: '56px', borderRadius: '12px', background: ciclo.activo ? 'linear-gradient(135deg, #d4af37 0%, #b8962e 100%)' : 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: ciclo.activo ? '0 4px 12px rgba(212, 175, 55, 0.3)' : 'none' }}>
+                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: ciclo.activo ? '#0a0a0a' : '#666666' }}>
                       {ciclo.nombre.charAt(0)}
                     </span>
                   </div>
                   <div>
-                    <h3 style={{ fontWeight: '600', fontSize: '1.125rem', color: '#111827' }}>{ciclo.nombre}</h3>
-                    <p style={{ fontSize: '0.875rem', color: '#6b7280', textTransform: 'capitalize' }}>{ciclo.tipo}</p>
+                    <h3 style={{ fontWeight: '600', fontSize: '1.125rem', color: '#ffffff' }}>{ciclo.nombre}</h3>
+                    <p style={{ fontSize: '0.875rem', color: '#a1a1a1', textTransform: 'capitalize' }}>{ciclo.tipo}</p>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <MenuOpcionesMemo 
                     onEditar={() => handleEditar(ciclo)} 
                     onEliminar={() => handleEliminar(ciclo.id)} 
                   />
-                  <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '500', background: ciclo.activo ? '#d1fae5' : '#f3f4f6', color: ciclo.activo ? '#22c55e' : '#6b7280' }}>
+                  <span style={{ padding: '0.375rem 0.875rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, background: ciclo.activo ? 'rgba(212, 175, 55, 0.2)' : 'rgba(255,255,255,0.08)', color: ciclo.activo ? '#d4af37' : '#666666', letterSpacing: '0.05em' }}>
                     {ciclo.activo ? 'Activo' : 'Inactivo'}
                   </span>
-                  <span style={{ color: '#22C55E', fontSize: '1.25rem' }}>→</span>
+                  <span style={{ color: '#d4af37', fontSize: '1.25rem', marginLeft: '0.25rem' }}>→</span>
                 </div>
               </div>
             </div>
           ))}
           <button 
             onClick={abrirFormulario}
-            style={{ padding: '1rem', background: 'transparent', border: '2px dashed #d1d5db', borderRadius: '12px', cursor: 'pointer', color: '#6b7280', fontSize: '0.875rem' }}
+            style={{ padding: '1.25rem', background: 'transparent', border: '2px dashed rgba(212, 175, 55, 0.25)', borderRadius: '12px', cursor: 'pointer', color: '#a1a1a1', fontSize: '0.9375rem', fontWeight: 500, transition: 'all 0.2s ease' }}
           >
             + Crear nuevo ciclo
           </button>
@@ -567,39 +504,7 @@ function SeleccionCiclos() {
 
 const SeleccionCiclosMemo = memo(SeleccionCiclos);
 
-function Dashboard() {
-  const { cicloActual, isLoading } = useCiclo();
-
-  if (isLoading) return <Loading />;
-
-  return (
-    <div>
-      <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#111827' }}>
-        Dashboard - {cicloActual?.nombre}
-      </h1>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Alumnos</p>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827' }}>-</p>
-        </div>
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Profesores</p>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827' }}>-</p>
-        </div>
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Talleres</p>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827' }}>-</p>
-        </div>
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Matrículas</p>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827' }}>-</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const DashboardMemo = memo(Dashboard);
+const DashboardMemo = memo(DashboardPage);
 
 export default function App() {
   return (
@@ -618,7 +523,6 @@ export default function App() {
           <Route path="/matriculas" element={<ProtectedRoute><DashboardLayoutMemo><MatriculasPage /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/asistencias" element={<ProtectedRoute><DashboardLayoutMemo><AsistenciasPage /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/recibos" element={<ProtectedRoute><DashboardLayoutMemo><RecibosPage /></DashboardLayoutMemo></ProtectedRoute>} />
-          <Route path="/calculadora" element={<ProtectedRoute><DashboardLayoutMemo><CalculadoraPrecios /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/pagos-profesores" element={<ProtectedRoute><DashboardLayoutMemo><PagosProfesoresPage /></DashboardLayoutMemo></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>

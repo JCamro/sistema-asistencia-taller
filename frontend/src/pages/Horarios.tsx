@@ -12,6 +12,7 @@ interface Alumno {
   id: number;
   nombre: string;
   apellido: string;
+  edad: number | null;
 }
 
 interface Horario {
@@ -118,7 +119,7 @@ function Tooltip({
             <div key={a.id} style={{
               padding: '0.2rem 0', borderBottom: '1px solid rgba(255,255,255,0.08)',
             }}>
-              {a.apellido}, {a.nombre}
+              {a.apellido}, {a.nombre} {a.edad !== null ? `(${a.edad} años)` : ''}
             </div>
           ))}
         </div>

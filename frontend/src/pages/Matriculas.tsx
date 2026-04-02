@@ -637,7 +637,7 @@ function MatriculasPage() {
                   <td style={{ padding: '1rem', textAlign: 'center' }}>
                     <span style={{ fontFamily: 'monospace', color: m.sesiones_disponibles > 0 ? '#059669' : '#dc2626' }}>{m.sesiones_consumidas}/{m.sesiones_contratadas}</span>
                   </td>
-                  <td style={{ padding: '1rem', textAlign: 'right', fontFamily: 'monospace', fontWeight: '600' }}>S/. {m.precio_total}</td>
+                  <td style={{ padding: '1rem', textAlign: 'right', fontFamily: 'monospace', fontWeight: '600', color: '#111827' }}>S/. {m.precio_total}</td>
                   <td style={{ padding: '1rem', textAlign: 'center' }}>
                     <span style={{ 
                       padding: '0.25rem 0.75rem', 
