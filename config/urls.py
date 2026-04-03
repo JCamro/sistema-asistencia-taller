@@ -5,12 +5,12 @@ from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
-from core.views.setup_view import SetupView
+from core.views.setup_view import setup_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/', include('core.urls')),
-    path('setup/', SetupView.as_view(), name='setup'),  # Temporal
+    path('setup/', setup_view, name='setup'),
 ]
