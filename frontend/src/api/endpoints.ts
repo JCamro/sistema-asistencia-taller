@@ -187,9 +187,9 @@ export interface ResumenFinanzas {
     total_ingresos: number;
     total_egresos: number;
     ganancia_neta: number;
+    porcentaje_local_40: number;
+    porcentaje_taller_60: number;
   };
-  porcentaje_local_40: number;
-  porcentaje_taller_60: number;
 }
 
 // API Functions
