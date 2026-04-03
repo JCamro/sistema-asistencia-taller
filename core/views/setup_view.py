@@ -14,6 +14,12 @@ class SetupView(View):
     Se debe eliminar después de usar.
     """
     def get(self, request):
+        return JsonResponse({
+            'status': 'ok',
+            'superusers_count': User.objects.filter(is_superuser=True).count()
+        })
+    
+    def post(self, request):
         # Verificar si ya hay superusers
         if User.objects.filter(is_superuser=True).exists():
             return JsonResponse({
