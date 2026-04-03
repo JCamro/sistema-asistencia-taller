@@ -8,7 +8,7 @@ from .views import (
     AsistenciaViewSet, ReciboViewSet, PagoProfesorViewSet,
     calcular_pago_profesor, detalle_clase_pago, resumen_ciclo, ConfiguracionViewSet,
     asistencia_por_horario, dashboard_kpis, PrecioPaqueteViewSet,
-    EgresoViewSet, SetupView
+    EgresoViewSet
 )
 
 router = DefaultRouter()
