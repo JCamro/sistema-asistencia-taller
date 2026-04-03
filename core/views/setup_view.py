@@ -1,38 +1,38 @@
-from django.http import JsonResponse
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 from django.contrib.auth import get_user_model
-from django.views.decorators.csrf import csrf_exempt
 
 User = get_user_model()
 
-@csrf_exempt
-def setup_view(request):
+class SetupView(APIView):
     """
     Endpoint temporal para crear el primer superuser.
+    GET automático crea el superuser si no existe.
     """
-    if request.method != 'POST':
-        return JsonResponse({
-            'status': 'ok',
-            'superusers_count': User.objects.filter(is_superuser=True).count(),
-            'message': 'Use POST to create superuser'
+    authentication_classes = []
+    permission_classes = []
+    
+    def get(self, request):
+        # Si ya existe un superuser, no hacer nada
+        if User.objects.filter(is_superuser=True).exists():
+            return Response({
+                'message': 'El superuser ya existe',
+                'username': 'admin'
+            })
+        
+        # Crear superuser automáticamente
+        user = User.objects.create_user(
+            username='admin',
+            email='admin@taller.com',
+            password='admin123',
+            is_staff=True,
+            is_superuser=True
+        )
+        
+        return Response({
+            'message': 'Superuser creado',
+            'username': 'admin',
+            'password': 'admin123',
+            'admin_url': '/admin/'
         })
-    
-    # Verificar si ya hay superusers
-    if User.objects.filter(is_superuser=True).exists():
-        return JsonResponse({
-            'error': 'Ya existen superusers'
-        }, status=403)
-    
-    # Crear superuser por defecto
-    user = User.objects.create_user(
-        username='admin',
-        email='admin@taller.com',
-        password='admin123',
-        is_staff=True,
-        is_superuser=True
-    )
-    
-    return JsonResponse({
-        'message': 'Superuser creado',
-        'username': 'admin',
-        'password': 'admin123'
-    })
