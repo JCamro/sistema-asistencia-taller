@@ -2,6 +2,7 @@ import { useState, useEffect, memo, useCallback } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
+import { getHistorialPagosProfesor } from '../api/endpoints';
 
 interface Profesor {
   id: number;
@@ -56,6 +57,9 @@ function ProfesoresPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deletingName, setDeletingName] = useState<string>('');
+  const [historialModalOpen, setHistorialModalOpen] = useState(false);
+  const [historialPagos, setHistorialPagos] = useState<any[]>([]);
+  const [historialLoading, setHistorialLoading] = useState(false);
 
   const fetchProfesores = useCallback(async () => {
     if (!cicloActual) return;
@@ -168,6 +172,22 @@ function ProfesoresPage() {
     setEditingId(null);
     setFormData(initialFormData);
     setShowModal(true);
+  };
+
+  const handleVerHistorial = async (profesorId: number) => {
+    setHistorialModalOpen(true);
+    setHistorialLoading(true);
+    try {
+      const res = await getHistorialPagosProfesor(profesorId);
+      setHistorialPagos(res.data);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+    setHistorialLoading(false);
+  };
+
+  const formatMonto = (monto: number) => {
+    return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(monto);
   };
 
   if (loading) {
@@ -292,6 +312,20 @@ function ProfesoresPage() {
                     })() : '-'}
                   </td>
                   <td style={{ padding: '1rem', textAlign: 'right' }}>
+                    <button
+                      onClick={() => handleVerHistorial(profesor.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#6366f1',
+                        cursor: 'pointer',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        marginRight: '1rem',
+                      }}
+                    >
+                      Ver historial
+                    </button>
                     <button
                       onClick={() => handleEdit(profesor)}
                       style={{
@@ -494,6 +528,90 @@ function ProfesoresPage() {
         onCancel={cancelDelete}
         isLoading={saving}
       />
+
+      {/* Historial de Pagos Modal */}
+      {historialModalOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50,
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '600px',
+            maxHeight: '80vh',
+            overflow: 'auto',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          }}>
+            <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#111827' }}>
+                Historial de Pagos
+              </h2>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              {historialLoading ? (
+                <p style={{ textAlign: 'center', color: '#6b7280' }}>Cargando...</p>
+              ) : historialPagos.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#6b7280' }}>No hay pagos registrados</p>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f9fafb' }}>
+                      <th style={{ padding: '0.5rem', textAlign: 'left', fontSize: '0.75rem', color: '#6b7280' }}>Fecha</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'right', fontSize: '0.75rem', color: '#6b7280' }}>Monto</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'left', fontSize: '0.75rem', color: '#6b7280' }}>Descripción</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'center', fontSize: '0.75rem', color: '#6b7280' }}>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historialPagos.map((pago: any) => (
+                      <tr key={pago.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '0.5rem', fontSize: '0.875rem' }}>{new Date(pago.fecha).toLocaleDateString('es-PE')}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600 }}>{formatMonto(pago.monto)}</td>
+                        <td style={{ padding: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>{pago.descripcion || '-'}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                          <span style={{
+                            padding: '0.125rem 0.5rem',
+                            borderRadius: '9999px',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            background: pago.estado === 'pendiente' ? '#fef3c7' : '#d1fae5',
+                            color: pago.estado === 'pendiente' ? '#b45309' : '#047857',
+                          }}>
+                            {pago.estado_display}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              <button
+                onClick={() => setHistorialModalOpen(false)}
+                style={{
+                  width: '100%',
+                  marginTop: '1rem',
+                  padding: '0.75rem',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

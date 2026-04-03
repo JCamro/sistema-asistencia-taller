@@ -14,3 +14,71 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* Sidebar styles */
+.sidebar {
+  width: 260px;
+  height: 100vh;
+  background: linear-gradient(180deg, #0a0a0a 0%, #141414 100%);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0;
+  top: 0;
+  border-right: 1px solid rgba(212, 175, 55, 0.15);
+  z-index: 50;
+  transition: transform 0.3s ease;
+}
+
+/* Sidebar overlay for mobile */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 40;
+  display: none;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .hamburger-btn {
+    display: flex !important;
+  }
+  
+  .main-content {
+    margin-left: 0 !important;
+    padding: 3.5rem 1rem 1rem 1rem !important;
+  }
+  
+  .sidebar {
+    transform: translateX(-100%);
+  }
+  
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+  
+  .sidebar-overlay {
+    display: block;
+  }
+}
+
+/* Custom scrollbar for the entire page */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

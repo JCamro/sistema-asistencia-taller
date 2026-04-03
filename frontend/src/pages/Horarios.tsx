@@ -130,13 +130,50 @@ function Tooltip({
 
 /* ── Panel lateral ── */
 function PanelLateral({
-  horario, estaLleno, onClose,
+  horario, estaLleno, onClose, onActualizar,
 }: {
   horario: Horario;
   estaLleno: boolean;
   onClose: () => void;
+  onActualizar: (nuevoCupo: number, nuevaOcupacion: number) => void;
 }) {
   const diaLabel = DIAS.find((d) => d.value === horario.dia_semana)?.label ?? '';
+  const { showToast } = useToast();
+  const [editandoCupo, setEditandoCupo] = useState(false);
+  const [cupoEditado, setCupoEditado] = useState<string>(horario.cupo_maximo.toString());
+const [guardandoCupo, setGuardandoCupo] = useState(false);
+
+  const handleGuardarCupo = async () => {
+    const nuevoCupo = parseInt(cupoEditado);
+    const ocupacionActual = horario.ocupacion ?? 0;
+    
+    if (nuevoCupo < ocupacionActual) {
+      showToast(`No se puede reducir el cupo por debajo de ${ocupacionActual} alumno(s)`, 'warning');
+      return;
+    }
+    
+    setGuardandoCupo(true);
+    const token = localStorage.getItem('access_token');
+    try {
+      const res = await fetch(`/api/horarios/${horario.id}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cupo_maximo: nuevoCupo }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(JSON.stringify(errorData));
+      }
+      showToast('Cupo actualizado', 'success');
+      setEditandoCupo(false);
+      onActualizar(nuevoCupo, ocupacionActual);
+    } catch (err) {
+      console.error('Error:', err);
+      showToast('Error al actualizar el cupo', 'error');
+    } finally {
+      setGuardandoCupo(false);
+    }
+  };
 
   return (
     <div style={{
@@ -192,30 +229,59 @@ function PanelLateral({
           borderRadius: '8px', padding: '0.75rem',
           border: estaLleno ? '1px solid #fecaca' : '1px solid #bbf7d0',
         }}>
-          <div style={{ fontSize: '0.7rem', color: estaLleno ? '#b91c1c' : '#15803d', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Cupo
+          <div style={{ fontSize: '0.7rem', color: estaLleno ? '#b91c1c' : '#15803d', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.5rem' }}>
+            Cupo {!editandoCupo && <button onClick={() => setEditandoCupo(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.65rem', color: '#6366f1', fontWeight: '500', marginLeft: '0.5rem' }}>Editar</button>}
           </div>
-          <div style={{
-            display: 'flex', alignItems: 'baseline', gap: '0.25rem',
-            marginTop: '0.25rem',
-          }}>
-            <span style={{
-              fontSize: '1.5rem', fontWeight: '800',
-              color: estaLleno ? '#dc2626' : '#059669',
+          {editandoCupo ? (
+            <div>
+              <input
+                type="number"
+                value={cupoEditado}
+                onChange={(e) => setCupoEditado(e.target.value)}
+                min={horario.ocupacion ?? 1}
+                style={{ width: '100%', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '0.85rem', marginBottom: '0.375rem' }}
+              />
+              <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: '0.375rem' }}>
+                Mínimo: {horario.ocupacion ?? 0} alumnos
+              </div>
+              <div style={{ display: 'flex', gap: '0.375rem' }}>
+                <button
+                  onClick={() => setEditandoCupo(false)}
+                  style={{ flex: 1, padding: '0.375rem', background: '#f3f4f6', border: 'none', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '500', cursor: 'pointer', color: '#374151' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleGuardarCupo}
+                  disabled={guardandoCupo || !cupoEditado || parseInt(cupoEditado) < (horario.ocupacion ?? 0)}
+                  style={{ flex: 1, padding: '0.375rem', background: (guardandoCupo || !cupoEditado || parseInt(cupoEditado) < (horario.ocupacion ?? 0)) ? '#93c5fc' : '#6366f1', border: 'none', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '500', cursor: (guardandoCupo || !cupoEditado || parseInt(cupoEditado) < (horario.ocupacion ?? 0)) ? 'not-allowed' : 'pointer', color: 'white' }}
+                >
+                  {guardandoCupo ? '...' : 'Guardar'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              display: 'flex', alignItems: 'baseline', gap: '0.25rem',
             }}>
-              {horario.ocupacion ?? 0}
-            </span>
-            <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>/ {horario.cupo_maximo}</span>
-            {estaLleno && (
               <span style={{
-                marginLeft: 'auto', fontSize: '0.65rem', fontWeight: '700',
-                background: '#dc2626', color: 'white',
-                padding: '0.125rem 0.5rem', borderRadius: '4px',
+                fontSize: '1.5rem', fontWeight: '800',
+                color: estaLleno ? '#dc2626' : '#059669',
               }}>
-                LLENO
+                {horario.ocupacion ?? 0}
               </span>
-            )}
-          </div>
+              <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>/ {horario.cupo_maximo}</span>
+              {estaLleno && (
+                <span style={{
+                  marginLeft: 'auto', fontSize: '0.65rem', fontWeight: '700',
+                  background: '#dc2626', color: 'white',
+                  padding: '0.125rem 0.5rem', borderRadius: '4px',
+                }}>
+                  LLENO
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -367,6 +433,23 @@ function HorariosPage() {
   const [loadingTalleres, setLoadingTalleres] = useState(true);
   const [loadingHorarios, setLoadingHorarios] = useState(false);
   const [horarioSeleccionado, setHorarioSeleccionado] = useState<Horario | null>(null);
+
+  const actualizarCupoHorario = useCallback((horarioId: number, nuevoCupo: number, nuevaOcupacion: number) => {
+    setHorarioSeleccionado(prev => {
+      if (!prev || prev.id !== horarioId) return prev;
+      return {
+        ...prev,
+        cupo_maximo: nuevoCupo,
+        ocupacion: nuevaOcupacion,
+      };
+    });
+    // También actualizar en la lista de horarios
+    setHorarios(prev => prev.map(h => 
+      h.id === horarioId 
+        ? { ...h, cupo_maximo: nuevoCupo, ocupacion: nuevaOcupacion }
+        : h
+    ));
+  }, []);
 
   const cargarTalleres = useCallback(async () => {
     if (isCicloLoading || !cicloActual) return;
@@ -637,6 +720,7 @@ function HorariosPage() {
                   (horarioSeleccionado.ocupacion ?? 0) >= horarioSeleccionado.cupo_maximo
                 }
                 onClose={() => setHorarioSeleccionado(null)}
+                onActualizar={(nuevoCupo, nuevaOcupacion) => actualizarCupoHorario(horarioSeleccionado.id, nuevoCupo, nuevaOcupacion)}
               />
             </div>
           )}

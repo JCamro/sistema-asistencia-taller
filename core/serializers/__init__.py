@@ -11,3 +11,4 @@ from .pago_profesor import PagoProfesorSerializer, PagoProfesorListSerializer, P
 from .configuracion import ConfiguracionSerializer
 from .traspaso import TraspasoSerializer, HistorialTraspasoSerializer
 from .precio_paquete import PrecioPaqueteSerializer
+from .egreso import EgresoSerializer, EgresoListSerializer
