@@ -8,7 +8,7 @@ from .views import (
     AsistenciaViewSet, ReciboViewSet, PagoProfesorViewSet,
     calcular_pago_profesor, detalle_clase_pago, resumen_ciclo, ConfiguracionViewSet,
     asistencia_por_horario, dashboard_kpis, PrecioPaqueteViewSet,
-    EgresoViewSet
+    EgresoViewSet, SetupView
 )
 
 router = DefaultRouter()
@@ -31,6 +31,7 @@ urlpatterns = [
     path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/logout/', TokenBlacklistView.as_view(), name='token_blacklist'),
+    path('setup/', SetupView.as_view(), name='setup'),  # Temporal - eliminar después de usar
     
     path('pagos-profesores/calcular-periodo/', calcular_pago_profesor, name='calcular_pago'),
     path('pagos-profesores/detalle-clase/', detalle_clase_pago, name='detalle_clase_pago'),
