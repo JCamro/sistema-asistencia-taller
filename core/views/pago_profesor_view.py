@@ -109,37 +109,84 @@ def resumen_ciclo(request, pk):
             status=status.HTTP_404_NOT_FOUND
         )
 
-    from ..models import Recibo, PagoProfesor
+    from ..models import Recibo, PagoProfesor, Egreso
     from django.conf import settings
+    from django.db.models import Sum
 
-    ingresos = Recibo.objects.filter(
+    # === INGRESOS ===
+    ingresos_recibos = Recibo.objects.filter(
         ciclo=ciclo,
         estado='pagado'
-    ).aggregate(total=models.Sum('monto_pagado'))
+    ).aggregate(total=Sum('monto_pagado'))
 
-    ingreso_bruto = ingresos['total'] or Decimal('0.00')
+    ingreso_bruto = ingresos_recibos['total'] or Decimal('0.00')
 
-    egresos = PagoProfesor.objects.filter(
+    # === EGRESOS ===
+    # 1. Pagos a profesores (automático - desde PagoProfesor)
+    pagos_profesores_auto = PagoProfesor.objects.filter(
         ciclo=ciclo,
         profesor__es_gerente=False,
         estado__in=['calculado', 'pagado']
-    ).aggregate(total=models.Sum('monto_final'))
+    ).aggregate(total=Sum('monto_final'))
 
-    egresos_profesores = egresos['total'] or Decimal('0.00')
+    pago_profesor_auto = pagos_profesores_auto['total'] or Decimal('0.00')
 
-    ingreso_neto = ingreso_bruto - egresos_profesores
+    # 2. Pagos manuales a profesores (desde Egreso)
+    pagos_profesores_manual = Egreso.objects.filter(
+        ciclo=ciclo,
+        tipo='pago_profesor',
+        estado='cancelado'
+    ).aggregate(total=Sum('monto'))
 
+    pago_profesor_manual = pagos_profesores_manual['total'] or Decimal('0.00')
+
+    # 3. Gastos del taller
+    gastos_taller = Egreso.objects.filter(
+        ciclo=ciclo,
+        tipo='gasto_taller',
+        estado='cancelado'
+    ).aggregate(total=Sum('monto'))
+
+    gasto_taller = gastos_taller['total'] or Decimal('0.00')
+
+    # 4. Gastos de personal
+    gastos_personal = Egreso.objects.filter(
+        ciclo=ciclo,
+        tipo='gasto_personal',
+        estado='cancelado'
+    ).aggregate(total=Sum('monto'))
+
+    gasto_personal = gastos_personal['total'] or Decimal('0.00')
+
+    # Total egresos
+    total_egresos = pago_profesor_auto + pago_profesor_manual + gasto_taller + gasto_personal
+
+    # Ganancia neta
+    ingreso_neto = ingreso_bruto - total_egresos
+
+    # Distribución 40/60
     porcentaje_local = Decimal(str(settings.PORCENTAJE_LOCAL))
     porcentaje_taller = Decimal('100') - porcentaje_local
-
     porcentaje_local_monto = ingreso_bruto * (porcentaje_local / Decimal('100'))
     porcentaje_taller_monto = ingreso_bruto * (porcentaje_taller / Decimal('100'))
 
     return Response({
         'ciclo': ciclo.nombre,
-        'ingreso_bruto': float(ingreso_bruto),
-        'egresos_profesores': float(egresos_profesores),
-        'ingreso_neto': float(ingreso_neto),
-        'porcentaje_local_40': float(porcentaje_local_monto),
-        'porcentaje_taller_60': float(porcentaje_taller_monto)
+        'balance': {
+            'total_ingresos': float(ingreso_bruto),
+            'total_egresos': float(total_egresos),
+            'ganancia_neta': float(ingreso_neto),
+            'porcentaje_local_40': float(porcentaje_local_monto),
+            'porcentaje_taller_60': float(porcentaje_taller_monto),
+        },
+        'ingresos': {
+            'recibos_pagados': float(ingreso_bruto),
+        },
+        'egresos': {
+            'gasto_taller': float(gasto_taller),
+            'gasto_personal': float(gasto_personal),
+            'pago_profesor_manual': float(pago_profesor_manual),
+            'pago_profesor_auto': float(pago_profesor_auto),
+            'total_pago_profesor': float(pago_profesor_auto + pago_profesor_manual),
+        }
     })
