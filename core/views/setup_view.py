@@ -8,25 +8,20 @@ User = get_user_model()
 class SetupView(APIView):
     """
     Endpoint temporal para crear el primer superuser.
+    GET automático crea el superuser si no existe.
     """
-    authentication_classes = []  # Sin autenticación
-    permission_classes = []  # Sin permisos
+    authentication_classes = []
+    permission_classes = []
     
     def get(self, request):
-        return Response({
-            'status': 'ok',
-            'superusers_count': User.objects.filter(is_superuser=True).count(),
-            'message': 'Use POST to create superuser'
-        })
-    
-    def post(self, request):
-        # Verificar si ya hay superusers
+        # Si ya existe un superuser, no hacer nada
         if User.objects.filter(is_superuser=True).exists():
             return Response({
-                'error': 'Ya existen superusers'
-            }, status=status.HTTP_403_FORBIDDEN)
+                'message': 'El superuser ya existe',
+                'username': 'admin'
+            })
         
-        # Crear superuser por defecto
+        # Crear superuser automáticamente
         user = User.objects.create_user(
             username='admin',
             email='admin@taller.com',
@@ -38,5 +33,6 @@ class SetupView(APIView):
         return Response({
             'message': 'Superuser creado',
             'username': 'admin',
-            'password': 'admin123'
+            'password': 'admin123',
+            'admin_url': '/admin/'
         })
