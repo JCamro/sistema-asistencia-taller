@@ -1,22 +1,18 @@
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.views import APIView
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
 from django.contrib.auth import get_user_model
+import os
 
 User = get_user_model()
 
-@api_view(['GET'])
-@authentication_classes([])
-@permission_classes([])
+@csrf_exempt
 def setup_view(request):
     """
     Endpoint temporal para crear el primer superuser.
-    GET automático crea el superuser si no existe.
     """
     # Si ya existe un superuser, no hacer nada
     if User.objects.filter(is_superuser=True).exists():
-        return Response({
+        return JsonResponse({
             'message': 'El superuser ya existe',
             'username': 'admin',
             'admin_url': '/admin/'
@@ -31,7 +27,7 @@ def setup_view(request):
         is_superuser=True
     )
     
-    return Response({
+    return JsonResponse({
         'message': 'Superuser creado',
         'username': 'admin',
         'password': 'admin123',
