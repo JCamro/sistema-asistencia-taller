@@ -253,7 +253,7 @@ function Login() {
       <form onSubmit={handleLogin} style={{ background: 'linear-gradient(145deg, #141414 0%, #1c1c1c 100%)', padding: '2rem', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6)', border: '1px solid rgba(212, 175, 55, 0.15)' }}>
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <img 
-            src="/src/assets/logo-taller.png" 
+            src="/src/assets/logo-taller.png"
             alt="Logo Taller de Música Elguera"
             style={{ width: '64px', height: '64px', borderRadius: '16px', margin: '0 auto 1rem', objectFit: 'contain', boxShadow: '0 8px 24px rgba(212, 175, 55, 0.35)' }}
           />
