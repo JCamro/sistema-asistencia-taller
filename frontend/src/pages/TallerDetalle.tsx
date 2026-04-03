@@ -76,6 +76,9 @@ function TallerDetalle() {
   const [tipoPagoSeleccionado, setTipoPagoSeleccionado] = useState<'dinamico' | 'fijo'>('dinamico');
   const [montoFijo, setMontoFijo] = useState<string>('');
   const [guardandoPago, setGuardandoPago] = useState(false);
+  const [editandoCupo, setEditandoCupo] = useState(false);
+  const [cupoEditado, setCupoEditado] = useState<string>('');
+  const [guardandoCupo, setGuardandoCupo] = useState(false);
   const [formData, setFormData] = useState<HorarioFormData>({
     dia_semana: 0,
     hora_inicio: '',
@@ -345,6 +348,48 @@ function TallerDetalle() {
       showApiError(err);
     } finally {
       setGuardandoPago(false);
+    }
+  };
+
+  const handleGuardarCupo = async () => {
+    if (!horarioSeleccionado || !cupoEditado) return;
+    const nuevoCupo = parseInt(cupoEditado);
+    const ocupacionActual = horarioSeleccionado.ocupacion ?? 0;
+    
+    // Validar: no permitir disminuir a un valor menor a la ocupación actual
+    if (nuevoCupo < ocupacionActual) {
+      showToast(`No se puede reducir el cupo por debajo de ${ocupacionActual} alumno(s) matriculado(s)`, 'warning');
+      return;
+    }
+    
+    setGuardandoCupo(true);
+    const token = localStorage.getItem('access_token');
+    try {
+      const res = await fetch(`/api/horarios/${horarioSeleccionado.id}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cupo_maximo: nuevoCupo }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(JSON.stringify(errorData));
+      }
+      showToast('Cupo actualizado', 'success');
+      setEditandoCupo(false);
+      await fetchData();
+      // Actualizar horario seleccionado
+      if (horarioSeleccionado) {
+        setHorarioSeleccionado({
+          ...horarioSeleccionado,
+          cupo_maximo: nuevoCupo,
+          cupo_disponible: nuevoCupo - ocupacionActual,
+        });
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      showApiError(err);
+    } finally {
+      setGuardandoCupo(false);
     }
   };
 
@@ -717,17 +762,57 @@ function TallerDetalle() {
                 </div>
 
                 <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>Cupo</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '1.25rem', fontWeight: '700', color: ((horarioSeleccionado.ocupacion ?? 0) >= horarioSeleccionado.cupo_maximo) ? '#dc2626' : '#059669' }}>
-                      {horarioSeleccionado.ocupacion ?? 0}
-                    </span>
-                    <span style={{ color: '#9ca3af' }}>/</span>
-                    <span style={{ fontSize: '1rem', color: '#374151' }}>{horarioSeleccionado.cupo_maximo}</span>
-                    <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginLeft: 'auto' }}>
-                      ({horarioSeleccionado.cupo_disponible ?? horarioSeleccionado.cupo_maximo} disponibles)
-                    </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Cupo</div>
+                    {!editandoCupo && (
+                      <button
+                        onClick={() => { setEditandoCupo(true); setCupoEditado(horarioSeleccionado.cupo_maximo.toString()); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#6366f1', fontWeight: '500' }}
+                      >
+                        Editar
+                      </button>
+                    )}
                   </div>
+                  {editandoCupo ? (
+                    <div>
+                      <input
+                        type="number"
+                        value={cupoEditado}
+                        onChange={(e) => setCupoEditado(e.target.value)}
+                        min={horarioSeleccionado.ocupacion ?? 1}
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem', marginBottom: '0.5rem' }}
+                      />
+                      <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '0.5rem' }}>
+                        Mínimo: {horarioSeleccionado.ocupacion ?? 0} (alumnos actuales)
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => setEditandoCupo(false)}
+                          style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '500', cursor: 'pointer', color: '#374151' }}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={handleGuardarCupo}
+                          disabled={guardandoCupo || !cupoEditado || parseInt(cupoEditado) < (horarioSeleccionado.ocupacion ?? 0)}
+                          style={{ flex: 1, padding: '0.5rem', background: (guardandoCupo || !cupoEditado || parseInt(cupoEditado) < (horarioSeleccionado.ocupacion ?? 0)) ? '#93c5fc' : '#6366f1', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '500', cursor: (guardandoCupo || !cupoEditado || parseInt(cupoEditado) < (horarioSeleccionado.ocupacion ?? 0)) ? 'not-allowed' : 'pointer', color: 'white' }}
+                        >
+                          {guardandoCupo ? 'Guardando...' : 'Guardar'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '1.25rem', fontWeight: '700', color: ((horarioSeleccionado.ocupacion ?? 0) >= horarioSeleccionado.cupo_maximo) ? '#dc2626' : '#059669' }}>
+                        {horarioSeleccionado.ocupacion ?? 0}
+                      </span>
+                      <span style={{ color: '#9ca3af' }}>/</span>
+                      <span style={{ fontSize: '1rem', color: '#374151' }}>{horarioSeleccionado.cupo_maximo}</span>
+                      <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginLeft: 'auto' }}>
+                        ({horarioSeleccionado.cupo_disponible ?? horarioSeleccionado.cupo_maximo} disponibles)
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ marginBottom: '1rem' }}>

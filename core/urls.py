@@ -7,7 +7,8 @@ from .views import (
     HorarioViewSet, MatriculaViewSet, MatriculaHorarioViewSet,
     AsistenciaViewSet, ReciboViewSet, PagoProfesorViewSet,
     calcular_pago_profesor, detalle_clase_pago, resumen_ciclo, ConfiguracionViewSet,
-    asistencia_por_horario, dashboard_kpis, PrecioPaqueteViewSet
+    asistencia_por_horario, dashboard_kpis, PrecioPaqueteViewSet,
+    EgresoViewSet
 )
 
 router = DefaultRouter()
@@ -23,6 +24,7 @@ router.register(r'asistencias', AsistenciaViewSet)
 router.register(r'recibos', ReciboViewSet)
 router.register(r'pagos-profesores', PagoProfesorViewSet)
 router.register(r'precios', PrecioPaqueteViewSet, basename='precios')
+router.register(r'egresos', EgresoViewSet, basename='egresos')
 
 urlpatterns = [
     # Custom paths FIRST (before router)
@@ -49,6 +51,9 @@ urlpatterns = [
     path('ciclos/<int:ciclo_id>/asistencias/por-horario/', asistencia_por_horario, name='ciclo-asistencias-por-horario'),
     path('ciclos/<int:ciclo_id>/recibos/', ReciboViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-recibos'),
     path('ciclos/<int:ciclo_id>/precios/', PrecioPaqueteViewSet.as_view({'get': 'list'}), name='ciclo-precios'),
+    path('ciclos/<int:ciclo_id>/egresos/', EgresoViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-egresos'),
+    path('ciclos/<int:ciclo_id>/egresos/resumen/', EgresoViewSet.as_view({'get': 'resumen'}), name='ciclo-egresos-resumen'),
+    path('profesores/<int:profesor_id>/historial-pagos/', EgresoViewSet.as_view({'get': 'historial_pagos'}), name='profesor-historial-pagos'),
     
     # Endpoints anidados para matrículas
     path('matriculas/<int:matricula_id>/horarios/', MatriculaHorarioViewSet.as_view({'get': 'list'}), name='matricula-horarios'),

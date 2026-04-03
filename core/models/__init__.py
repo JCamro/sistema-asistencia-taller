@@ -13,6 +13,7 @@ from .pago_profesor_detalle import PagoProfesorDetalle
 from .configuracion import Configuracion
 from .historial_traspaso import HistorialTraspaso
 from .precio_paquete import PrecioPaquete
+from .egreso import Egreso
 
 __all__ = [
     'Ciclo',
@@ -30,4 +31,5 @@ __all__ = [
     'Configuracion',
     'HistorialTraspaso',
     'PrecioPaquete',
+    'Egreso',
 ]

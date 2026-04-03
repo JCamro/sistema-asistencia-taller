@@ -143,6 +143,55 @@ export interface PrecioPaquete {
   activo: boolean;
 }
 
+export interface Egreso {
+  id: number;
+  tipo: 'gasto_taller' | 'pago_profesor' | 'gasto_personal';
+  tipo_display: string;
+  monto: number;
+  descripcion: string;
+  fecha: string;
+  metodo_pago: 'efectivo' | 'transferencia' | 'yape' | 'plin';
+  metodo_pago_display: string;
+  categoria: string;
+  beneficiario: string;
+  profesor: number | null;
+  profesor_nombre: string | null;
+  ciclo: number;
+  ciclo_nombre: string;
+  estado: 'pendiente' | 'cancelado';
+  estado_display: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ResumenEgresos {
+  gasto_taller: number;
+  pago_profesor: number;
+  gasto_personal: number;
+  total: number;
+}
+
+export interface ResumenFinanzas {
+  ciclo: string;
+  ingresos: {
+    recibos_pagados: number;
+  };
+  egresos: {
+    gasto_taller: number;
+    gasto_personal: number;
+    pago_profesor_manual: number;
+    pago_profesor_auto: number;
+    total_pago_profesor: number;
+  };
+  balance: {
+    total_ingresos: number;
+    total_egresos: number;
+    ganancia_neta: number;
+  };
+  porcentaje_local_40: number;
+  porcentaje_taller_60: number;
+}
+
 // API Functions
 export const login = async (username: string, password: string) => {
   const response = await api.post('/auth/login/', { username, password });
@@ -230,6 +279,7 @@ export const calcularPagosProfesores = (cicloId: number, fechaInicio: string, fe
 
 // Reportes
 export const getResumenCiclo = (id: number) => api.get(`/ciclos/${id}/resumen/`);
+export const getResumenFinanzas = (id: number) => api.get<ResumenFinanzas>(`/ciclos/${id}/resumen/`);
 
 // Dashboard KPIs
 export const getDashboardKpis = (cicloId: number) => 
@@ -243,3 +293,15 @@ export const getPreciosActivos = (cicloId: number) =>
 export const createPrecio = (data: Partial<PrecioPaquete>) => api.post('/precios/', data);
 export const updatePrecio = (id: number, data: Partial<PrecioPaquete>) => api.patch(`/precios/${id}/`, data);
 export const deletePrecio = (id: number) => api.delete(`/precios/${id}/`);
+
+// Egresos
+export const getEgresos = (cicloId?: number) =>
+  cicloId ? api.get<Egreso[]>(`/ciclos/${cicloId}/egresos/`) : api.get<Egreso[]>('/egresos/');
+export const getEgreso = (id: number) => api.get<Egreso>(`/egresos/${id}/`);
+export const createEgreso = (data: Partial<Egreso>, cicloId?: number) => 
+  cicloId ? api.post(`/ciclos/${cicloId}/egresos/`, data) : api.post('/egresos/', data);
+export const updateEgreso = (id: number, data: Partial<Egreso>) => api.patch(`/egresos/${id}/`, data);
+export const deleteEgreso = (id: number) => api.delete(`/egresos/${id}/`);
+export const getResumenEgresos = (cicloId: number) => api.get<ResumenEgresos>(`/ciclos/${cicloId}/egresos/resumen/`);
+export const getHistorialPagosProfesor = (profesorId: number) => 
+  api.get<Egreso[]>(`/profesores/${profesorId}/historial-pagos/`);

@@ -12,6 +12,10 @@ import MatriculasPage from './pages/Matriculas';
 import AsistenciasPage from './pages/Asistencias';
 import RecibosPage from './pages/Recibos';
 import PagosProfesoresPage from './pages/PagosProfesores';
+import EgresosPage from './pages/Egresos';
+import FinanzasPage from './pages/Finanzas';
+import ConfiguracionPreciosPage from './pages/ConfiguracionPrecios';
+import CalculadoraPreciosPage from './pages/CalculadoraPrecios';
 
 const Loading = memo(function Loading() {
   return (
@@ -22,7 +26,7 @@ const Loading = memo(function Loading() {
   );
 });
 
-function Sidebar({ cicloNombre }: { cicloNombre: string }) {
+function Sidebar({ cicloNombre, abierto, onToggle }: { cicloNombre: string, abierto: boolean, onToggle: () => void }) {
   const { setCicloActual } = useCiclo();
   const location = useLocation();
 
@@ -36,6 +40,36 @@ function Sidebar({ cicloNombre }: { cicloNombre: string }) {
     window.location.href = '/';
   };
 
+  const NavLink = ({ item }: { item: { to: string; label: string; icon: string } }) => {
+    const isActive = location.pathname === item.to;
+    return (
+      <Link 
+        to={item.to} 
+        onClick={() => { if (window.innerWidth < 768) onToggle(); }}
+        style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '0.75rem', 
+          padding: '0.625rem 0.75rem', 
+          borderRadius: '8px', 
+          fontSize: '0.875rem', 
+          fontWeight: 500, 
+          color: isActive ? '#d4af37' : '#a1a1a1', 
+          backgroundColor: isActive ? 'rgba(212, 175, 55, 0.12)' : 'transparent', 
+          textDecoration: 'none', 
+          marginBottom: '0.125rem', 
+          transition: 'all 0.15s ease', 
+          cursor: 'pointer' 
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={isActive ? '#d4af37' : 'currentColor'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d={item.icon} />
+        </svg>
+        {item.label}
+      </Link>
+    );
+  };
+
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
     { to: '/alumnos', label: 'Alumnos', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
@@ -45,56 +79,69 @@ function Sidebar({ cicloNombre }: { cicloNombre: string }) {
     { to: '/matriculas', label: 'Matrículas', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' },
     { to: '/asistencias', label: 'Asistencias', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
     { to: '/recibos', label: 'Recibos', icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z' },
+    { to: '/egresos', label: 'Egresos', icon: 'M3 3h18v18H3V3zm3 9h12v6H6v-6zm3-6v4h12V6H6z' },
+    { to: '/finanzas', label: 'Finanzas', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
     { to: '/pagos-profesores', label: 'Pagos Profesores', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
   ];
 
+  const secciones = [
+    { titulo: 'Gestión', items: navItems.slice(0, 4) },
+    { titulo: 'Operaciones', items: navItems.slice(4, 7) },
+    { titulo: 'Finanzas', items: navItems.slice(7, 11) },
+  ];
+
   return (
-    <aside style={{ width: '260px', minHeight: '100vh', background: 'linear-gradient(180deg, #0a0a0a 0%, #141414 100%)', color: '#ffffff', display: 'flex', flexDirection: 'column', position: 'fixed', left: 0, top: 0, borderRight: '1px solid rgba(212, 175, 55, 0.15)' }}>
-      <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(212, 175, 55, 0.15)', background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, transparent 100%)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <img 
-            src="/src/assets/logo-taller.png" 
-            alt="Logo Taller de Música Elguera"
-            style={{ width: '40px', height: '40px', borderRadius: '10px', objectFit: 'contain' }}
-          />
-          <div>
-            <span style={{ fontSize: '1rem', fontWeight: '700', color: '#d4af37', display: 'block', fontFamily: "'Inter', sans-serif" }}>Taller de Música</span>
-            <span style={{ fontSize: '1rem', fontWeight: '700', color: '#c41e3a', display: 'block', fontFamily: "'Inter', sans-serif" }}>Elguera</span>
+    <>
+      {/* Overlay for mobile */}
+      {abierto && (
+        <div 
+          onClick={onToggle}
+          className="sidebar-overlay"
+        />
+      )}
+      <aside className={`sidebar ${abierto ? 'sidebar-open' : ''}`}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(212, 175, 55, 0.15)', background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, transparent 100%)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <img src="/src/assets/logo-taller.png" alt="Logo" style={{ width: '40px', height: '40px', borderRadius: '10px', objectFit: 'contain' }} />
+            <div>
+              <span style={{ fontSize: '1rem', fontWeight: '700', color: '#d4af37', display: 'block' }}>Taller de Música</span>
+              <span style={{ fontSize: '1rem', fontWeight: '700', color: '#c41e3a', display: 'block' }}>Elguera</span>
+            </div>
           </div>
         </div>
-      </div>
-      
-      <div style={{ padding: '1rem 1.5rem', background: 'linear-gradient(135deg, rgba(196, 30, 58, 0.08) 0%, rgba(212, 175, 55, 0.04) 100%)', borderBottom: '1px solid rgba(212, 175, 55, 0.1)' }}>
-        <p style={{ fontSize: '0.6875rem', color: '#d4af37', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Ciclo Activo</p>
-        <p style={{ fontSize: '0.9375rem', fontWeight: '600', color: '#ffffff', marginBottom: '0.75rem' }}>{cicloNombre}</p>
-        <button onClick={handleCambiarCiclo} style={{ padding: '0.5rem 0.75rem', background: 'rgba(212, 175, 55, 0.1)', color: '#d4af37', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer', width: '100%', transition: 'all 0.15s ease' }}>
-          ← Cambiar ciclo
-        </button>
-      </div>
+        
+        <div style={{ padding: '1rem 1.5rem', background: 'linear-gradient(135deg, rgba(196, 30, 58, 0.08) 0%, rgba(212, 175, 55, 0.04) 100%)', borderBottom: '1px solid rgba(212, 175, 55, 0.1)' }}>
+          <p style={{ fontSize: '0.6875rem', color: '#d4af37', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Ciclo Activo</p>
+          <p style={{ fontSize: '0.9375rem', fontWeight: '600', color: '#ffffff', marginBottom: '0.75rem' }}>{cicloNombre}</p>
+          <button onClick={handleCambiarCiclo} style={{ padding: '0.5rem 0.75rem', background: 'rgba(212, 175, 55, 0.1)', color: '#d4af37', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer', width: '100%' }}>
+            ← Cambiar ciclo
+          </button>
+        </div>
 
-      <nav style={{ flex: 1, padding: '1rem 0.75rem', overflowY: 'auto' }}>
-        {navItems.map(item => {
-          const isActive = location.pathname === item.to;
-          return (
-            <Link key={item.to} to={item.to} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', borderRadius: '10px', fontSize: '0.9375rem', fontWeight: '500', color: isActive ? '#d4af37' : '#a1a1a1', backgroundColor: isActive ? 'rgba(212, 175, 55, 0.15)' : 'transparent', textDecoration: 'none', marginBottom: '0.25rem', transition: 'all 0.15s ease', cursor: 'pointer' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={isActive ? '#d4af37' : 'currentColor'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d={item.icon} />
-              </svg>
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+        <nav style={{ flex: 1, padding: '1rem 0.75rem', overflowY: 'auto' }}>
+          <style>{`
+            nav::-webkit-scrollbar { width: 6px; }
+            nav::-webkit-scrollbar-track { background: #1a1a1a; }
+            nav::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+            nav::-webkit-scrollbar-thumb:hover { background: #555; }
+            nav { scrollbar-width: thin; scrollbar-color: #444 #1a1a1a; }
+          `}</style>
+          {secciones.map(seccion => (
+            <div key={seccion.titulo} style={{ marginBottom: '1rem' }}>
+              <p style={{ fontSize: '0.6875rem', color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem', padding: '0 0.5rem' }}>{seccion.titulo}</p>
+              {seccion.items.map(item => <NavLink key={item.to} item={item} />)}
+            </div>
+          ))}
+        </nav>
 
-      <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid rgba(212, 175, 55, 0.1)' }}>
-        <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem 1rem', backgroundColor: 'transparent', border: '1px solid rgba(196, 30, 58, 0.2)', borderRadius: '10px', fontSize: '0.9375rem', fontWeight: '500', color: '#c41e3a', cursor: 'pointer', transition: 'all 0.15s ease' }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          Cerrar sesión
-        </button>
-      </div>
-    </aside>
+        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid rgba(212, 175, 55, 0.1)' }}>
+          <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem 1rem', backgroundColor: 'transparent', border: '1px solid rgba(196, 30, 58, 0.2)', borderRadius: '10px', fontSize: '0.9375rem', fontWeight: '500', color: '#c41e3a', cursor: 'pointer' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+            Cerrar sesión
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }
 
@@ -102,6 +149,7 @@ const SidebarMemo = memo(Sidebar);
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { cicloActual } = useCiclo();
+  const [sidebarAbierto, setSidebarAbierto] = useState(false);
 
   if (!cicloActual) {
     return <Navigate to="/" replace />;
@@ -109,8 +157,37 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
-      <SidebarMemo cicloNombre={cicloActual.nombre} />
-      <main style={{ marginLeft: '260px', padding: '1.5rem 2rem', minHeight: '100vh' }}>
+      {/* Hamburger menu button for mobile */}
+      <button
+        onClick={() => setSidebarAbierto(!sidebarAbierto)}
+        style={{
+          display: 'none',
+          position: 'fixed',
+          top: '1rem',
+          left: '1rem',
+          zIndex: 60,
+          width: '40px',
+          height: '40px',
+          background: 'linear-gradient(135deg, #d4af37 0%, #b8962e 100%)',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 4px 12px rgba(212, 175, 55, 0.3)'
+        }}
+        className="hamburger-btn"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          {sidebarAbierto ? (
+            <path d="M6 18L18 6M6 6l12 12" />
+          ) : (
+            <path d="M3 12h18M3 6h18M3 18h18" />
+          )}
+        </svg>
+      </button>
+      <SidebarMemo cicloNombre={cicloActual.nombre} abierto={sidebarAbierto} onToggle={() => setSidebarAbierto(!sidebarAbierto)} />
+      <main style={{ marginLeft: '260px', padding: '1.5rem 2rem', minHeight: '100vh', boxSizing: 'border-box' }} className="main-content">
         {children}
       </main>
     </div>
@@ -523,7 +600,11 @@ export default function App() {
           <Route path="/matriculas" element={<ProtectedRoute><DashboardLayoutMemo><MatriculasPage /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/asistencias" element={<ProtectedRoute><DashboardLayoutMemo><AsistenciasPage /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/recibos" element={<ProtectedRoute><DashboardLayoutMemo><RecibosPage /></DashboardLayoutMemo></ProtectedRoute>} />
+          <Route path="/egresos" element={<ProtectedRoute><DashboardLayoutMemo><EgresosPage /></DashboardLayoutMemo></ProtectedRoute>} />
+          <Route path="/finanzas" element={<ProtectedRoute><DashboardLayoutMemo><FinanzasPage /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/pagos-profesores" element={<ProtectedRoute><DashboardLayoutMemo><PagosProfesoresPage /></DashboardLayoutMemo></ProtectedRoute>} />
+          <Route path="/configuracion-precios" element={<ProtectedRoute><DashboardLayoutMemo><ConfiguracionPreciosPage /></DashboardLayoutMemo></ProtectedRoute>} />
+          <Route path="/calculadora-precios" element={<ProtectedRoute><DashboardLayoutMemo><CalculadoraPreciosPage /></DashboardLayoutMemo></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </CicloProvider>
