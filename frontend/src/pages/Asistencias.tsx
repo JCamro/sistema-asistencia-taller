@@ -86,8 +86,8 @@ function AsistenciasPage() {
     const token = localStorage.getItem('access_token');
     try {
       const [horariosRes, profesRes] = await Promise.all([
-        fetch(`${apiBase}/ciclos/${cicloActual.id}/horarios/`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/ciclos/${cicloActual.id}/profesores/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/horarios/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/profesores/`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const [horariosData, profesData] = await Promise.all([
         horariosRes.json(),
@@ -107,7 +107,7 @@ function AsistenciasPage() {
   useEffect(() => {
     if (!cicloActual) return;
     const token = localStorage.getItem('access_token');
-    fetch(`${apiBase}/ciclos/${cicloActual.id}/asistencias/`, {
+    fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
       headers: { Authorization: `Bearer ${token}` },
     }).then(r => r.json()).then(data => {
       setAsistencias(data.results || data);
@@ -163,7 +163,7 @@ function AsistenciasPage() {
     const token = localStorage.getItem('access_token');
     console.log('fetchAlumnosHorario called:', { cicloActual: cicloActual.id, horarioSeleccionado, fecha });
     try {
-      const url = `${apiBase}/ciclos/${cicloActual.id}/asistencias/por-horario/?horario_id=${horarioSeleccionado}&fecha=${fecha}`;
+      const url = `${apiBase}/api/ciclos/${cicloActual.id}/asistencias/por-horario/?horario_id=${horarioSeleccionado}&fecha=${fecha}`;
       console.log('Fetching URL:', url);
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       console.log('Response status:', res.status);
@@ -209,13 +209,13 @@ function AsistenciasPage() {
     try {
       let res;
       if (alumno.asistencia_id) {
-        res = await fetch(`${apiBase}/asistencias/${alumno.asistencia_id}/`, {
+        res = await fetch(`${apiBase}/api/asistencias/${alumno.asistencia_id}/`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ estado: nuevoEstado }),
         });
       } else {
-        res = await fetch(`${apiBase}/ciclos/${cicloActual.id}/asistencias/`, {
+        res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
@@ -238,7 +238,7 @@ function AsistenciasPage() {
       }
       
       await fetchAlumnosHorario();
-      const resList = await fetch(`${apiBase}/ciclos/${cicloActual.id}/asistencias/`, {
+      const resList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await resList.json();
@@ -255,7 +255,7 @@ function AsistenciasPage() {
     if (!cicloActual || !busquedaRecuperacion) return;
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/ciclos/${cicloActual.id}/alumnos/`, {
+      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/alumnos/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -277,7 +277,7 @@ function AsistenciasPage() {
     const token = localStorage.getItem('access_token');
 
     try {
-      const resMat = await fetch(`${apiBase}/ciclos/${cicloActual.id}/matriculas/`, {
+      const resMat = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/matriculas/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const dataMat = await resMat.json();
@@ -291,7 +291,7 @@ function AsistenciasPage() {
 
       const horaActual = new Date().toTimeString().slice(0, 5);
 
-      await fetch(`${apiBase}/ciclos/${cicloActual.id}/asistencias/`, {
+      await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -329,7 +329,7 @@ function AsistenciasPage() {
     const horaActual = new Date().toTimeString().slice(0, 5);
 
     try {
-      const res = await fetch(`${apiBase}/asistencias/${editandoAsistencia.id}/`, {
+      const res = await fetch(`${apiBase}/api/asistencias/${editandoAsistencia.id}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -351,7 +351,7 @@ function AsistenciasPage() {
       setEditandoAsistencia(null);
       setEditandoProfesorOriginal(null);
       await fetchAlumnosHorario();
-      const resList = await fetch(`${apiBase}/ciclos/${cicloActual.id}/asistencias/`, {
+      const resList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await resList.json();
