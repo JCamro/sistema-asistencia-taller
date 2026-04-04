@@ -4,11 +4,11 @@
 export const getApiBaseUrl = (): string => {
   const apiUrl = import.meta.env.VITE_API_URL;
   if (apiUrl) {
-    return apiUrl;
+    return `${apiUrl}/api`;
   }
   // En desarrollo sin VITE_API_URL, usar ruta relativa
   // Vite proxy reenviará /api -> localhost:8000
-  return '';
+  return '/api';
 };
 
 // Para compatibilidad con código existente
