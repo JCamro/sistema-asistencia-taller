@@ -31,7 +31,8 @@ class Profesor(models.Model):
     def edad(self):
         if not self.fecha_nacimiento:
             return None
-        today = date.today()
+        from django.utils import timezone
+        today = timezone.now().date()
         edad = today.year - self.fecha_nacimiento.year
         if (today.month, today.day) < (self.fecha_nacimiento.month, self.fecha_nacimiento.day):
             edad -= 1

@@ -1,6 +1,7 @@
 import { useState, useEffect, memo, useCallback } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
+import { getApiBaseUrl } from '../utils/api';
 
 interface Alumno {
   id: number;
@@ -89,6 +90,7 @@ const initialFormData: ReciboFormData = {
 };
 
 function RecibosPage() {
+  const apiBase = getApiBaseUrl();
   const { cicloActual } = useCiclo();
   const { showApiError } = useToast();
   const [recibos, setRecibos] = useState<Recibo[]>([]);
@@ -194,7 +196,7 @@ function RecibosPage() {
     setCalculandoPrecio(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch('/api/recibos/calcular_precio/', {
+    const res = await fetch(`${apiBase}/recibos/calcular_precio/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

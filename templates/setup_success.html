@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración Exitosa - Taller de Música Elguera</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .container {
+            background: linear-gradient(145deg, #141414 0%, #1c1c1c 100%);
+            border-radius: 20px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            text-align: center;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .logo h1 {
+            font-size: 2rem;
+            color: #d4af37;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        .logo h2 {
+            font-size: 1.5rem;
+            color: #c41e3a;
+            font-weight: 700;
+        }
+        .icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #d4af37 0%, #b8962e 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2.5rem;
+        }
+        h2 {
+            color: #d4af37;
+            margin-bottom: 1rem;
+            font-size: 1.75rem;
+        }
+        .subtitle {
+            color: #a1a1a1;
+            margin-bottom: 2rem;
+            font-size: 1rem;
+        }
+        .credentials {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            text-align: left;
+        }
+        .credentials h3 {
+            color: #d4af37;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .credentials p {
+            color: #a1a1a1;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+        .credentials .username {
+            color: #ffffff;
+            font-weight: 600;
+            font-family: monospace;
+            background: rgba(212, 175, 55, 0.1);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+        .buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 0.875rem 2rem;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #d4af37 0%, #b8962e 100%);
+            color: #0a0a0a;
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(212, 175, 55, 0.4);
+        }
+        .btn-secondary {
+            background: transparent;
+            color: #a1a1a1;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(212, 175, 55, 0.3);
+        }
+        .note {
+            margin-top: 2rem;
+            font-size: 0.75rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>Taller de Música</h1>
+            <h2>Elguera</h2>
+        </div>
+        
+        <div class="icon">✓</div>
+        
+        <h2>¡Configuración Completada!</h2>
+        <p class="subtitle">El sistema ha sido inicializado correctamente.</p>
+        
+        <div class="credentials">
+            <h3>📋 Credenciales Creadas</h3>
+            
+            <p><strong>Administrador del Sistema:</strong></p>
+            <p>Usuario: <span class="username">{{ super_username }}</span></p>
+            <p>URL Admin: <span class="username">/admin/</span></p>
+            <p style="color: #666; font-size: 0.75rem; margin-top: 0.5rem;">→ Usa estas credenciales para acceder al panel de administración de Django</p>
+            
+            <div style="height: 1px; background: rgba(212, 175, 55, 0.2); margin: 1rem 0;"></div>
+            
+            <p><strong>Usuario de la Aplicación:</strong></p>
+            <p>Usuario: <span class="username">{{ app_username }}</span></p>
+            <p>URL App: <span class="username">/login/</span></p>
+            <p style="color: #666; font-size: 0.75rem; margin-top: 0.5rem;">→ Usa estas credenciales para acceder al frontend</p>
+        </div>
+        
+        <div class="buttons">
+            <a href="/admin/" class="btn btn-primary">Ir al Panel de Admin</a>
+            <a href="/api/docs/" class="btn btn-secondary">Ver Documentación API</a>
+        </div>
+        
+        <p class="note">
+            📝 Nota: Guarda estas credenciales en un lugar seguro. 
+            Si necesitas crear más usuarios, usa el panel de administración (/admin/).
+        </p>
+    </div>
+</body>
+</html>

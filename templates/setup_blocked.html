@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Bloqueado - Taller de Música Elguera</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .container {
+            background: linear-gradient(145deg, #141414 0%, #1c1c1c 100%);
+            border-radius: 20px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+            border: 1px solid rgba(196, 30, 58, 0.15);
+            text-align: center;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .logo h1 {
+            font-size: 2rem;
+            color: #d4af37;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        .logo h2 {
+            font-size: 1.5rem;
+            color: #c41e3a;
+            font-weight: 700;
+        }
+        .icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(196, 30, 58, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2.5rem;
+        }
+        h2 {
+            color: #e63950;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        p {
+            color: #a1a1a1;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.875rem 2rem;
+            background: linear-gradient(135deg, #d4af37 0%, #b8962e 100%);
+            color: #0a0a0a;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(212, 175, 55, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>Taller de Música</h1>
+            <h2>Elguera</h2>
+        </div>
+        
+        <div class="icon">🔒</div>
+        
+        <h2>Configuración Completada</h2>
+        
+        <p>{{ message|default:"El sistema ya ha sido configurado. Usa el panel de administración para gestionar usuarios." }}</p>
+        
+        <a href="/admin/" class="btn">Ir al Panel de Administración</a>
+    </div>
+</body>
+</html>

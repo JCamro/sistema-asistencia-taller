@@ -1,6 +1,17 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 
+// Helper para obtener la URL base del API
+const getApiBaseUrl = (): string => {
+  const apiUrl = import.meta.env.VITE_API_URL;
+  if (apiUrl) {
+    return `${apiUrl}/api`;
+  }
+  // En desarrollo sin VITE_API_URL, usar ruta relativa
+  // Vite proxy reenviará /api -> localhost:8000
+  return '/api';
+};
+
 interface Ciclo {
   id: number;
   nombre: string;
@@ -25,6 +36,7 @@ export function CicloProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const recargar = useCallback(() => {
+    const apiBase = getApiBaseUrl();
     const token = localStorage.getItem('access_token');
     if (!token) {
       setCiclos([]);
@@ -32,7 +44,7 @@ export function CicloProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const fetchCiclos = fetch('/api/ciclos/', {
+    const fetchCiclos = fetch(`${apiBase}/ciclos/`, {
       headers: { Authorization: `Bearer ${token}` }
     }).then(r => {
       if (r.status === 401) {
@@ -43,7 +55,7 @@ export function CicloProvider({ children }: { children: ReactNode }) {
       return r.json();
     });
 
-    const fetchConfig = fetch('/api/config/', {
+    const fetchConfig = fetch(`${apiBase}/config/`, {
       headers: { Authorization: `Bearer ${token}` }
     }).then(r => {
       if (r.status === 401) {
@@ -89,11 +101,12 @@ export function CicloProvider({ children }: { children: ReactNode }) {
   }, [recargar]);
 
   const setCicloActual = (ciclo: Ciclo | null) => {
+    const apiBase = getApiBaseUrl();
     setCicloActualState(ciclo);
     
     const token = localStorage.getItem('access_token');
     if (token && ciclo) {
-      fetch('/api/config/', {
+      fetch(`${apiBase}/config/`, {
         method: 'PATCH',
         headers: { 
           Authorization: `Bearer ${token}`,
@@ -105,12 +118,13 @@ export function CicloProvider({ children }: { children: ReactNode }) {
   };
 
   const seleccionarCiclo = async (ciclo: Ciclo) => {
+    const apiBase = getApiBaseUrl();
     localStorage.setItem('ciclo_activo_id', String(ciclo.id));
     setCicloActualState(ciclo);
     
     const token = localStorage.getItem('access_token');
     if (token) {
-      await fetch('/api/config/', {
+      await fetch(`${apiBase}/config/`, {
         method: 'PATCH',
         headers: { 
           Authorization: `Bearer ${token}`,

@@ -292,6 +292,7 @@ class ReciboService:
         Returns:
             str: Número de recibo en formato REC-{AÑO}-{SECUENCIA:04d}
         """
-        año = datetime.now().year
+        from django.utils import timezone
+        año = timezone.now().year
         count = Recibo.objects.filter(numero__startswith=f'REC-{año}').count()
         return f"REC-{año}-{count + 1:04d}"
