@@ -114,7 +114,7 @@ export function CicloProvider({ children }: { children: ReactNode }) {
     
     const token = localStorage.getItem('access_token');
     if (token) {
-      await fetch(`${apiBase}/config/`, {
+      await fetch(`${apiBase}/api/config/`, {
         method: 'PATCH',
         headers: { 
           Authorization: `Bearer ${token}`,
