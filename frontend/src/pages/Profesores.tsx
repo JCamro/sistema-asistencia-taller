@@ -97,8 +97,8 @@ function ProfesoresPage() {
     const token = localStorage.getItem('access_token');
     try {
       const url = editingId
-        ? `/api/profesores/${editingId}/`
-        : `/api/ciclos/${cicloActual.id}/profesores/`;
+        ? `${apiBase}/api/profesores/${editingId}/`
+        : `${apiBase}/api/ciclos/${cicloActual.id}/profesores/`;
       const method = editingId ? 'PATCH' : 'POST';
       const res = await fetch(url, {
         method,

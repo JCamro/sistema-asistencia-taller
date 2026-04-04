@@ -97,8 +97,8 @@ function AlumnosPage() {
       const payload = { ...formData, ciclo: cicloActual.id };
       console.log('Enviando:', payload);
       const url = editingId
-        ? `/api/alumnos/${editingId}/`
-        : `/api/ciclos/${cicloActual.id}/alumnos/`;
+        ? `${apiBase}/api/alumnos/${editingId}/`
+        : `${apiBase}/api/ciclos/${cicloActual.id}/alumnos/`;
       const method = editingId ? 'PATCH' : 'POST';
       const res = await fetch(url, {
         method,

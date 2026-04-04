@@ -78,8 +78,8 @@ function TalleresPage() {
     const token = localStorage.getItem('access_token');
     try {
       const url = editingId
-        ? `/api/talleres/${editingId}/`
-        : `/api/ciclos/${cicloActual.id}/talleres/`;
+        ? `${apiBase}/api/talleres/${editingId}/`
+        : `${apiBase}/api/ciclos/${cicloActual.id}/talleres/`;
       const method = editingId ? 'PATCH' : 'POST';
       const res = await fetch(url, {
         method,

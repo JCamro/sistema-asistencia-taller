@@ -477,7 +477,7 @@ function HorariosPage() {
     const token = localStorage.getItem('access_token');
     try {
       const res = await fetch(
-        `/api/horarios/?taller=${tallerId}&page_size=100`,
+        `${apiBase}/api/horarios/?taller=${tallerId}&page_size=100`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await res.json();
