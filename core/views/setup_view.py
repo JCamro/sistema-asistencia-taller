@@ -9,10 +9,13 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.utils import timezone
 from django.db import transaction
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
 User = get_user_model()
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class SetupView(View):
     """
     Vista para configuración inicial del sistema.
@@ -159,6 +162,10 @@ class SetupBlockedView(View):
     """Vista mostrada cuando el setup ya fue completado."""
     
     template_name = 'setup_blocked.html'
+    
+    @method_decorator(csrf_exempt)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
     
     def get(self, request):
         return render(request, self.template_name, {
