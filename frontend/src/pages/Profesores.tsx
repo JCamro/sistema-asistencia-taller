@@ -67,7 +67,7 @@ function ProfesoresPage() {
     if (!cicloActual) return;
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/profesores/`, {
+      const res = await fetch(`${apiBase}/ciclos/${cicloActual.id}/profesores/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -150,7 +150,7 @@ function ProfesoresPage() {
     setSaving(true);
     const token = localStorage.getItem('access_token');
     try {
-      await fetch(`${apiBase}/api/profesores/${deletingId}/`, {
+      await fetch(`${apiBase}/profesores/${deletingId}/`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

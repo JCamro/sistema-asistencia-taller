@@ -40,7 +40,7 @@ function TraspasoModal({
     if (!isOpen || !cicloId) return;
     const token = localStorage.getItem('access_token');
     setLoadingAlumnos(true);
-    fetch(`${apiBase}/api/ciclos/${cicloId}/alumnos/`, {
+    fetch(`${apiBase}/ciclos/${cicloId}/alumnos/`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())

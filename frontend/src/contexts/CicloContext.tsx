@@ -1,16 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-
-// Helper para obtener la URL base del API
-const getApiBaseUrl = (): string => {
-  const apiUrl = import.meta.env.VITE_API_URL;
-  if (apiUrl) {
-    return `${apiUrl}/api`;
-  }
-  // En desarrollo sin VITE_API_URL, usar ruta relativa
-  // Vite proxy reenviará /api -> localhost:8000
-  return '/api';
-};
+import { getApiBaseUrl } from '../utils/api';
 
 interface Ciclo {
   id: number;
