@@ -231,7 +231,7 @@ function Login() {
     setLoading(true);
     const apiUrl = getApiBaseUrl();
     try {
-      const res = await fetch(`${apiUrl}/auth/login/`, { 
+      const res = await fetch(`${apiUrl}/api/auth/login/`, { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ username, password }) 

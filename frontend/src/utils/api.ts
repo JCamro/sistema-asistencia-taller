@@ -4,7 +4,7 @@
 export const getApiBaseUrl = (): string => {
   const apiUrl = import.meta.env.VITE_API_URL;
   if (apiUrl) {
-    return `${apiUrl}/api`;
+    return apiUrl; // Production: https://... (sin /api)
   }
   // En desarrollo sin VITE_API_URL, usar ruta relativa
   // Vite proxy reenviará /api -> localhost:8000

@@ -34,7 +34,7 @@ export function CicloProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const fetchCiclos = fetch(`${apiBase}/ciclos/`, {
+    const fetchCiclos = fetch(`${apiBase}/api/ciclos/`, {
       headers: { Authorization: `Bearer ${token}` }
     }).then(r => {
       if (r.status === 401) {
@@ -45,7 +45,7 @@ export function CicloProvider({ children }: { children: ReactNode }) {
       return r.json();
     });
 
-    const fetchConfig = fetch(`${apiBase}/config/`, {
+    const fetchConfig = fetch(`${apiBase}/api/config/`, {
       headers: { Authorization: `Bearer ${token}` }
     }).then(r => {
       if (r.status === 401) {
@@ -96,7 +96,7 @@ export function CicloProvider({ children }: { children: ReactNode }) {
     
     const token = localStorage.getItem('access_token');
     if (token && ciclo) {
-      fetch(`${apiBase}/config/`, {
+      fetch(`${apiBase}/api/config/`, {
         method: 'PATCH',
         headers: { 
           Authorization: `Bearer ${token}`,

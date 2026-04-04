@@ -49,7 +49,7 @@ function TalleresPage() {
     if (!cicloActual) return;
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/`, {
+      const res = await fetch(`${apiBase}/ciclos/${cicloActual.id}/talleres/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -126,7 +126,7 @@ function TalleresPage() {
     setSaving(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/${deletingId}/`, {
+      const res = await fetch(`${apiBase}/ciclos/${cicloActual.id}/talleres/${deletingId}/`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

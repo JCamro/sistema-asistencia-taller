@@ -151,9 +151,9 @@ function MatriculasPage() {
     const token = localStorage.getItem('access_token');
     try {
       const [matriculasRes, alumnosRes, talleresRes] = await Promise.all([
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/matriculas/`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/alumnos/`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/ciclos/${cicloActual.id}/matriculas/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/ciclos/${cicloActual.id}/alumnos/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/ciclos/${cicloActual.id}/talleres/`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const [matriculasData, alumnosData, talleresData] = await Promise.all([
         matriculasRes.json(),
@@ -175,7 +175,7 @@ function MatriculasPage() {
     setHorariosLoading(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/horarios/?taller=${tallerId}`, {
+      const res = await fetch(`${apiBase}/ciclos/${cicloActual.id}/horarios/?taller=${tallerId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -205,7 +205,7 @@ function MatriculasPage() {
     setAsistenciasDetalle([]);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/asistencias/?matricula=${matricula.id}`, {
+      const res = await fetch(`${apiBase}/asistencias/?matricula=${matricula.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -224,7 +224,7 @@ function MatriculasPage() {
   const fetchHorariosDetalle = useCallback(async (matriculaId: number) => {
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/matriculas/${matriculaId}/horarios/`, {
+      const res = await fetch(`${apiBase}/matriculas/${matriculaId}/horarios/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -263,7 +263,7 @@ function MatriculasPage() {
       const token = localStorage.getItem('access_token');
       try {
         const res = await fetch(
-          `${apiBase}/api/matriculas/calcular-precio/?taller_id=${formData.taller}&sesiones=${formData.sesiones_contratadas}`,
+          `${apiBase}/matriculas/calcular-precio/?taller_id=${formData.taller}&sesiones=${formData.sesiones_contratadas}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         const data = await res.json();
@@ -338,7 +338,7 @@ function MatriculasPage() {
     setSaving(true);
     const token = localStorage.getItem('access_token');
     try {
-      const url = editingId ? `${apiBase}/api/matriculas/${editingId}/` : `${apiBase}/api/ciclos/${cicloActual.id}/matriculas/`;
+      const url = editingId ? `${apiBase}/matriculas/${editingId}/` : `${apiBase}/ciclos/${cicloActual.id}/matriculas/`;
       const method = editingId ? 'PATCH' : 'POST';
       
       const payload: Record<string, unknown> = {
@@ -374,7 +374,7 @@ function MatriculasPage() {
       if (!editingId && formData.horarios.length > 0) {
         // Crear nuevos horarios para nueva matrícula
         for (const horarioId of formData.horarios) {
-          const resMH = await fetch('${apiBase}/api/matriculas-horarios/', {
+          const resMH = await fetch('${apiBase}/matriculas-horarios/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({
@@ -393,7 +393,7 @@ function MatriculasPage() {
         }
       } else if (editingId) {
         // Obtener horarios actuales y actualizarlos
-        const resHorarios = await fetch(`${apiBase}/api/matriculas-horarios/?matricula=${editingId}`, {
+        const resHorarios = await fetch(`${apiBase}/matriculas-horarios/?matricula=${editingId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const dataHorarios = await resHorarios.json();
@@ -404,7 +404,7 @@ function MatriculasPage() {
           if (!formData.horarios.includes(horarioId)) {
             const mhToDelete = (dataHorarios.results || dataHorarios).find((mh: any) => mh.horario === horarioId);
             if (mhToDelete) {
-              await fetch(`${apiBase}/api/matriculas-horarios/${mhToDelete.id}/`, {
+              await fetch(`${apiBase}/matriculas-horarios/${mhToDelete.id}/`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
               });
@@ -415,7 +415,7 @@ function MatriculasPage() {
         // Agregar nuevos horarios
         for (const horarioId of formData.horarios) {
           if (!horariosActuales.includes(horarioId)) {
-            const resMH = await fetch('${apiBase}/api/matriculas-horarios/', {
+            const resMH = await fetch('${apiBase}/matriculas-horarios/', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
               body: JSON.stringify({
@@ -453,7 +453,7 @@ function MatriculasPage() {
     // Primero cargamos los horarios existentes
     let horariosExistentes: number[] = [];
     try {
-      const res = await fetch(`${apiBase}/api/matriculas-horarios/?matricula=${matricula.id}`, {
+      const res = await fetch(`${apiBase}/matriculas-horarios/?matricula=${matricula.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -486,7 +486,7 @@ function MatriculasPage() {
     if (!deletingId) return;
     const token = localStorage.getItem('access_token');
     try {
-      await fetch(`${apiBase}/api/matriculas/${deletingId}/`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      await fetch(`${apiBase}/matriculas/${deletingId}/`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
       fetchData();
     } catch (err) {
       console.error('Error:', err);
@@ -512,7 +512,7 @@ function MatriculasPage() {
     if (!eliminandoAsistenciaId || !segundaConfirmacion) return;
     const token = localStorage.getItem('access_token');
     try {
-      await fetch(`${apiBase}/api/asistencias/${eliminandoAsistenciaId}/`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      await fetch(`${apiBase}/asistencias/${eliminandoAsistenciaId}/`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
       setAsistenciasDetalle(prev => prev.filter(a => a.id !== eliminandoAsistenciaId));
       showToast('Asistencia eliminada', 'success');
     } catch (err) {
@@ -533,7 +533,7 @@ function MatriculasPage() {
     setTraspasandoLoading(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/matriculas/${traspasandoId}/traspasar/`, {
+      const res = await fetch(`${apiBase}/matriculas/${traspasandoId}/traspasar/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ alumno_destino_id: alumnoDestinoId }),

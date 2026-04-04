@@ -115,9 +115,9 @@ function RecibosPage() {
     const token = localStorage.getItem('access_token');
     try {
       const [recibosRes, alumnosRes, matriculasRes] = await Promise.all([
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/recibos/?ordering=-id`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/alumnos/`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/matriculas/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/ciclos/${cicloActual.id}/recibos/?ordering=-id`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/ciclos/${cicloActual.id}/alumnos/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/ciclos/${cicloActual.id}/matriculas/`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const [recibosData, alumnosData, matriculasData] = await Promise.all([
         recibosRes.json(),
@@ -173,7 +173,7 @@ function RecibosPage() {
     setShowDetailModal(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/recibos/${recibo.id}/`, {
+      const res = await fetch(`${apiBase}/recibos/${recibo.id}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -196,7 +196,7 @@ function RecibosPage() {
     setCalculandoPrecio(true);
     const token = localStorage.getItem('access_token');
     try {
-    const res = await fetch(`${apiBase}/api/recibos/calcular_precio/`, {
+    const res = await fetch(`${apiBase}/recibos/calcular_precio/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -259,7 +259,7 @@ function RecibosPage() {
     setSaving(true);
     const token = localStorage.getItem('access_token');
     try {
-      const url = editingId ? `${apiBase}/api/recibos/${editingId}/` : `${apiBase}/api/ciclos/${cicloActual.id}/recibos/`;
+      const url = editingId ? `${apiBase}/recibos/${editingId}/` : `${apiBase}/ciclos/${cicloActual.id}/recibos/`;
       const method = editingId ? 'PATCH' : 'POST';
 
       const body: any = {
