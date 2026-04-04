@@ -138,6 +138,7 @@ function PanelLateral({
   onClose: () => void;
   onActualizar: (nuevoCupo: number, nuevaOcupacion: number) => void;
 }) {
+  const apiBase = getApiBaseUrl();
   const diaLabel = DIAS.find((d) => d.value === horario.dia_semana)?.label ?? '';
   const { showToast } = useToast();
   const [editandoCupo, setEditandoCupo] = useState(false);
