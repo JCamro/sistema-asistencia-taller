@@ -1,4 +1,5 @@
 import { useState, useEffect, memo, useCallback } from 'react';
+import { getApiBaseUrl } from '../../utils/api';
 
 interface Alumno {
   id: number;
@@ -27,6 +28,7 @@ function TraspasoModal({
   onCancel,
   isLoading = false,
 }: TraspasoModalProps) {
+  const apiBase = getApiBaseUrl();
   const [paso, setPaso] = useState<1 | 2>(1);
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [search, setSearch] = useState('');
@@ -38,7 +40,7 @@ function TraspasoModal({
     if (!isOpen || !cicloId) return;
     const token = localStorage.getItem('access_token');
     setLoadingAlumnos(true);
-    fetch(`/api/ciclos/${cicloId}/alumnos/`, {
+    fetch(`${apiBase}/api/ciclos/${cicloId}/alumnos/`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())

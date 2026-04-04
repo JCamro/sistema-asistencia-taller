@@ -2,6 +2,7 @@ import { useState, useEffect, memo, useCallback } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
+import { getApiBaseUrl } from '../utils/api';
 
 interface Alumno {
   id: number;
@@ -41,6 +42,7 @@ const initialFormData: AlumnoFormData = {
 function AlumnosPage() {
   const { cicloActual } = useCiclo();
   const { showToast, showApiError } = useToast();
+  const apiBase = getApiBaseUrl();
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -55,7 +57,7 @@ function AlumnosPage() {
     if (!cicloActual) return;
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`/api/ciclos/${cicloActual.id}/alumnos/`, {
+      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/alumnos/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -147,7 +149,7 @@ function AlumnosPage() {
     setSaving(true);
     const token = localStorage.getItem('access_token');
     try {
-      await fetch(`/api/alumnos/${deletingId}/`, {
+      await fetch(`${apiBase}/api/alumnos/${deletingId}/`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

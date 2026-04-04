@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
+import { getApiBaseUrl } from '../utils/api';
 
 interface Taller {
   id: number;
@@ -59,6 +60,7 @@ function TallerDetalle() {
   const { tallerId } = useParams<{ tallerId: string }>();
   const { cicloActual, isLoading: isCicloLoading } = useCiclo();
   const { showToast, showApiError } = useToast();
+  const apiBase = getApiBaseUrl();
   
   const [taller, setTaller] = useState<Taller | null>(null);
   const [horarios, setHorarios] = useState<Horario[]>([]);
@@ -95,17 +97,17 @@ function TallerDetalle() {
     const token = localStorage.getItem('access_token');
     try {
       const [tallerRes, horariosRes, profesoresRes] = await Promise.all([
-        fetch(`/api/ciclos/${cicloActual.id}/talleres/${tallerId}/`, {
+        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/${tallerId}/`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`/api/horarios/?taller=${tallerId}&page_size=100`, {
+        fetch(`${apiBase}/api/horarios/?taller=${tallerId}&page_size=100`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then(res => {
-          console.log('🔍 DEBUG ENDPOINT - URL llamada:', `/api/horarios/?taller=${tallerId}&page_size=100`);
+          console.log('🔍 DEBUG ENDPOINT - URL llamada:', `${apiBase}/api/horarios/?taller=${tallerId}&page_size=100`);
           console.log('🔍 DEBUG ENDPOINT - Status:', res.status);
           return res;
         }),
-        fetch(`/api/ciclos/${cicloActual.id}/profesores/`, {
+        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/profesores/`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -215,7 +217,7 @@ function TallerDetalle() {
     const horaFinStr = `${horaFin.toString().padStart(2, '0')}:${horaParts[1]}`;
 
     try {
-      const res = await fetch(`/api/ciclos/${cicloActual.id}/horarios/`, {
+      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/horarios/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -261,7 +263,7 @@ function TallerDetalle() {
     if (!horarioSeleccionado) return;
     const token = localStorage.getItem('access_token');
     try {
-      await fetch(`/api/horarios/${horarioSeleccionado.id}/`, {
+      await fetch(`${apiBase}/api/horarios/${horarioSeleccionado.id}/`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -285,7 +287,7 @@ function TallerDetalle() {
     setGuardandoProfesor(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`/api/horarios/${horarioSeleccionado.id}/`, {
+      const res = await fetch(`${apiBase}/api/horarios/${horarioSeleccionado.id}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ profesor: nuevoProfesorId }),
@@ -323,7 +325,7 @@ function TallerDetalle() {
       if (tipoPagoSeleccionado === 'fijo' && montoFijo) {
         payload.monto_fijo = parseFloat(montoFijo);
       }
-      const res = await fetch(`/api/horarios/${horarioSeleccionado.id}/`, {
+      const res = await fetch(`${apiBase}/api/horarios/${horarioSeleccionado.id}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
@@ -365,7 +367,7 @@ function TallerDetalle() {
     setGuardandoCupo(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`/api/horarios/${horarioSeleccionado.id}/`, {
+      const res = await fetch(`${apiBase}/api/horarios/${horarioSeleccionado.id}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ cupo_maximo: nuevoCupo }),

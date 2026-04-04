@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
+import { getApiBaseUrl } from '../utils/api';
 
 interface Taller {
   id: number;
@@ -32,6 +33,7 @@ function TalleresPage() {
   const navigate = useNavigate();
   const { cicloActual } = useCiclo();
   const { showApiError } = useToast();
+  const apiBase = getApiBaseUrl();
   const [talleres, setTalleres] = useState<Taller[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -47,7 +49,7 @@ function TalleresPage() {
     if (!cicloActual) return;
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`/api/ciclos/${cicloActual.id}/talleres/`, {
+      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -124,7 +126,7 @@ function TalleresPage() {
     setSaving(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`/api/ciclos/${cicloActual.id}/talleres/${deletingId}/`, {
+      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/${deletingId}/`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

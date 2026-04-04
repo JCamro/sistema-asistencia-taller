@@ -115,9 +115,9 @@ function RecibosPage() {
     const token = localStorage.getItem('access_token');
     try {
       const [recibosRes, alumnosRes, matriculasRes] = await Promise.all([
-        fetch(`/api/ciclos/${cicloActual.id}/recibos/?ordering=-id`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`/api/ciclos/${cicloActual.id}/alumnos/`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`/api/ciclos/${cicloActual.id}/matriculas/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/recibos/?ordering=-id`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/alumnos/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/matriculas/`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const [recibosData, alumnosData, matriculasData] = await Promise.all([
         recibosRes.json(),
@@ -173,7 +173,7 @@ function RecibosPage() {
     setShowDetailModal(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`/api/recibos/${recibo.id}/`, {
+      const res = await fetch(`${apiBase}/api/recibos/${recibo.id}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -259,7 +259,7 @@ function RecibosPage() {
     setSaving(true);
     const token = localStorage.getItem('access_token');
     try {
-      const url = editingId ? `/api/recibos/${editingId}/` : `/api/ciclos/${cicloActual.id}/recibos/`;
+      const url = editingId ? `${apiBase}/api/recibos/${editingId}/` : `${apiBase}/api/ciclos/${cicloActual.id}/recibos/`;
       const method = editingId ? 'PATCH' : 'POST';
 
       const body: any = {
