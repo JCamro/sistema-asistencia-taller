@@ -2,6 +2,7 @@ import { useState, useEffect, memo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { CicloProvider, useCiclo } from './contexts/CicloContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { getApiBaseUrl } from './utils/api';
 import DashboardPage from './pages/Dashboard';
 import AlumnosPage from './pages/Alumnos';
 import ProfesoresPage from './pages/Profesores';
@@ -228,9 +229,9 @@ function Login() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const apiUrl = import.meta.env.VITE_API_URL || (() => { throw new Error('VITE_API_URL no está configurado'); })();
+    const apiUrl = getApiBaseUrl();
     try {
-      const res = await fetch(`${apiUrl}/api/auth/login/`, { 
+      const res = await fetch(`${apiUrl}/auth/login/`, { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ username, password }) 
@@ -498,7 +499,7 @@ function SeleccionCiclos() {
       
       <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
         <img 
-          src="/src/assets/logo-taller.png" 
+          src="/logo-taller.png" 
           alt="Logo Taller de Música Elguera"
           style={{ width: '80px', height: '80px', borderRadius: '20px', margin: '0 auto 1.5rem', objectFit: 'contain', boxShadow: '0 8px 24px rgba(212, 175, 55, 0.35)' }}
         />

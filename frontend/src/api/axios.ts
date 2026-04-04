@@ -1,7 +1,16 @@
 import axios from 'axios';
 
+// Función para obtener la URL base del API
+const getBaseUrl = (): string => {
+  if (import.meta.env.VITE_API_URL) {
+    return `${import.meta.env.VITE_API_URL}/api`;
+  }
+  // Fallback a ruta relativa (para desarrollo o producción con proxy)
+  return '/api';
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : (() => { throw new Error('VITE_API_URL no está configurado'); })(),
+  baseURL: getBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
