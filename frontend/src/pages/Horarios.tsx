@@ -157,7 +157,7 @@ const [guardandoCupo, setGuardandoCupo] = useState(false);
     setGuardandoCupo(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/horarios/${horario.id}/`, {
+      const res = await fetch(`${apiBase}/api/horarios/${horario.id}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ cupo_maximo: nuevoCupo }),
@@ -458,7 +458,7 @@ function HorariosPage() {
     if (isCicloLoading || !cicloActual) return;
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/ciclos/${cicloActual.id}/talleres/`, {
+      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
