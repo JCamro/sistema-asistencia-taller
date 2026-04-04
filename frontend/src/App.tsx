@@ -368,7 +368,7 @@ function MenuOpciones({ onEditar, onEliminar }: { onEditar: () => void, onElimin
 const MenuOpcionesMemo = memo(MenuOpciones);
 
 function SeleccionCiclos() {
-  const apiBase = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
+  const apiBase = getApiBaseUrl();
   const { ciclos, cicloActual, seleccionarCiclo, recargar, isLoading } = useCiclo();
   const [mostrarForm, setMostrarForm] = useState(false);
   const [mostrarEditar, setMostrarEditar] = useState(false);
