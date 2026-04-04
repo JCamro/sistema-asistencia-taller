@@ -374,7 +374,7 @@ function MatriculasPage() {
       if (!editingId && formData.horarios.length > 0) {
         // Crear nuevos horarios para nueva matrícula
         for (const horarioId of formData.horarios) {
-          const resMH = await fetch('${apiBase}/api/matriculas-horarios/', {
+          const resMH = await fetch(`${apiBase}/api/matriculas-horarios/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({
@@ -415,7 +415,7 @@ function MatriculasPage() {
         // Agregar nuevos horarios
         for (const horarioId of formData.horarios) {
           if (!horariosActuales.includes(horarioId)) {
-            const resMH = await fetch('${apiBase}/api/matriculas-horarios/', {
+            const resMH = await fetch(`${apiBase}/api/matriculas-horarios/`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
               body: JSON.stringify({
