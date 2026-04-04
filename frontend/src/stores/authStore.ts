@@ -10,7 +10,7 @@ interface AuthState {
 
 const apiLogin = async (username: string, password: string) => {
   const apiBase = getApiBaseUrl();
-  const response = await fetch(`${apiBase}/api/auth/login/`, {
+  const response = await fetch(`${apiBase}/auth/login/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
