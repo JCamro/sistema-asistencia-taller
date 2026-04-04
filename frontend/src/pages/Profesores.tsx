@@ -3,6 +3,7 @@ import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import { getHistorialPagosProfesor } from '../api/endpoints';
+import { getApiBaseUrl } from '../utils/api';
 
 interface Profesor {
   id: number;
@@ -48,6 +49,7 @@ const initialFormData: ProfesorFormData = {
 function ProfesoresPage() {
   const { cicloActual } = useCiclo();
   const { showApiError } = useToast();
+  const apiBase = getApiBaseUrl();
   const [profesores, setProfesores] = useState<Profesor[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -65,7 +67,7 @@ function ProfesoresPage() {
     if (!cicloActual) return;
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`/api/ciclos/${cicloActual.id}/profesores/`, {
+      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/profesores/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -148,7 +150,7 @@ function ProfesoresPage() {
     setSaving(true);
     const token = localStorage.getItem('access_token');
     try {
-      await fetch(`/api/profesores/${deletingId}/`, {
+      await fetch(`${apiBase}/api/profesores/${deletingId}/`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

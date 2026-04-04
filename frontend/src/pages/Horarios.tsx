@@ -1,6 +1,7 @@
 import { useState, useEffect, memo, useCallback, useMemo, useRef } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
+import { getApiBaseUrl } from '../utils/api';
 
 interface Taller {
   id: number;
@@ -155,7 +156,7 @@ const [guardandoCupo, setGuardandoCupo] = useState(false);
     setGuardandoCupo(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`/api/horarios/${horario.id}/`, {
+      const res = await fetch(`${apiBase}/api/horarios/${horario.id}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ cupo_maximo: nuevoCupo }),
@@ -427,6 +428,7 @@ function CeldaCalendario({
 function HorariosPage() {
   const { cicloActual, isLoading: isCicloLoading } = useCiclo();
   const { showApiError } = useToast();
+  const apiBase = getApiBaseUrl();
   const [talleres, setTalleres] = useState<Taller[]>([]);
   const [tallerSeleccionado, setTallerSeleccionado] = useState<number | null>(null);
   const [horarios, setHorarios] = useState<Horario[]>([]);
@@ -455,7 +457,7 @@ function HorariosPage() {
     if (isCicloLoading || !cicloActual) return;
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`/api/ciclos/${cicloActual.id}/talleres/`, {
+      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
