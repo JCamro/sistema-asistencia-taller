@@ -175,21 +175,30 @@ export interface ResumenFinanzas {
   ciclo: string;
   ingresos: {
     recibos_pagados: number;
+    num_recibos: number;
   };
   egresos: {
     gasto_taller: number;
     gasto_personal: number;
     pago_profesor_manual: number;
-    pago_profesor_auto: number;
-    total_pago_profesor: number;
   };
   balance: {
     total_ingresos: number;
     total_egresos: number;
     ganancia_neta: number;
-    porcentaje_local_40: number;
-    porcentaje_taller_60: number;
+    porcentaje_egresos: number;
+    porcentaje_ganancia: number;
+    ticket_promedio: number;
   };
+}
+
+export interface ResumenMensual {
+  mes: number;
+  nombre: string;
+  ingresos: number;
+  egresos: number;
+  balance: number;
+  recibos: number;
 }
 
 // API Functions
@@ -280,6 +289,7 @@ export const calcularPagosProfesores = (cicloId: number, fechaInicio: string, fe
 // Reportes
 export const getResumenCiclo = (id: number) => api.get(`/ciclos/${id}/resumen/`);
 export const getResumenFinanzas = (id: number) => api.get<ResumenFinanzas>(`/ciclos/${id}/resumen/`);
+export const getResumenMensual = (id: number) => api.get<ResumenMensual[]>(`/ciclos/${id}/resumen-mensual/`);
 
 // Dashboard KPIs
 export const getDashboardKpis = (cicloId: number) => 

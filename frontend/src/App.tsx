@@ -102,7 +102,7 @@ function Sidebar({ cicloNombre, abierto, onToggle }: { cicloNombre: string, abie
       <aside className={`sidebar ${abierto ? 'sidebar-open' : ''}`}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(212, 175, 55, 0.15)', background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, transparent 100%)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <img src="/src/assets/logo-taller.png" alt="Logo" style={{ width: '40px', height: '40px', borderRadius: '10px', objectFit: 'contain' }} />
+            <img src="/logo-taller.png" alt="Logo" style={{ width: '40px', height: '40px', borderRadius: '10px', objectFit: 'contain' }} />
             <div>
               <span style={{ fontSize: '1rem', fontWeight: '700', color: '#d4af37', display: 'block' }}>Taller de Música</span>
               <span style={{ fontSize: '1rem', fontWeight: '700', color: '#c41e3a', display: 'block' }}>Elguera</span>
@@ -228,8 +228,9 @@ function Login() {
     e.preventDefault();
     setError('');
     setLoading(true);
+    const apiUrl = import.meta.env.VITE_API_URL || (() => { throw new Error('VITE_API_URL no está configurado'); })();
     try {
-      const res = await fetch('/api/auth/login/', { 
+      const res = await fetch(`${apiUrl}/api/auth/login/`, { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ username, password }) 
@@ -253,7 +254,7 @@ function Login() {
       <form onSubmit={handleLogin} style={{ background: 'linear-gradient(145deg, #141414 0%, #1c1c1c 100%)', padding: '2rem', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6)', border: '1px solid rgba(212, 175, 55, 0.15)' }}>
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <img 
-            src="/src/assets/logo-taller.png"
+            src="/logo-taller.png"
             alt="Logo Taller de Música Elguera"
             style={{ width: '64px', height: '64px', borderRadius: '16px', margin: '0 auto 1rem', objectFit: 'contain', boxShadow: '0 8px 24px rgba(212, 175, 55, 0.35)' }}
           />
@@ -366,9 +367,11 @@ function MenuOpciones({ onEditar, onEliminar }: { onEditar: () => void, onElimin
 const MenuOpcionesMemo = memo(MenuOpciones);
 
 function SeleccionCiclos() {
+  const apiBase = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
   const { ciclos, cicloActual, seleccionarCiclo, recargar, isLoading } = useCiclo();
   const [mostrarForm, setMostrarForm] = useState(false);
   const [mostrarEditar, setMostrarEditar] = useState(false);
+  const [mostrarConfigUsuario, setMostrarConfigUsuario] = useState(false);
   const [cicloEditando, setCicloEditando] = useState<any>(null);
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState('anual');
@@ -376,6 +379,13 @@ function SeleccionCiclos() {
   const [fechaFin, setFechaFin] = useState('');
   const [activo, setActivo] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  
+  // Estado para config de usuario
+  const [passwordActual, setPasswordActual] = useState('');
+  const [nuevaPassword, setNuevaPassword] = useState('');
+  const [confirmarPassword, setConfirmarPassword] = useState('');
+  const [guardandoPassword, setGuardandoPassword] = useState(false);
+  const [mensajePassword, setMensajePassword] = useState('');
 
   if (isLoading) return <Loading />;
 
@@ -384,7 +394,7 @@ function SeleccionCiclos() {
     setGuardando(true);
     const token = localStorage.getItem('access_token');
     try {
-      await fetch('/api/ciclos/', {
+      await fetch(`${apiBase}/ciclos/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ nombre, tipo, fecha_inicio: fechaInicio, fecha_fin: fechaFin, activo: true })
@@ -417,7 +427,7 @@ function SeleccionCiclos() {
     setGuardando(true);
     const token = localStorage.getItem('access_token');
     try {
-      await fetch(`/api/ciclos/${cicloEditando.id}/`, {
+      await fetch(`${apiBase}/ciclos/${cicloEditando.id}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ nombre, tipo, fecha_inicio: fechaInicio, fecha_fin: fechaFin, activo })
@@ -436,7 +446,7 @@ function SeleccionCiclos() {
     if (!confirmar) return;
     const token = localStorage.getItem('access_token');
     try {
-      await fetch(`/api/ciclos/${id}/`, {
+      await fetch(`${apiBase}/ciclos/${id}/`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -460,6 +470,32 @@ function SeleccionCiclos() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0a 0%, #141414 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+      {/* Botón de configuración */}
+      <button
+        onClick={() => setMostrarConfigUsuario(true)}
+        style={{
+          position: 'absolute',
+          top: '1.5rem',
+          right: '1.5rem',
+          width: '44px',
+          height: '44px',
+          borderRadius: '12px',
+          border: '1px solid rgba(212, 175, 55, 0.2)',
+          background: 'rgba(28, 28, 28, 0.8)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.2s ease',
+        }}
+        title="Configurar cuenta"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+        </svg>
+      </button>
+      
       <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
         <img 
           src="/src/assets/logo-taller.png" 
@@ -573,6 +609,164 @@ function SeleccionCiclos() {
           >
             + Crear nuevo ciclo
           </button>
+        </div>
+      )}
+      
+      {/* Modal de configuración de usuario */}
+      {mostrarConfigUsuario && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100,
+        }}>
+          <div style={{
+            background: '#1c1c1c',
+            borderRadius: '16px',
+            padding: '2rem',
+            width: '100%',
+            maxWidth: '450px',
+            border: '1px solid rgba(212, 175, 55, 0.15)',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ color: '#d4af37', fontSize: '1.25rem', fontWeight: 600 }}>Configurar Cuenta</h2>
+              <button 
+                onClick={() => { setMostrarConfigUsuario(false); setMensajePassword(''); }}
+                style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '1.5rem' }}
+              >
+                ×
+              </button>
+            </div>
+            
+            <p style={{ color: '#a1a1a1', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+              Cambia tu contraseña de acceso al sistema.
+            </p>
+            
+            {mensajePassword && (
+              <div style={{ 
+                padding: '0.75rem', 
+                borderRadius: '8px', 
+                marginBottom: '1rem',
+                background: mensajePassword.includes('Error') ? 'rgba(196, 30, 58, 0.15)' : 'rgba(212, 175, 55, 0.15)',
+                color: mensajePassword.includes('Error') ? '#e63950' : '#d4af37',
+                fontSize: '0.875rem',
+              }}>
+                {mensajePassword}
+              </div>
+            )}
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#a1a1a1', fontSize: '0.875rem' }}>Contraseña Actual</label>
+                <input 
+                  type="password" 
+                  value={passwordActual}
+                  onChange={(e) => setPasswordActual(e.target.value)}
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff', fontSize: '1rem' }}
+                  placeholder="Ingresa tu contraseña actual"
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#a1a1a1', fontSize: '0.875rem' }}>Nueva Contraseña</label>
+                <input 
+                  type="password" 
+                  value={nuevaPassword}
+                  onChange={(e) => setNuevaPassword(e.target.value)}
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff', fontSize: '1rem' }}
+                  placeholder="Mínimo 8 caracteres"
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#a1a1a1', fontSize: '0.875rem' }}>Confirmar Nueva Contraseña</label>
+                <input 
+                  type="password" 
+                  value={confirmarPassword}
+                  onChange={(e) => setConfirmarPassword(e.target.value)}
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff', fontSize: '1rem' }}
+                  placeholder="Repite la nueva contraseña"
+                />
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+              <button
+                onClick={async () => {
+                  if (!passwordActual || !nuevaPassword || !confirmarPassword) {
+                    setMensajePassword('Error: Todos los campos son requeridos');
+                    return;
+                  }
+                  if (nuevaPassword !== confirmarPassword) {
+                    setMensajePassword('Error: Las contraseñas nuevas no coinciden');
+                    return;
+                  }
+                  if (nuevaPassword.length < 8) {
+                    setMensajePassword('Error: La contraseña debe tener al menos 8 caracteres');
+                    return;
+                  }
+                  
+                  setGuardandoPassword(true);
+                  const token = localStorage.getItem('access_token');
+                  try {
+                    const res = await fetch(`${apiBase}/usuarios/cambiar-password/`, {
+                      method: 'POST',
+                      headers: { 
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({
+                        old_password: passwordActual,
+                        new_password: nuevaPassword,
+                        new_password_confirm: confirmarPassword,
+                      }),
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      setMensajePassword('✓ Contraseña actualizada correctamente');
+                      setPasswordActual('');
+                      setNuevaPassword('');
+                      setConfirmarPassword('');
+                    } else {
+                      setMensajePassword(`Error: ${data.detail || 'Error al cambiar contraseña'}`);
+                    }
+                  } catch (err) {
+                    setMensajePassword('Error: No se pudo conectar con el servidor');
+                  }
+                  setGuardandoPassword(false);
+                }}
+                disabled={guardandoPassword}
+                style={{ 
+                  flex: 1, 
+                  padding: '0.875rem', 
+                  background: guardandoPassword ? 'rgba(212, 175, 55, 0.5)' : 'linear-gradient(135deg, #d4af37 0%, #b8962e 100%)', 
+                  color: '#0a0a0a', 
+                  border: 'none', 
+                  borderRadius: '10px', 
+                  cursor: guardandoPassword ? 'not-allowed' : 'pointer', 
+                  fontWeight: 600,
+                }}
+              >
+                {guardandoPassword ? 'Guardando...' : 'Cambiar Contraseña'}
+              </button>
+              <button
+                onClick={() => { setMostrarConfigUsuario(false); setMensajePassword(''); }}
+                style={{ 
+                  padding: '0.875rem 1.5rem', 
+                  background: 'transparent', 
+                  color: '#a1a1a1', 
+                  border: '1px solid rgba(255,255,255,0.1)', 
+                  borderRadius: '10px', 
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

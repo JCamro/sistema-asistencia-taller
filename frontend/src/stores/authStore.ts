@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getApiBaseUrl } from '../utils/api';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -8,7 +9,8 @@ interface AuthState {
 }
 
 const apiLogin = async (username: string, password: string) => {
-  const response = await fetch(import.meta.env.VITE_API_URL + '/api/auth/login/' || 'http://localhost:8000/api/auth/login/', {
+  const apiBase = getApiBaseUrl();
+  const response = await fetch(`${apiBase}/api/auth/login/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),

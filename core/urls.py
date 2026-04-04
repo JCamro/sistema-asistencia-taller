@@ -6,10 +6,11 @@ from .views import (
     CicloViewSet, TallerViewSet, ProfesorViewSet, AlumnoViewSet,
     HorarioViewSet, MatriculaViewSet, MatriculaHorarioViewSet,
     AsistenciaViewSet, ReciboViewSet, PagoProfesorViewSet,
-    calcular_pago_profesor, detalle_clase_pago, resumen_ciclo, ConfiguracionViewSet,
+    calcular_pago_profesor, detalle_clase_pago, resumen_ciclo, resumen_mensual_ciclo, ConfiguracionViewSet,
     asistencia_por_horario, dashboard_kpis, PrecioPaqueteViewSet,
     EgresoViewSet
 )
+from .views.usuario_view import CambiarPasswordView
 
 router = DefaultRouter()
 router.register(r'config', ConfiguracionViewSet, basename='config')
@@ -32,9 +33,13 @@ urlpatterns = [
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/logout/', TokenBlacklistView.as_view(), name='token_blacklist'),
     
+    # Usuarios
+    path('usuarios/cambiar-password/', CambiarPasswordView.as_view(), name='cambiar-password'),
+    
     path('pagos-profesores/calcular-periodo/', calcular_pago_profesor, name='calcular_pago'),
     path('pagos-profesores/detalle-clase/', detalle_clase_pago, name='detalle_clase_pago'),
     path('ciclos/<int:pk>/resumen/', resumen_ciclo, name='resumen_ciclo'),
+    path('ciclos/<int:pk>/resumen-mensual/', resumen_mensual_ciclo, name='resumen_mensual_ciclo'),
     path('ciclos/<int:ciclo_id>/dashboard/', dashboard_kpis, name='dashboard-kpis'),
     
     # Endpoints por ciclo

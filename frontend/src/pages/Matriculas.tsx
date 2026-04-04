@@ -3,6 +3,7 @@ import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import TraspasoModal from '../components/ui/TraspasoModal';
+import { getApiBaseUrl } from '../utils/api';
 
 const HORAS_GRID = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 const DIAS_GRID = [
@@ -110,6 +111,7 @@ const initialFormData: MatriculaFormData = {
 };
 
 function MatriculasPage() {
+  const apiBase = getApiBaseUrl();
   const { cicloActual } = useCiclo();
   const { showToast, showApiError } = useToast();
   const [matriculas, setMatriculas] = useState<Matricula[]>([]);
@@ -372,7 +374,7 @@ function MatriculasPage() {
       if (!editingId && formData.horarios.length > 0) {
         // Crear nuevos horarios para nueva matrícula
         for (const horarioId of formData.horarios) {
-          const resMH = await fetch('/api/matriculas-horarios/', {
+          const resMH = await fetch('${apiBase}/matriculas-horarios/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({
@@ -391,7 +393,7 @@ function MatriculasPage() {
         }
       } else if (editingId) {
         // Obtener horarios actuales y actualizarlos
-        const resHorarios = await fetch(`/api/matriculas-horarios/?matricula=${editingId}`, {
+        const resHorarios = await fetch(`${apiBase}/matriculas-horarios/?matricula=${editingId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const dataHorarios = await resHorarios.json();
@@ -402,7 +404,7 @@ function MatriculasPage() {
           if (!formData.horarios.includes(horarioId)) {
             const mhToDelete = (dataHorarios.results || dataHorarios).find((mh: any) => mh.horario === horarioId);
             if (mhToDelete) {
-              await fetch(`/api/matriculas-horarios/${mhToDelete.id}/`, {
+              await fetch(`${apiBase}/matriculas-horarios/${mhToDelete.id}/`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
               });
@@ -413,7 +415,7 @@ function MatriculasPage() {
         // Agregar nuevos horarios
         for (const horarioId of formData.horarios) {
           if (!horariosActuales.includes(horarioId)) {
-            const resMH = await fetch('/api/matriculas-horarios/', {
+            const resMH = await fetch('${apiBase}/matriculas-horarios/', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
               body: JSON.stringify({
@@ -451,7 +453,7 @@ function MatriculasPage() {
     // Primero cargamos los horarios existentes
     let horariosExistentes: number[] = [];
     try {
-      const res = await fetch(`/api/matriculas-horarios/?matricula=${matricula.id}`, {
+      const res = await fetch(`${apiBase}/matriculas-horarios/?matricula=${matricula.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();

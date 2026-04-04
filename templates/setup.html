@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración Inicial - Taller de Música Elguera</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .container {
+            background: linear-gradient(145deg, #141414 0%, #1c1c1c 100%);
+            border-radius: 20px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 700px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+            border: 1px solid rgba(212, 175, 55, 0.15);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .logo h1 {
+            font-size: 2rem;
+            color: #d4af37;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        .logo h2 {
+            font-size: 1.5rem;
+            color: #c41e3a;
+            font-weight: 700;
+        }
+        .subtitle {
+            text-align: center;
+            color: #a1a1a1;
+            margin-bottom: 2rem;
+            font-size: 1rem;
+        }
+        .section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: rgba(255,255,255,0.02);
+            border-radius: 12px;
+            border: 1px solid rgba(212, 175, 55, 0.1);
+        }
+        .section-title {
+            font-size: 1.1rem;
+            color: #d4af37;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .section-title .icon {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #d4af37 0%, #b8962e 100%);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0a0a0a;
+            font-weight: 700;
+            font-size: 0.875rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #a1a1a1;
+            font-size: 0.875rem;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            color: #ffffff;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #d4af37;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.3), transparent);
+            margin: 2rem 0;
+        }
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #d4af37 0%, #b8962e 100%);
+            color: #0a0a0a;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(212, 175, 55, 0.4);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .errors {
+            background: rgba(196, 30, 58, 0.1);
+            border: 1px solid rgba(196, 30, 58, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .errors ul {
+            list-style: none;
+            color: #e63950;
+            font-size: 0.875rem;
+        }
+        .errors li {
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        .info-box {
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+            color: #d4af37;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>Taller de Música</h1>
+            <h2>Elguera</h2>
+        </div>
+        
+        <p class="subtitle">Configuración inicial del sistema</p>
+        
+        <div class="info-box">
+            ⚠️ Esta es la única vez que verás este formulario. Después de configurarlo, 
+            los usuarios se gestionan desde el panel de administración.
+        </div>
+        
+        {% if errors %}
+        <div class="errors">
+            <ul>
+                {% for error in errors %}
+                <li>⚠️ {{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        <form method="post" action="{% url 'setup' %}">
+            {% csrf_token %}
+            
+            <!-- Sección: Administrador del Sistema -->
+            <div class="section">
+                <div class="section-title">
+                    <span class="icon">1</span>
+                    Administrador del Sistema (Acceso al /admin/)
+                </div>
+                
+                <div class="form-group">
+                    <label for="super_username">Nombre de usuario</label>
+                    <input type="text" id="super_username" name="super_username" 
+                           value="{{ super_username|default:'' }}" 
+                           placeholder="Ej: admin" required minlength="3">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="super_password">Contraseña</label>
+                        <input type="password" id="super_password" name="super_password" 
+                               placeholder="Mínimo 8 caracteres" required minlength="8">
+                    </div>
+                    <div class="form-group">
+                        <label for="super_password_confirm">Confirmar contraseña</label>
+                        <input type="password" id="super_password_confirm" name="super_password_confirm" 
+                               placeholder="Repite la contraseña" required minlength="8">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <!-- Sección: Usuario de la Aplicación -->
+            <div class="section">
+                <div class="section-title">
+                    <span class="icon">2</span>
+                    Usuario de la Aplicación (Acceso al Frontend)
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="app_nombre">Nombre</label>
+                        <input type="text" id="app_nombre" name="app_nombre" 
+                               value="{{ app_nombre|default:'' }}" 
+                               placeholder="Ej: Juan" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="app_apellido">Apellido</label>
+                        <input type="text" id="app_apellido" name="app_apellido" 
+                               value="{{ app_apellido|default:'' }}" 
+                               placeholder="Ej: Pérez" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="app_username">Nombre de usuario</label>
+                    <input type="text" id="app_username" name="app_username" 
+                           value="{{ app_username|default:'' }}" 
+                           placeholder="Ej: jperez" required minlength="3">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="app_password">Contraseña</label>
+                        <input type="password" id="app_password" name="app_password" 
+                               placeholder="Mínimo 8 caracteres" required minlength="8">
+                    </div>
+                    <div class="form-group">
+                        <label for="app_password_confirm">Confirmar contraseña</label>
+                        <input type="password" id="app_password_confirm" name="app_password_confirm" 
+                               placeholder="Repite la contraseña" required minlength="8">
+                    </div>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn">Completar Configuración</button>
+        </form>
+    </div>
+</body>
+</html>

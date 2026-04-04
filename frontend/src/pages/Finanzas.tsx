@@ -1,11 +1,12 @@
 import { useState, useEffect, memo } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
-import { getResumenFinanzas, getEgresos, getRecibos } from '../api/endpoints';
+import { getResumenFinanzas, getResumenMensual, getEgresos, getRecibos } from '../api/endpoints';
 
 const FinanzasPage = memo(function FinanzasPage() {
   const { cicloActual } = useCiclo();
-  const [activeTab, setActiveTab] = useState<'resumen' | 'ingresos' | 'egresos'>('resumen');
+  const [activeTab, setActiveTab] = useState<'resumen' | 'ingresos' | 'egresos' | 'mensual'>('resumen');
   const [finanzas, setFinanzas] = useState<any>(null);
+  const [resumenMensual, setResumenMensual] = useState<any[]>([]);
   const [egresos, setEgresos] = useState<any[]>([]);
   const [recibos, setRecibos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,12 +21,14 @@ const FinanzasPage = memo(function FinanzasPage() {
     if (!cicloActual) return;
     setLoading(true);
     try {
-      const [finanzasRes, egresosRes, recibosRes] = await Promise.all([
+      const [finanzasRes, egresosRes, recibosRes, mensualRes] = await Promise.all([
         getResumenFinanzas(cicloActual.id),
         getEgresos(cicloActual.id),
-        getRecibos(cicloActual.id)
+        getRecibos(cicloActual.id),
+        getResumenMensual(cicloActual.id)
       ]);
       setFinanzas(finanzasRes.data);
+      setResumenMensual(mensualRes.data);
       // Filter recibos pagados
       setRecibos(recibosRes.data.filter((r: any) => r.estado === 'pagado'));
       setEgresos(egresosRes.data.filter((e: any) => e.estado === 'cancelado'));
@@ -61,6 +64,7 @@ const FinanzasPage = memo(function FinanzasPage() {
 
   const tabs = [
     { id: 'resumen', label: 'Resumen' },
+    { id: 'mensual', label: 'Mensual' },
     { id: 'ingresos', label: 'Ingresos' },
     { id: 'egresos', label: 'Egresos' },
   ];
@@ -115,6 +119,26 @@ const FinanzasPage = memo(function FinanzasPage() {
             </div>
           </div>
 
+          {/* Métricas Adicionales */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+            <div style={{ background: 'white', padding: '1.25rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Recibos</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937' }}>{finanzas.ingresos.num_recibos || 0}</p>
+            </div>
+            <div style={{ background: 'white', padding: '1.25rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Ticket Promedio</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937' }}>{formatMonto(finanzas.balance.ticket_promedio)}</p>
+            </div>
+            <div style={{ background: 'white', padding: '1.25rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>% Egresos</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#dc2626' }}>{finanzas.balance.porcentaje_egresos.toFixed(1)}%</p>
+            </div>
+            <div style={{ background: 'white', padding: '1.25rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>% Ganancia</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#059669' }}>{finanzas.balance.porcentaje_ganancia.toFixed(1)}%</p>
+            </div>
+          </div>
+
           {/* Breakdown - Responsive */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
             {/* Ingresos */}
@@ -144,16 +168,57 @@ const FinanzasPage = memo(function FinanzasPage() {
                   <span style={{ color: '#6b7280' }}>Pago Profesor (Manual)</span>
                   <span style={{ fontWeight: 600, color: '#dc2626' }}>{formatMonto(finanzas.egresos.pago_profesor_manual)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #f3f4f6' }}>
-                  <span style={{ color: '#6b7280' }}>Pago Profesor (Automático)</span>
-                  <span style={{ fontWeight: 600, color: '#dc2626' }}>{formatMonto(finanzas.egresos.pago_profesor_auto)}</span>
-                </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', background: '#fef2f2', borderRadius: '6px', marginTop: '0.5rem' }}>
-                  <span style={{ fontWeight: 600, color: '#991b1b' }}>Total Pago Profesor</span>
-                  <span style={{ fontWeight: 700, color: '#dc2626' }}>{formatMonto(finanzas.egresos.total_pago_profesor)}</span>
+                  <span style={{ fontWeight: 600, color: '#991b1b' }}>Total Egresos</span>
+                  <span style={{ fontWeight: 700, color: '#dc2626' }}>{formatMonto(finanzas.egresos.pago_profesor_manual + finanzas.egresos.gasto_taller + finanzas.egresos.gasto_personal)}</span>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mensual Tab */}
+      {activeTab === 'mensual' && (
+        <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+              <thead>
+                <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Mes</th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Recibos</th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Ingresos</th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Egresos</th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resumenMensual.length === 0 ? (
+                  <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>No hay datos mensuales</td></tr>
+                ) : (
+                  resumenMensual.map((item) => (
+                    <tr key={item.mes} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', fontWeight: 600 }}>{item.nombre}</td>
+                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.875rem', color: '#6b7280' }}>{item.recibos}</td>
+                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#059669' }}>{formatMonto(item.ingresos)}</td>
+                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#dc2626' }}>{formatMonto(item.egresos)}</td>
+                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: 700, color: item.balance >= 0 ? '#059669' : '#dc2626' }}>{formatMonto(item.balance)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              {resumenMensual.length > 0 && (
+                <tfoot>
+                  <tr style={{ background: '#f9fafb' }}>
+                    <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#1f2937' }}>Total</td>
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: '#1f2937' }}>{resumenMensual.reduce((sum, m) => sum + m.recibos, 0)}</td>
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700, color: '#059669', fontSize: '1.125rem' }}>{formatMonto(resumenMensual.reduce((sum, m) => sum + m.ingresos, 0))}</td>
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700, color: '#dc2626', fontSize: '1.125rem' }}>{formatMonto(resumenMensual.reduce((sum, m) => sum + m.egresos, 0))}</td>
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700, color: '#1f2937', fontSize: '1.125rem' }}>{formatMonto(resumenMensual.reduce((sum, m) => sum + m.balance, 0))}</td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
           </div>
         </div>
       )}

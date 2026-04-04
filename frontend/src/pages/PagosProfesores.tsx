@@ -1,6 +1,7 @@
 import { useState, useEffect, memo, useCallback } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
+import { getApiBaseUrl } from '../utils/api';
 
 interface ResultadoPago {
   profesor_id: number;
@@ -63,6 +64,7 @@ interface PagoProfesorAPI {
 }
 
 function PagosProfesoresPage() {
+  const apiBase = getApiBaseUrl();
   const { cicloActual, isLoading: isCicloLoading } = useCiclo();
   const { showToast, showApiError } = useToast();
   
@@ -94,7 +96,7 @@ function PagosProfesoresPage() {
     setLoading(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`/api/pagos-profesores/?ciclo=${cicloActual.id}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}&ordering=-id`, {
+      const res = await fetch(`${apiBase}/pagos-profesores/?ciclo=${cicloActual.id}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}&ordering=-id`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -131,7 +133,7 @@ function PagosProfesoresPage() {
     setCalculando(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch('/api/pagos-profesores/calcular-periodo/', {
+      const res = await fetch(`${apiBase}/pagos-profesores/calcular-periodo/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -160,7 +162,7 @@ function PagosProfesoresPage() {
     setLoadingDetalles(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`/api/pagos-profesores/${pago.pago_id}/detalles/`, {
+      const res = await fetch(`${apiBase}/pagos-profesores/${pago.pago_id}/detalles/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -190,7 +192,7 @@ function PagosProfesoresPage() {
         const profesorId = detalle.profesor_id ? `&profesor_id=${detalle.profesor_id}` : '';
         try {
           const res = await fetch(
-            `/api/pagos-profesores/detalle-clase/?horario_id=${detalle.horario}&fecha=${detalle.fecha}${profesorId}`,
+            `${apiBase}/pagos-profesores/detalle-clase/?horario_id=${detalle.horario}&fecha=${detalle.fecha}${profesorId}`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
           const data = await res.json();
