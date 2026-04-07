@@ -17,9 +17,11 @@ class Command(BaseCommand):
 
         for precio in precios_instrumento:
             PrecioPaquete.objects.update_or_create(
+                ciclo__isnull=True,
                 tipo_taller='instrumento',
                 tipo_paquete='individual',
                 cantidad_clases=precio['cantidad_clases'],
+                cantidad_clases_secundaria=None,
                 defaults={
                     'precio_total': precio['precio_total'],
                     'precio_por_sesion': precio['precio_por_sesion'],
@@ -37,9 +39,11 @@ class Command(BaseCommand):
 
         for precio in precios_taller:
             PrecioPaquete.objects.update_or_create(
+                ciclo__isnull=True,
                 tipo_taller='taller',
                 tipo_paquete='individual',
                 cantidad_clases=precio['cantidad_clases'],
+                cantidad_clases_secundaria=None,
                 defaults={
                     'precio_total': precio['precio_total'],
                     'precio_por_sesion': precio['precio_por_sesion'],
@@ -56,9 +60,11 @@ class Command(BaseCommand):
 
         for combo in combos_musicales:
             PrecioPaquete.objects.update_or_create(
+                ciclo__isnull=True,
                 tipo_taller='instrumento',
                 tipo_paquete='combo_musical',
                 cantidad_clases=combo['cantidad_clases'],
+                cantidad_clases_secundaria=combo['cantidad_clases'],
                 defaults={
                     'precio_total': combo['precio_total'],
                     'precio_por_sesion': combo['precio_por_sesion'],
@@ -75,9 +81,11 @@ class Command(BaseCommand):
 
         for mixto in mixtos:
             PrecioPaquete.objects.update_or_create(
+                ciclo__isnull=True,
                 tipo_taller='instrumento',
                 tipo_paquete='mixto',
                 cantidad_clases=mixto['cantidad_clases'],
+                cantidad_clases_secundaria=mixto['cantidad_clases'],
                 defaults={
                     'precio_total': mixto['precio_total'],
                     'precio_por_sesion': mixto['precio_por_sesion'],
@@ -94,9 +102,11 @@ class Command(BaseCommand):
 
         for intensivo in intensivos:
             PrecioPaquete.objects.update_or_create(
+                ciclo__isnull=True,
                 tipo_taller=intensivo['tipo'],
                 tipo_paquete='intensivo',
                 cantidad_clases=intensivo['cantidad_clases'],
+                cantidad_clases_secundaria=None,
                 defaults={
                     'precio_total': intensivo['precio_total'],
                     'precio_por_sesion': intensivo['precio_por_sesion'],
