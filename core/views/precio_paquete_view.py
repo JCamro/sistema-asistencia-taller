@@ -9,6 +9,7 @@ from ..serializers import PrecioPaqueteSerializer
 class PrecioPaqueteViewSet(viewsets.ModelViewSet):
     serializer_class = PrecioPaqueteSerializer
     permission_classes = [IsAuthenticated]
+    # No pagination - precios is a small fixed dataset needed fully for configuration
     
     def get_queryset(self):
         qs = PrecioPaquete.objects.select_related('ciclo').all()

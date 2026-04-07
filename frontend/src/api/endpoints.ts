@@ -127,6 +127,8 @@ export interface Configuracion {
   id: number;
   ciclo_activo: number | null;
   ciclo_activo_nombre: string | null;
+  pago_dinamico_base: number;
+  pago_dinamico_tope: number;
   updated_at: string;
 }
 

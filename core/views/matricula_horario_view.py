@@ -9,7 +9,7 @@ class MatriculaHorarioViewSet(viewsets.ModelViewSet):
     queryset = MatriculaHorario.objects.select_related('matricula__alumno', 'horario__taller', 'horario__profesor').all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['matricula', 'horario']
+    filterset_fields = ['matricula', 'horario', 'matricula__ciclo']
     search_fields = ['matricula__alumno__nombre', 'matricula__alumno__apellido', 'horario__taller__nombre']
 
     def get_queryset(self):

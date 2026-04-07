@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { CicloProvider, useCiclo } from './contexts/CicloContext';
 import { ToastProvider } from './contexts/ToastContext';
@@ -380,6 +380,8 @@ function SeleccionCiclos() {
   const [fechaFin, setFechaFin] = useState('');
   const [activo, setActivo] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [busquedaCiclo, setBusquedaCiclo] = useState('');
+  const [ordenCiclo, setOrdenCiclo] = useState<'nombre' | 'fecha_nueva' | 'fecha_vieja'>('fecha_nueva');
   
   // Estado para config de usuario
   const [passwordActual, setPasswordActual] = useState('');
@@ -387,6 +389,30 @@ function SeleccionCiclos() {
   const [confirmarPassword, setConfirmarPassword] = useState('');
   const [guardandoPassword, setGuardandoPassword] = useState(false);
   const [mensajePassword, setMensajePassword] = useState('');
+
+  // Filtrar y ordenar ciclos
+  const ciclosFiltradosOrdenados = useMemo(() => {
+    let result = [...ciclos];
+    
+    // Filtrar por nombre
+    if (busquedaCiclo.trim()) {
+      const search = busquedaCiclo.toLowerCase();
+      result = result.filter(c => c.nombre.toLowerCase().includes(search));
+    }
+    
+    // Ordenar
+    result.sort((a, b) => {
+      if (ordenCiclo === 'nombre') {
+        return a.nombre.localeCompare(b.nombre);
+      } else if (ordenCiclo === 'fecha_nueva') {
+        return new Date(b.fecha_inicio).getTime() - new Date(a.fecha_inicio).getTime();
+      } else {
+        return new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime();
+      }
+    });
+    
+    return result;
+  }, [ciclos, busquedaCiclo, ordenCiclo]);
 
   if (isLoading) return <Loading />;
 
@@ -564,53 +590,92 @@ function SeleccionCiclos() {
           </button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: '1rem', width: '100%', maxWidth: '600px' }}>
-          {ciclos.map(ciclo => (
-            <div 
-              key={ciclo.id}
-              onClick={() => handleSeleccionar(ciclo)}
-              style={{ 
-                background: cicloActual?.id === ciclo.id ? 'linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(28, 28, 28, 0.9) 100%)' : '#1c1c1c', 
-                padding: '1.5rem', 
-                borderRadius: '12px', 
-                border: cicloActual?.id === ciclo.id ? '2px solid #d4af37' : '1px solid rgba(255,255,255,0.08)',
-                cursor: 'pointer',
-                transition: 'all 0.25s ease',
-                boxShadow: cicloActual?.id === ciclo.id ? '0 0 24px rgba(212, 175, 55, 0.2), 0 8px 24px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.2)'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div style={{ width: '56px', height: '56px', borderRadius: '12px', background: ciclo.activo ? 'linear-gradient(135deg, #d4af37 0%, #b8962e 100%)' : 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: ciclo.activo ? '0 4px 12px rgba(212, 175, 55, 0.3)' : 'none' }}>
-                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: ciclo.activo ? '#0a0a0a' : '#666666' }}>
-                      {ciclo.nombre.charAt(0)}
-                    </span>
-                  </div>
-                  <div>
-                    <h3 style={{ fontWeight: '600', fontSize: '1.125rem', color: '#ffffff' }}>{ciclo.nombre}</h3>
-                    <p style={{ fontSize: '0.875rem', color: '#a1a1a1', textTransform: 'capitalize' }}>{ciclo.tipo}</p>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <MenuOpcionesMemo 
-                    onEditar={() => handleEditar(ciclo)} 
-                    onEliminar={() => handleEliminar(ciclo.id)} 
-                  />
-                  <span style={{ padding: '0.375rem 0.875rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, background: ciclo.activo ? 'rgba(212, 175, 55, 0.2)' : 'rgba(255,255,255,0.08)', color: ciclo.activo ? '#d4af37' : '#666666', letterSpacing: '0.05em' }}>
-                    {ciclo.activo ? 'Activo' : 'Inactivo'}
-                  </span>
-                  <span style={{ color: '#d4af37', fontSize: '1.25rem', marginLeft: '0.25rem' }}>→</span>
-                </div>
+        <>
+          <div style={{ width: '100%', maxWidth: '600px' }}>
+            {/* Search and Sort Controls */}
+            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', alignItems: 'center' }}>
+              <input
+                type="text"
+                placeholder="Buscar por nombre..."
+                value={busquedaCiclo}
+                onChange={e => setBusquedaCiclo(e.target.value)}
+                style={{ flex: 1, padding: '0.625rem 1rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff', fontSize: '0.875rem' }}
+              />
+              <div style={{ display: 'flex', gap: '0.25rem' }}>
+                <button
+                  onClick={() => setOrdenCiclo('nombre')}
+                  title="Ordenar A-Z"
+                  style={{ padding: '0.5rem 0.75rem', background: ordenCiclo === 'nombre' ? 'rgba(212, 175, 55, 0.2)' : 'rgba(255,255,255,0.05)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '6px', cursor: 'pointer', color: ordenCiclo === 'nombre' ? '#d4af37' : '#a1a1a1', fontSize: '0.875rem' }}
+                >
+                  A-Z
+                </button>
+                <button
+                  onClick={() => setOrdenCiclo('fecha_nueva')}
+                  title="Más reciente primero"
+                  style={{ padding: '0.5rem 0.75rem', background: ordenCiclo === 'fecha_nueva' ? 'rgba(212, 175, 55, 0.2)' : 'rgba(255,255,255,0.05)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '6px', cursor: 'pointer', color: ordenCiclo === 'fecha_nueva' ? '#d4af37' : '#a1a1a1', fontSize: '0.875rem' }}
+                >
+                  ↓ Fecha
+                </button>
+                <button
+                  onClick={() => setOrdenCiclo('fecha_vieja')}
+                  title="Más antigua primero"
+                  style={{ padding: '0.5rem 0.75rem', background: ordenCiclo === 'fecha_vieja' ? 'rgba(212, 175, 55, 0.2)' : 'rgba(255,255,255,0.05)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '6px', cursor: 'pointer', color: ordenCiclo === 'fecha_vieja' ? '#d4af37' : '#a1a1a1', fontSize: '0.875rem' }}
+                >
+                  ↑ Fecha
+                </button>
               </div>
             </div>
-          ))}
+
+            {/* Ciclos List */}
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              {ciclosFiltradosOrdenados.map(ciclo => (
+              <div 
+                key={ciclo.id}
+                onClick={() => handleSeleccionar(ciclo)}
+                style={{ 
+                  background: cicloActual?.id === ciclo.id ? 'linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(28, 28, 28, 0.9) 100%)' : '#1c1c1c', 
+                  padding: '1.5rem', 
+                  borderRadius: '12px', 
+                  border: cicloActual?.id === ciclo.id ? '2px solid #d4af37' : '1px solid rgba(255,255,255,0.08)',
+                  cursor: 'pointer',
+                  transition: 'all 0.25s ease',
+                  boxShadow: cicloActual?.id === ciclo.id ? '0 0 24px rgba(212, 175, 55, 0.2), 0 8px 24px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.2)'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ width: '56px', height: '56px', borderRadius: '12px', background: ciclo.activo ? 'linear-gradient(135deg, #d4af37 0%, #b8962e 100%)' : 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: ciclo.activo ? '0 4px 12px rgba(212, 175, 55, 0.3)' : 'none' }}>
+                      <span style={{ fontSize: '1.5rem', fontWeight: '700', color: ciclo.activo ? '#0a0a0a' : '#666666' }}>
+                        {ciclo.nombre.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <h3 style={{ fontWeight: '600', fontSize: '1.125rem', color: '#ffffff' }}>{ciclo.nombre}</h3>
+                      <p style={{ fontSize: '0.875rem', color: '#a1a1a1', textTransform: 'capitalize' }}>{ciclo.tipo}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <MenuOpcionesMemo 
+                      onEditar={() => handleEditar(ciclo)} 
+                      onEliminar={() => handleEliminar(ciclo.id)} 
+                    />
+                    <span style={{ padding: '0.375rem 0.875rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, background: ciclo.activo ? 'rgba(212, 175, 55, 0.2)' : 'rgba(255,255,255,0.08)', color: ciclo.activo ? '#d4af37' : '#666666', letterSpacing: '0.05em' }}>
+                      {ciclo.activo ? 'Activo' : 'Inactivo'}
+                    </span>
+                    <span style={{ color: '#d4af37', fontSize: '1.25rem', marginLeft: '0.25rem' }}>→</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            </div>
+          </div>
           <button 
             onClick={abrirFormulario}
-            style={{ padding: '1.25rem', background: 'transparent', border: '2px dashed rgba(212, 175, 55, 0.25)', borderRadius: '12px', cursor: 'pointer', color: '#a1a1a1', fontSize: '0.9375rem', fontWeight: 500, transition: 'all 0.2s ease' }}
+            style={{ marginTop: '1rem', padding: '1.25rem', background: 'transparent', border: '2px dashed rgba(212, 175, 55, 0.25)', borderRadius: '12px', cursor: 'pointer', color: '#a1a1a1', fontSize: '0.9375rem', fontWeight: 500, transition: 'all 0.2s ease', width: '100%', maxWidth: '600px' }}
           >
             + Crear nuevo ciclo
           </button>
-        </div>
+        </>
       )}
       
       {/* Modal de configuración de usuario */}

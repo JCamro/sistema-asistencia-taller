@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from ..models import Alumno
 from ..serializers import AlumnoSerializer, AlumnoListSerializer
+from .pagination import StandardResultsSetPagination
 
 
 class AlumnoViewSet(viewsets.ModelViewSet):
@@ -14,6 +15,7 @@ class AlumnoViewSet(viewsets.ModelViewSet):
     search_fields = ['nombre', 'apellido', 'dni', 'email']
     ordering_fields = ['apellido', 'nombre', 'fecha_registro']
     ordering = ['apellido', 'nombre']
+    pagination_class = StandardResultsSetPagination
 
     def get_serializer_class(self):
         if self.action == 'list':

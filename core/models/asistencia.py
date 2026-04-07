@@ -25,9 +25,9 @@ class Asistencia(models.Model):
         on_delete=models.CASCADE,
         related_name='asistencias'
     )
-    fecha = models.DateField()
+    fecha = models.DateField(db_index=True)
     hora = models.TimeField()
-    estado = models.CharField(max_length=20, choices=ESTADO, default='asistio')
+    estado = models.CharField(max_length=20, choices=ESTADO, default='asistio', db_index=True)
     observacion = models.TextField(blank=True)
     es_recuperacion = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -36,6 +36,9 @@ class Asistencia(models.Model):
     class Meta:
         ordering = ['-fecha', '-hora']
         unique_together = ['matricula', 'horario', 'fecha']
+        indexes = [
+            models.Index(fields=['horario', 'fecha'], name='asistencia_horario_fecha_idx'),
+        ]
 
     def __str__(self):
         return f"{self.matricula.alumno if self.matricula else 'Sin matrícula'} - {self.horario} - {self.fecha} ({self.estado})"

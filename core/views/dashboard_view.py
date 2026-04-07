@@ -2,7 +2,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
-from django.db.models import Q, Count
+from django.db.models import Q, Count, F, OuterRef, Exists
 from core.models import Ciclo, Matricula, Asistencia, Recibo, ReciboMatricula
 
 
@@ -18,13 +18,6 @@ def dashboard_kpis(request, ciclo_id):
     """
     today = timezone.now().date()
     
-    # Base queryset: active matrículas in the cycle
-    matriculas = Matricula.objects.filter(
-        ciclo_id=ciclo_id,
-        activo=True,
-        concluida=False
-    )
-    
     # KPI 1: Alumnos sin asistencia hoy
     # Matrículas that have classes today (match dia_semana) but no asistencia registered
     today_weekday = today.weekday()  # 0=Monday, 6=Sunday
@@ -32,65 +25,69 @@ def dashboard_kpis(request, ciclo_id):
     # Get all active matrículas that have class today
     from core.models import MatriculaHorario
     matriculas_con_clase_hoy_ids = MatriculaHorario.objects.filter(
-        matricula__in=matriculas,
+        matricula__ciclo_id=ciclo_id,
+        matricula__activo=True,
+        matricula__concluida=False,
         horario__dia_semana=today_weekday
     ).values_list('matricula_id', flat=True).distinct()
     
     # Get matrículas with asistencia today
-    matriculas_con_asistencia_hoy = Asistencia.objects.filter(
+    matriculas_con_asistencia_hoy_ids = Asistencia.objects.filter(
         fecha=today,
         matricula_id__in=matriculas_con_clase_hoy_ids
-    ).values_list('matricula_id', flat=True).distinct()
+    ).values_list('matricula_id', flat=True)
     
     # Count those without asistencia
-    alumnos_sin_asistencia = matriculas.filter(
-        id__in=matriculas_con_clase_hoy_ids
-    ).exclude(
-        id__in=matriculas_con_asistencia_hoy
-    ).count()
+    alumnos_sin_asistencia = len(set(matriculas_con_clase_hoy_ids) - set(matriculas_con_asistencia_hoy_ids))
     
     # KPI 2: Matrículas por concluir (sesiones disponibles < 3)
-    # Calculate for each matrícula: sesiones_disponibles = sesiones_contratadas - sesiones_consumidas
-    from django.db.models import Count
-    
-    # Aggregate sesiones consumidas per matrícula
-    sesiones_por_matricula = Asistencia.objects.filter(
-        matricula__in=matriculas
-    ).values('matricula_id').annotate(
-        total_asistencias=Count('id')
+    # Annotate sesiones consumidas at database level
+    matriculas_con_sesiones = Matricula.objects.filter(
+        ciclo_id=ciclo_id,
+        activo=True,
+        concluida=False
+    ).annotate(
+        sesiones_consumidas_count=Count(
+            'asistencias',
+            filter=Q(asistencias__estado__in=['asistio', 'falta_grave'])
+        )
     )
     
-    # Create a dict for quick lookup
-    sesiones_dict = {item['matricula_id']: item['total_asistencias'] for item in sesiones_por_matricula}
-    
-    # Count matrículas with less than 3 available sessions
-    matriculas_por_concluir = 0
-    for m in matriculas:
-        consumed = sesiones_dict.get(m.id, 0)
-        available = m.sesiones_contratadas - consumed
-        if available < 3:
-            matriculas_por_concluir += 1
+    # Count those with less than 3 available sessions using aggregate
+    # Filter: sesiones_contratadas - sesiones_consumidas < 3
+    # Equivalent: sesiones_consumidas > sesiones_contratadas - 3
+    matriculas_por_concluir = matriculas_con_sesiones.filter(
+        sesiones_consumidas_count__gt=F('sesiones_contratadas') - 3
+    ).count()
     
     # KPI 3: Matrículas sin recibo
-    # Get all matrículas that have at least one ReciboMatricula
-    matriculas_con_recibo_ids = ReciboMatricula.objects.filter(
-        recibo__ciclo_id=ciclo_id
-    ).values_list('matricula_id', flat=True).distinct()
-    
-    matriculas_sin_recibo = matriculas.exclude(
-        id__in=matriculas_con_recibo_ids
+    # Use Exists subquery for better performance (inline to maintain OuterRef context)
+    matriculas_sin_recibo = Matricula.objects.filter(
+        ciclo_id=ciclo_id,
+        activo=True,
+        concluida=False
+    ).exclude(
+        Exists(ReciboMatricula.objects.filter(
+            matricula=OuterRef('pk'),
+            recibo__ciclo_id=ciclo_id
+        ))
     ).count()
     
     # KPI 4: Matrículas sin pago completo
     # Matrículas that have a Recibo but it's not fully paid (estado != 'pagado')
-    matriculas_con_recibo_pendiente_ids = ReciboMatricula.objects.filter(
-        recibo__ciclo_id=ciclo_id
-    ).exclude(
-        recibo__estado='pagado'
-    ).values_list('matricula_id', flat=True).distinct()
-    
-    matriculas_sin_pago_completo = matriculas.filter(
-        id__in=matriculas_con_recibo_pendiente_ids
+    matriculas_sin_pago_completo = Matricula.objects.filter(
+        ciclo_id=ciclo_id,
+        activo=True,
+        concluida=False
+    ).filter(
+        Exists(ReciboMatricula.objects.filter(
+            matricula=OuterRef('pk'),
+            recibo__ciclo_id=ciclo_id
+        )),
+        Exists(ReciboMatricula.objects.filter(
+            matricula=OuterRef('pk'),
+            recibo__ciclo_id=ciclo_id
+        ).exclude(recibo__estado='pagado'))
     ).count()
     
     return Response({

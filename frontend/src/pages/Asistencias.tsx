@@ -3,6 +3,7 @@ import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import { getApiBaseUrl } from '../utils/api';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface Horario {
   id: number;
@@ -61,6 +62,8 @@ const ESTADOS = [
 function AsistenciasPage() {
   const { cicloActual } = useCiclo();
   const { showToast, showApiError } = useToast();
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
   const apiBase = getApiBaseUrl();
   const [horarios, setHorarios] = useState<Horario[]>([]);
   const [asistencias, setAsistencias] = useState<Asistencia[]>([]);
@@ -403,7 +406,7 @@ function AsistenciasPage() {
       </div>
 
       <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', alignItems: 'end' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: isMobile ? '0.75rem' : '1rem', alignItems: 'end' }}>
           <div>
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Fecha</label>
             <input
@@ -474,7 +477,7 @@ function AsistenciasPage() {
       </div>
 
       {horarioSeleccionado && (
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: isMobile ? '1rem' : '1.5rem' }}>
           <div>
             <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
               <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -486,7 +489,7 @@ function AsistenciasPage() {
                     </p>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <span style={{ padding: '0.25rem 0.75rem', background: '#d1fae5', color: '#059669', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '600' }}>
                     {estadisticas.asistio} Asistieron
                   </span>
@@ -550,7 +553,8 @@ function AsistenciasPage() {
                               disabled={saving || tieneAsistencia}
                               style={{
                                 flex: 1,
-                                padding: '0.5rem',
+                                padding: isMobile ? '0.75rem 0.5rem' : '0.5rem',
+                                minHeight: '44px',
                                 border: 'none',
                                 borderRadius: '6px',
                                 fontSize: '0.75rem',
@@ -578,7 +582,7 @@ function AsistenciasPage() {
               <div style={{ padding: '1rem', borderTop: '1px solid #e5e7eb' }}>
                 <button
                   onClick={() => setShowRecuperacion(true)}
-                  style={{ width: '100%', padding: '0.75rem', background: '#f3f4f6', border: '1px dashed #d1d5db', borderRadius: '8px', color: '#374151', fontWeight: '500', cursor: 'pointer' }}
+                  style={{ width: '100%', padding: '0.75rem', minHeight: '48px', background: '#f3f4f6', border: '1px dashed #d1d5db', borderRadius: '8px', color: '#374151', fontWeight: '500', cursor: 'pointer' }}
                 >
                   + Agregar Recuperación
                 </button>
@@ -642,7 +646,7 @@ function AsistenciasPage() {
               onKeyDown={(e) => e.key === 'Enter' && buscarAlumnoRecuperacion()}
               style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', marginBottom: '1rem' }}
             />
-            <button onClick={buscarAlumnoRecuperacion} style={{ width: '100%', padding: '0.5rem', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', marginBottom: '1rem', cursor: 'pointer' }}>Buscar</button>
+            <button onClick={buscarAlumnoRecuperacion} style={{ width: '100%', padding: '0.75rem', minHeight: '44px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', marginBottom: '1rem', cursor: 'pointer' }}>Buscar</button>
             <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
               {resultadosBusqueda.map((alumno) => (
                 <div key={alumno.id} onClick={() => agregarRecuperacion(alumno)} style={{ padding: '0.75rem', borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}>
@@ -651,7 +655,7 @@ function AsistenciasPage() {
                 </div>
               ))}
             </div>
-            <button onClick={() => setShowRecuperacion(false)} style={{ width: '100%', padding: '0.5rem', background: '#f3f4f6', border: 'none', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer' }}>Cancelar</button>
+            <button onClick={() => setShowRecuperacion(false)} style={{ width: '100%', padding: '0.75rem', minHeight: '44px', background: '#f3f4f6', border: 'none', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer' }}>Cancelar</button>
           </div>
         </div>
       )}
@@ -680,7 +684,7 @@ function AsistenciasPage() {
                 ))}
               </select>
             </div>
-            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Estado</label>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 {ESTADOS.map((estado) => (
@@ -689,7 +693,8 @@ function AsistenciasPage() {
                     onClick={() => setEditandoAsistencia({ ...editandoAsistencia, estado: estado.value })}
                     style={{
                       flex: 1,
-                      padding: '0.5rem',
+                      padding: '0.75rem 0.5rem',
+                      minHeight: '44px',
                       border: 'none',
                       borderRadius: '6px',
                       fontWeight: '600',
@@ -712,14 +717,14 @@ function AsistenciasPage() {
               />
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button onClick={() => { setEditandoAsistencia(null); setEditandoProfesorOriginal(null); }} style={{ flex: 1, padding: '0.75rem', background: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => { setEditandoAsistencia(null); setEditandoProfesorOriginal(null); }} style={{ flex: 1, padding: '0.75rem', minHeight: '48px', background: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
               <button onClick={() => {
                 if (editandoAsistencia.profesor !== editandoProfesorOriginal && editandoProfesorOriginal !== null) {
                   setShowConfirmProfesor1(true);
                 } else {
                   guardarEdicionAsistencia();
                 }
-              }} disabled={saving} style={{ flex: 1, padding: '0.75rem', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer' }}>
+              }} disabled={saving} style={{ flex: 1, padding: '0.75rem', minHeight: '48px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer' }}>
                 {saving ? 'Guardando...' : 'Guardar'}
               </button>
             </div>

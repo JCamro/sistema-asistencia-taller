@@ -6,6 +6,7 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 *.egg-info/
 dist/
 build/
@@ -15,6 +16,7 @@ build/
 local_settings.py
 db.sqlite3
 media/
+migrations/__pycache__/
 
 # Node
 node_modules/

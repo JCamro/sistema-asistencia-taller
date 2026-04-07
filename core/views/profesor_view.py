@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from ..models import Profesor
 from ..serializers import ProfesorSerializer, ProfesorListSerializer
+from .pagination import StandardResultsSetPagination
 
 
 class ProfesorViewSet(viewsets.ModelViewSet):
@@ -14,6 +15,7 @@ class ProfesorViewSet(viewsets.ModelViewSet):
     search_fields = ['nombre', 'apellido', 'dni']
     ordering_fields = ['apellido', 'nombre']
     ordering = ['apellido', 'nombre']
+    pagination_class = StandardResultsSetPagination
 
     def get_serializer_class(self):
         if self.action == 'list':

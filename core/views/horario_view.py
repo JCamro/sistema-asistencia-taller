@@ -2,8 +2,10 @@ from rest_framework import viewsets, filters, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from ..models import Horario
+from django.db.models import Prefetch, Count, Q
+from ..models import Horario, MatriculaHorario
 from ..serializers import HorarioSerializer, HorarioListSerializer
+from .pagination import StandardResultsSetPagination
 
 
 class HorarioViewSet(viewsets.ModelViewSet):
@@ -14,6 +16,7 @@ class HorarioViewSet(viewsets.ModelViewSet):
     search_fields = ['taller__nombre', 'profesor__nombre', 'profesor__apellido']
     ordering_fields = ['dia_semana', 'hora_inicio']
     ordering = ['dia_semana', 'hora_inicio']
+    pagination_class = StandardResultsSetPagination
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -21,10 +24,29 @@ class HorarioViewSet(viewsets.ModelViewSet):
         return HorarioSerializer
 
     def get_queryset(self):
+        from django.db.models import Prefetch
+        
         queryset = super().get_queryset()
         ciclo_id = self.kwargs.get('ciclo_id')
         if ciclo_id:
             queryset = queryset.filter(ciclo_id=ciclo_id)
+        
+        # Prefetch alumnos data to avoid N+1 queries
+        active_matriculas = MatriculaHorario.objects.filter(
+            matricula__activo=True,
+            matricula__concluida=False
+        ).select_related('matricula__alumno')
+        
+        queryset = queryset.prefetch_related(
+            Prefetch('matricula_horarios', queryset=active_matriculas)
+        ).annotate(
+            ocupacion=Count(
+                'matricula_horarios',
+                filter=Q(matricula_horarios__matricula__activo=True,
+                         matricula_horarios__matricula__concluida=False)
+            )
+        )
+        
         return queryset
 
     def create(self, request, *args, **kwargs):

@@ -62,10 +62,18 @@ class MatriculaHorarioSerializer(serializers.ModelSerializer):
 class MatriculaHorarioListSerializer(serializers.ModelSerializer):
     horario_detalle = serializers.SerializerMethodField()
     matricula_detalle = serializers.SerializerMethodField()
+    horario_dia_semana = serializers.SerializerMethodField()
+    horario_hora_inicio = serializers.SerializerMethodField()
 
     class Meta:
         model = MatriculaHorario
-        fields = ['id', 'matricula', 'matricula_detalle', 'horario', 'horario_detalle', 'created_at']
+        fields = ['id', 'matricula', 'matricula_detalle', 'horario', 'horario_detalle', 'horario_dia_semana', 'horario_hora_inicio', 'created_at']
+
+    def get_horario_dia_semana(self, obj):
+        return obj.horario.dia_semana
+
+    def get_horario_hora_inicio(self, obj):
+        return obj.horario.hora_inicio.strftime('%H:%M')
 
     def get_horario_detalle(self, obj):
         return {

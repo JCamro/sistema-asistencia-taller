@@ -12,6 +12,7 @@ from datetime import datetime
 from ..models import PagoProfesor, PagoProfesorDetalle, Profesor, Ciclo
 from ..serializers import PagoProfesorSerializer, PagoProfesorListSerializer, PagoProfesorDetalleSerializer
 from ..services import PagoProfesorService
+from .pagination import StandardResultsSetPagination
 
 
 class PagoProfesorViewSet(viewsets.ModelViewSet):
@@ -22,6 +23,7 @@ class PagoProfesorViewSet(viewsets.ModelViewSet):
     search_fields = ['profesor__nombre', 'profesor__apellido']
     ordering_fields = ['created_at', 'monto_final']
     ordering = ['-created_at']
+    pagination_class = StandardResultsSetPagination
 
     def get_serializer_class(self):
         if self.action == 'list':

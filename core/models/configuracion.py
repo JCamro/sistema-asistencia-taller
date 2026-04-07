@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 
 
@@ -8,6 +10,19 @@ class Configuracion(models.Model):
         null=True,
         blank=True,
         related_name='configuracion'
+    )
+    # Configuración de pago dinámico a profesores
+    pago_dinamico_base = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('17.00'),
+        verbose_name='Base pago dinámico'
+    )
+    pago_dinamico_tope = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('35.00'),
+        verbose_name='Tope máximo pago dinámico'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

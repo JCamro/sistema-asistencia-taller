@@ -24,6 +24,7 @@ class ReciboViewSet(viewsets.ModelViewSet):
     search_fields = ['numero', 'alumno__nombre', 'alumno__apellido']
     ordering_fields = ['fecha_emision', 'monto_total', 'id']
     ordering = ['-id']
+    # No pagination - list is typically small and frontend expects direct array
 
     def get_serializer_class(self):
         if self.action == 'list':

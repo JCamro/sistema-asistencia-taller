@@ -2,6 +2,7 @@ import { useState, useEffect, memo, useCallback } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { getHistorialPagosProfesor } from '../api/endpoints';
 import { getApiBaseUrl } from '../utils/api';
 
@@ -247,121 +248,81 @@ function ProfesoresPage() {
           />
         </div>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#f9fafb' }}>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Nombre</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>DNI</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Teléfono</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Edad</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Email</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Rol</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Registro</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredProfesores.length === 0 ? (
-              <tr>
-                <td colSpan={8} style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>
-                  {search ? 'No se encontraron resultados' : 'No hay profesores registrados'}
-                </td>
-              </tr>
-            ) : (
-              filteredProfesores.map((profesor) => (
-                <tr key={profesor.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: '1rem' }}>
-                    <div style={{ fontWeight: '600', color: '#111827' }}>{profesor.nombre} {profesor.apellido}</div>
-                  </td>
-                  <td style={{ padding: '1rem', color: '#374151', fontFamily: 'monospace' }}>{profesor.dni}</td>
-                  <td style={{ padding: '1rem', color: '#374151' }}>{profesor.telefono || '-'}</td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    {profesor.edad !== null ? (
-                      <span style={{
-                        padding: '0.25rem 0.5rem',
-                        borderRadius: '6px',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        background: '#e0e7ff',
-                        color: '#4338ca',
-                      }}>
-                        {profesor.edad} años
-                      </span>
-                    ) : (
-                      <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>-</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '1rem', color: '#374151' }}>{profesor.email || '-'}</td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <span style={{
-                      padding: '0.25rem 0.75rem',
-                      borderRadius: '9999px',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      background: profesor.es_gerente ? '#fef3c7' : '#e0e7ff',
-                      color: profesor.es_gerente ? '#b45309' : '#4338ca',
-                    }}>
-                      {profesor.es_gerente ? 'Gerente' : 'Profesor'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', color: '#6b7280' }}>
-                    {profesor.created_at ? (() => {
-                      const d = new Date(profesor.created_at);
-                      const day = String(d.getDate()).padStart(2, '0');
-                      const month = String(d.getMonth() + 1).padStart(2, '0');
-                      const year = d.getFullYear();
-                      return `${day}/${month}/${year}`;
-                    })() : '-'}
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'right' }}>
-                    <button
-                      onClick={() => handleVerHistorial(profesor.id)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#6366f1',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: '500',
-                        marginRight: '1rem',
-                      }}
-                    >
-                      Ver historial
-                    </button>
-                    <button
-                      onClick={() => handleEdit(profesor)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#10b981',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: '500',
-                        marginRight: '1rem',
-                      }}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDelete(profesor.id, `${profesor.nombre} ${profesor.apellido}`)}
-                      disabled={deletingId === profesor.id}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: deletingId === profesor.id ? '#9ca3af' : '#ef4444',
-                        cursor: deletingId === profesor.id ? 'not-allowed' : 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: '500',
-                      }}
-                    >
-                      {deletingId === profesor.id ? 'Eliminando...' : 'Eliminar'}
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        <ResponsiveTable<Profesor>
+          columns={[
+            {
+              key: 'nombre',
+              label: 'Nombre',
+              render: (profesor) => (
+                <div style={{ fontWeight: '600', color: '#111827' }}>{profesor.nombre} {profesor.apellido}</div>
+              ),
+            },
+            { key: 'dni', label: 'DNI' },
+            { key: 'telefono', label: 'Teléfono', render: (profesor: Profesor) => profesor.telefono || '-' },
+            {
+              key: 'edad',
+              label: 'Edad',
+              align: 'center',
+              render: (profesor: Profesor) => profesor.edad !== null ? (
+                <span style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '600', background: '#e0e7ff', color: '#4338ca' }}>
+                  {profesor.edad} años
+                </span>
+              ) : '-',
+            },
+            { key: 'email', label: 'Email', render: (profesor: Profesor) => profesor.email || '-' },
+            {
+              key: 'es_gerente',
+              label: 'Rol',
+              align: 'center',
+              render: (profesor: Profesor) => (
+                <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '600', background: profesor.es_gerente ? '#fef3c7' : '#e0e7ff', color: profesor.es_gerente ? '#b45309' : '#4338ca' }}>
+                  {profesor.es_gerente ? 'Gerente' : 'Profesor'}
+                </span>
+              ),
+            },
+            {
+              key: 'created_at',
+              label: 'Registro',
+              align: 'center',
+              render: (profesor: Profesor) => profesor.created_at ? (() => {
+                const d = new Date(profesor.created_at);
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = d.getFullYear();
+                return `${day}/${month}/${year}`;
+              })() : '-',
+            },
+          ]}
+          data={filteredProfesores}
+          keyField="id"
+          actions={(profesor) => (
+            <>
+              <button
+                onClick={() => handleVerHistorial(profesor.id)}
+                className="touch-target"
+                style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500' }}
+              >
+                Ver historial
+              </button>
+              <button
+                onClick={() => handleEdit(profesor)}
+                className="touch-target"
+                style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500' }}
+              >
+                Editar
+              </button>
+              <button
+                onClick={() => handleDelete(profesor.id, `${profesor.nombre} ${profesor.apellido}`)}
+                disabled={deletingId === profesor.id}
+                className="touch-target"
+                style={{ background: 'none', border: 'none', color: deletingId === profesor.id ? '#9ca3af' : '#ef4444', cursor: deletingId === profesor.id ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: '500' }}
+              >
+                {deletingId === profesor.id ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </>
+          )}
+          emptyMessage={search ? 'No se encontraron resultados' : 'No hay profesores registrados'}
+        />
       </div>
 
       {showModal && (
@@ -390,7 +351,7 @@ function ProfesoresPage() {
             </div>
             <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
               <div style={{ display: 'grid', gap: '1rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Nombre</label>
                     <input
