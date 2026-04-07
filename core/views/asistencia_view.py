@@ -6,6 +6,7 @@ from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from ..models import Asistencia, Matricula, MatriculaHorario, Horario
 from ..serializers import AsistenciaSerializer, AsistenciaListSerializer
+from .pagination import StandardResultsSetPagination
 
 
 @api_view(['GET'])
@@ -91,6 +92,7 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
     search_fields = ['matricula__alumno__nombre', 'matricula__alumno__apellido']
     ordering_fields = ['fecha', 'hora']
     ordering = ['-fecha', '-hora']
+    pagination_class = StandardResultsSetPagination
 
     def get_serializer_class(self):
         if self.action == 'list':

@@ -1,11 +1,13 @@
 from django.db import transaction
+from django.db.models import Case, When, Value, CharField, Exists, OuterRef, Count
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from ..models import Matricula, MatriculaHorario, Asistencia, HistorialTraspaso, Taller, PrecioPaquete
+from ..models import Matricula, MatriculaHorario, Asistencia, HistorialTraspaso, Taller, PrecioPaquete, ReciboMatricula
 from ..serializers import MatriculaSerializer, MatriculaListSerializer, TraspasoSerializer
+from .pagination import StandardResultsSetPagination
 
 
 class MatriculaViewSet(viewsets.ModelViewSet):
@@ -16,6 +18,7 @@ class MatriculaViewSet(viewsets.ModelViewSet):
     search_fields = ['alumno__nombre', 'alumno__apellido', 'alumno__dni']
     ordering_fields = ['fecha_matricula', 'alumno__apellido']
     ordering = ['-fecha_matricula']
+    pagination_class = StandardResultsSetPagination
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -23,10 +26,28 @@ class MatriculaViewSet(viewsets.ModelViewSet):
         return MatriculaSerializer
 
     def get_queryset(self):
+        from django.db.models import Exists, OuterRef
+        
         queryset = super().get_queryset()
         ciclo_id = self.kwargs.get('ciclo_id')
         if ciclo_id:
             queryset = queryset.filter(ciclo_id=ciclo_id)
+        
+        # Annotate estado_calculado to avoid N+1 queries
+        # Note: Exists subquery must be defined inside annotate to maintain OuterRef context
+        queryset = queryset.annotate(
+            estado_calculado=Case(
+                When(activo=False, then=Value('inactiva')),
+                When(concluida=True, then=Value('concluida')),
+                When(Exists(ReciboMatricula.objects.filter(
+                    matricula=OuterRef('pk'),
+                    recibo__estado__in=['pagado', 'pendiente']
+                )), then=Value('activa')),
+                default=Value('no_procesado'),
+                output_field=CharField()
+            )
+        )
+        
         return queryset
 
     def create(self, request, *args, **kwargs):
@@ -164,7 +185,7 @@ class MatriculaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        precio = PrecioPaquete.get_precio_individual(taller.tipo, sesiones)
+        precio = PrecioPaquete.get_precio_individual(taller.tipo, sesiones, ciclo_id=taller.ciclo_id)
 
         if precio:
             return Response({

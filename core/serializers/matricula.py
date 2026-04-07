@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db.models import Case, When, Value, CharField
 from ..models import Matricula, MatriculaHorario
 from ..services import MatriculaService
 
@@ -53,6 +54,9 @@ class MatriculaSerializer(serializers.ModelSerializer):
         return MatriculaService.update(instance, validated_data, horarios_ids)
 
     def get_estado_calculado(self, obj):
+        # Use annotated field if available (for list views), otherwise compute inline
+        if hasattr(obj, 'estado_calculado') and obj.estado_calculado is not None:
+            return obj.estado_calculado
         if not obj.activo:
             return 'inactiva'
         if obj.concluida:
@@ -126,7 +130,7 @@ class MatriculaListSerializer(serializers.ModelSerializer):
     precio_por_sesion = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     sesiones_consumidas = serializers.IntegerField(read_only=True)
     sesiones_disponibles = serializers.IntegerField(read_only=True)
-    estado_calculado = serializers.SerializerMethodField()
+    estado_calculado = serializers.CharField(read_only=True)
 
     class Meta:
         model = Matricula
@@ -140,15 +144,3 @@ class MatriculaListSerializer(serializers.ModelSerializer):
 
     def get_alumno_nombre(self, obj):
         return f"{obj.alumno.apellido}, {obj.alumno.nombre}"
-
-    def get_estado_calculado(self, obj):
-        if not obj.activo:
-            return 'inactiva'
-        if obj.concluida:
-            return 'concluida'
-        from ..models import ReciboMatricula
-        tiene_recibo = ReciboMatricula.objects.filter(
-            matricula=obj,
-            recibo__estado__in=['pagado', 'pendiente']
-        ).exists()
-        return 'activa' if tiene_recibo else 'no_procesado'

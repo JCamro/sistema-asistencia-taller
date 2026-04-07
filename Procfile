@@ -1,1 +1,1 @@
-web: sh -c "python manage.py migrate && python manage.py seed_precios && gunicorn config.wsgi:application"
+web: bash start.sh

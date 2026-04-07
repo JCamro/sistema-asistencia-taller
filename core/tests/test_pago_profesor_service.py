@@ -688,3 +688,247 @@ class TestDetalleClaseEdgeCases(TestCase):
         # Debe retornar resultados
         self.assertEqual(resultado['resumen']['num_alumnos'], 1)
         self.assertIn('alumnos', resultado)
+
+
+class TestPagoFijo(TestCase):
+    """Tests para validar la lógica de pago fijo (monto_base=0, monto_adicional=0)."""
+
+    def _crear_mock_horario_fijo(self, monto_fijo: float):
+        """Crea un mock de Horario con tipo_pago='fijo'."""
+        mock_horario = MagicMock()
+        mock_horario.tipo_pago = 'fijo'
+        mock_horario.monto_fijo = Decimal(str(monto_fijo))
+        return mock_horario
+
+    def _crear_mock_asistencia(self, precio_sesion: float):
+        """Crea un mock de Asistencia con precio por sesión."""
+        mock_matricula = MagicMock()
+        mock_matricula.precio_por_sesion = Decimal(str(precio_sesion))
+        
+        mock_asistencia = MagicMock()
+        mock_asistencia.matricula = mock_matricula
+        return mock_asistencia
+
+    def test_pago_fijo_un_alumno(self):
+        """Pago fijo S/. 25 con 1 alumno → monto_profesor=25, monto_base=0, monto_adicional=0"""
+        mock_horario = self._crear_mock_horario_fijo(25.00)
+        mock_asistencia = self._crear_mock_asistencia(20.00)
+        asistentes = [mock_asistencia]
+        num_alumnos = 1
+        
+        resultado = PagoProfesorService._calcular_pago_clase(asistentes, num_alumnos, mock_horario)
+        
+        self.assertEqual(resultado['monto_profesor'], Decimal('25.00'))
+        self.assertEqual(resultado['monto_adicional'], Decimal('0.00'))
+        
+        # Verificar que NO usa BASE_PAGO
+        self.assertNotEqual(resultado['monto_profesor'], Decimal('17.00'))
+
+    def test_pago_fijo_multiple_alumnos(self):
+        """Pago fijo S/. 25 con 3 alumnos → monto_profesor=25, monto_base=0, monto_adicional=0"""
+        mock_horario = self._crear_mock_horario_fijo(25.00)
+        mock_asistentes = [self._crear_mock_asistencia(20.00) for _ in range(3)]
+        num_alumnos = 3
+        
+        resultado = PagoProfesorService._calcular_pago_clase(mock_asistentes, num_alumnos, mock_horario)
+        
+        # Pago fijo es FLAT, no importa cuántos alumnos haya
+        self.assertEqual(resultado['monto_profesor'], Decimal('25.00'))
+        self.assertEqual(resultado['monto_adicional'], Decimal('0.00'))
+
+    def test_pago_fijo_sin_monto_fijo(self):
+        """Pago fijo sin monto_fijo configurado → monto_profesor=0"""
+        mock_horario = MagicMock()
+        mock_horario.tipo_pago = 'fijo'
+        mock_horario.monto_fijo = None
+        mock_asistencia = self._crear_mock_asistencia(20.00)
+        asistentes = [mock_asistencia]
+        num_alumnos = 1
+        
+        resultado = PagoProfesorService._calcular_pago_clase(asistentes, num_alumnos, mock_horario)
+        
+        # Sin monto_fijo configurado, cae a 0 (no debe usar BASE_PAGO como fallback)
+        self.assertEqual(resultado['monto_profesor'], Decimal('0.00'))
+        self.assertEqual(resultado['monto_adicional'], Decimal('0.00'))
+
+    def test_pago_fijo_cero_alumnos(self):
+        """Pago fijo con 0 alumnos → 0"""
+        mock_horario = self._crear_mock_horario_fijo(25.00)
+        asistentes = []
+        num_alumnos = 0
+        
+        resultado = PagoProfesorService._calcular_pago_clase(asistentes, num_alumnos, mock_horario)
+        
+        self.assertEqual(resultado['monto_profesor'], Decimal('0.00'))
+        self.assertEqual(resultado['monto_adicional'], Decimal('0.00'))
+
+
+class TestConfiguracionPagoDinamico(TestCase):
+    """Tests para validar que la configuración de base/tope funciona correctamente."""
+
+    def setUp(self):
+        """Crear datos de prueba."""
+        from core.models import Configuracion
+        
+        # Guardar configuración original
+        self.config_original = Configuracion.get_instance()
+        self.base_original = self.config_original.pago_dinamico_base
+        self.tope_original = self.config_original.pago_dinamico_tope
+        
+        # Configurar valores de prueba: base=20, tope=40
+        self.config_original.pago_dinamico_base = Decimal('20.00')
+        self.config_original.pago_dinamico_tope = Decimal('40.00')
+        self.config_original.save()
+
+    def tearDown(self):
+        """Restaurar configuración original."""
+        from core.models import Configuracion
+        
+        config = Configuracion.get_instance()
+        config.pago_dinamico_base = self.base_original
+        config.pago_dinamico_tope = self.tope_original
+        config.save()
+
+    def _crear_mock_asistencia(self, precio_sesion: float):
+        """Crea un mock de Asistencia."""
+        mock_matricula = MagicMock()
+        mock_matricula.precio_por_sesion = Decimal(str(precio_sesion))
+        
+        mock_asistencia = MagicMock()
+        mock_asistencia.matricula = mock_matricula
+        return mock_asistencia
+
+    def test_configuracion_base_personalizada(self):
+        """Con base=20, 1 alumno → pago=20 (no 17)"""
+        mock_asistencia = self._crear_mock_asistencia(20.00)
+        asistentes = [mock_asistencia]
+        num_alumnos = 1
+        
+        # Sin horario (pago dinámico)
+        resultado = PagoProfesorService._calcular_pago_clase(asistentes, num_alumnos)
+        
+        self.assertEqual(resultado['monto_profesor'], Decimal('20.00'))
+        self.assertEqual(resultado['monto_adicional'], Decimal('0.00'))
+
+    def test_configuracion_tope_personalizado(self):
+        """Con base=20, tope=40, 2 alumnos con sesion=20 → 20+10=30 (sin llegar a tope)"""
+        mock_asistencia1 = self._crear_mock_asistencia(20.00)
+        mock_asistencia2 = self._crear_mock_asistencia(20.00)
+        asistentes = [mock_asistencia1, mock_asistencia2]
+        num_alumnos = 2
+        
+        resultado = PagoProfesorService._calcular_pago_clase(asistentes, num_alumnos)
+        
+        # 20 + 50%*20 = 30
+        self.assertEqual(resultado['monto_profesor'], Decimal('30.00'))
+        self.assertEqual(resultado['monto_adicional'], Decimal('10.00'))
+
+    def test_configuracion_tope_aplicado(self):
+        """Con base=20, tope=40, 3 alumnos con sesion=20 → 20+15=35, capped a 40"""
+        mock_asistencia1 = self._crear_mock_asistencia(20.00)
+        mock_asistencia2 = self._crear_mock_asistencia(20.00)
+        mock_asistencia3 = self._crear_mock_asistencia(20.00)
+        asistentes = [mock_asistencia1, mock_asistencia2, mock_asistencia3]
+        num_alumnos = 3
+        
+        resultado = PagoProfesorService._calcular_pago_clase(asistentes, num_alumnos)
+        
+        # 20 + 10 + 10 = 40 (正好 al tope)
+        self.assertEqual(resultado['monto_profesor'], Decimal('40.00'))
+        self.assertEqual(resultado['monto_adicional'], Decimal('20.00'))
+
+
+class TestDetalleClasePagoFijo(TestCase):
+    """Tests de detalle_clase con pago fijo."""
+
+    def setUp(self):
+        """Crear datos de prueba."""
+        from core.models import Ciclo, Profesor, Alumno, Taller, Horario, Matricula, Asistencia
+        
+        self.ciclo = Ciclo.objects.create(
+            nombre='Test Pago Fijo',
+            tipo='anual',
+            fecha_inicio=date(2026, 1, 1),
+            fecha_fin=date(2026, 12, 31),
+            activo=True
+        )
+        
+        self.profesor = Profesor.objects.create(
+            ciclo=self.ciclo,
+            nombre='Profesor',
+            apellido='Fijo',
+            dni='12345678',
+            telefono='999999999',
+            email='fijo@test.com',
+            activo=True,
+            es_gerente=False
+        )
+        
+        self.alumno = Alumno.objects.create(
+            ciclo=self.ciclo,
+            nombre='Alumno',
+            apellido='Test',
+            dni='87654321',
+            telefono='888888888',
+            email='alumno@test.com',
+            activo=True
+        )
+        
+        self.taller = Taller.objects.create(
+            ciclo=self.ciclo,
+            nombre='Guitarra',
+            tipo='instrumento',
+            descripcion='Taller de guitarra',
+            activo=True
+        )
+        
+        # Horario con pago fijo
+        self.horario = Horario.objects.create(
+            ciclo=self.ciclo,
+            taller=self.taller,
+            profesor=self.profesor,
+            dia_semana=0,
+            hora_inicio='10:00',
+            hora_fin='11:00',
+            tipo_pago='fijo',
+            monto_fijo=Decimal('25.00'),
+            cupo_maximo=10
+        )
+        
+        self.matricula = Matricula.objects.create(
+            alumno=self.alumno,
+            ciclo=self.ciclo,
+            taller=self.taller,
+            sesiones_contratadas=10,
+            precio_total=Decimal('200.00'),
+            precio_por_sesion=Decimal('20.00'),
+            metodo_pago='efectivo',
+            activo=True,
+            concluida=False
+        )
+
+    def test_detalle_clase_pago_fijo(self):
+        """detalle_clase con pago fijo: monto_base=0, monto_adicional=0"""
+        from core.models import Asistencia
+        
+        Asistencia.objects.create(
+            matricula=self.matricula,
+            horario=self.horario,
+            profesor=self.profesor,
+            fecha='2026-03-15',
+            hora='10:00',
+            estado='asistio'
+        )
+        
+        resultado = PagoProfesorService.detalle_clase(
+            horario_id=self.horario.id,
+            fecha='2026-03-15',
+            profesor_id=self.profesor.id
+        )
+        
+        self.assertEqual(resultado['resumen']['num_alumnos'], 1)
+        self.assertEqual(resultado['resumen']['monto_profesor'], 25.00)
+        self.assertEqual(resultado['resumen']['monto_base'], 0.00)  # Fijo = 0
+        self.assertEqual(resultado['resumen']['monto_adicional'], 0.00)  # Fijo = 0
+        # Ganancia: 20 (valor_generado) - 25 (pago) = -5
+        self.assertEqual(resultado['resumen']['ganancia_taller'], -5.00)

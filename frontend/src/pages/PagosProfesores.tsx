@@ -1,6 +1,7 @@
 import { useState, useEffect, memo, useCallback } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { getApiBaseUrl } from '../utils/api';
 
 interface ResultadoPago {
@@ -214,14 +215,6 @@ function PagosProfesoresPage() {
   const totalGanancia = resultados.reduce((sum, r) => sum + r.ganancia_taller, 0);
   const totalClases = resultados.reduce((sum, r) => sum + r.clases_dictadas, 0);
 
-  const resultadosOrdenados = [...resultados].sort((a, b) => {
-    if (orden === 'az') return a.profesor.localeCompare(b.profesor);
-    if (orden === 'za') return b.profesor.localeCompare(a.profesor);
-    if (orden === 'mas_clases') return b.clases_dictadas - a.clases_dictadas;
-    if (orden === 'menos_clases') return a.clases_dictadas - b.clases_dictadas;
-    return 0;
-  });
-
   if (isCicloLoading || loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
@@ -325,39 +318,51 @@ function PagosProfesoresPage() {
 
       {/* Tabla de resultados */}
       <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: 'linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)' }}>
-              <th style={{ padding: '0.875rem 1rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Profesor</th>
-              <th style={{ padding: '0.875rem 1rem', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Clases</th>
-              <th style={{ padding: '0.875rem 1rem', textAlign: 'right', fontSize: '0.7rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Monto Profesor</th>
-              <th style={{ padding: '0.875rem 1rem', textAlign: 'right', fontSize: '0.7rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ganancia Taller</th>
-              <th style={{ padding: '0.875rem 1rem', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {resultados.length === 0 ? (
-              <tr><td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>No hay pagos calculados. Seleccione un rango de fechas y clic en "Calcular Pagos"</td></tr>
-            ) : (
-              resultadosOrdenados.map((r) => (
-                <tr key={r.pago_id} style={{ borderTop: '1px solid #e5e7eb', transition: 'background 0.15s' }}>
-                  <td style={{ padding: '1rem', fontWeight: '600', color: '#111827' }}>{r.profesor}</td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}><span style={{ background: '#eef2ff', color: '#4338ca', padding: '0.25rem 0.625rem', borderRadius: '9999px', fontSize: '0.8rem', fontWeight: '600' }}>{r.clases_dictadas}</span></td>
-                  <td style={{ padding: '1rem', textAlign: 'right', fontFamily: 'monospace', fontWeight: '700', color: '#16a34a', fontSize: '0.95rem' }}>S/. {fmt(r.monto_profesor)}</td>
-                  <td style={{ padding: '1rem', textAlign: 'right', fontFamily: 'monospace', fontWeight: '700', color: '#d97706', fontSize: '0.95rem' }}>S/. {fmt(r.ganancia_taller)}</td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <button
-                      onClick={() => handleVerDetalle(r)}
-                      style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', color: 'white', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', boxShadow: '0 2px 8px rgba(99,102,241,0.3)' }}
-                    >
-                      Ver Detalle
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        <ResponsiveTable<ResultadoPago>
+          columns={[
+            { 
+              key: 'profesor', 
+              label: 'Profesor',
+              render: (r) => <span style={{ fontWeight: '600', color: '#111827' }}>{r.profesor}</span>
+            },
+            { 
+              key: 'clases_dictadas', 
+              label: 'Clases',
+              align: 'center',
+              render: (r: ResultadoPago) => (
+                <span style={{ background: '#eef2ff', color: '#4338ca', padding: '0.25rem 0.625rem', borderRadius: '9999px', fontSize: '0.8rem', fontWeight: '600' }}>{r.clases_dictadas}</span>
+              ),
+            },
+            { 
+              key: 'monto_profesor', 
+              label: 'Monto Profesor',
+              align: 'right',
+              render: (r: ResultadoPago) => (
+                <span style={{ fontFamily: 'monospace', fontWeight: '700', color: '#16a34a', fontSize: '0.95rem' }}>S/. {fmt(r.monto_profesor)}</span>
+              ),
+            },
+            { 
+              key: 'ganancia_taller', 
+              label: 'Ganancia Taller',
+              align: 'right',
+              render: (r: ResultadoPago) => (
+                <span style={{ fontFamily: 'monospace', fontWeight: '700', color: '#d97706', fontSize: '0.95rem' }}>S/. {fmt(r.ganancia_taller)}</span>
+              ),
+            },
+          ]}
+          data={resultados}
+          keyField="pago_id"
+          actions={(r) => (
+            <button
+              onClick={() => handleVerDetalle(r)}
+              className="touch-target"
+              style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', color: 'white', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', boxShadow: '0 2px 8px rgba(99,102,241,0.3)' }}
+            >
+              Ver Detalle
+            </button>
+          )}
+          emptyMessage="No hay pagos calculados. Seleccione un rango de fechas y clic en Calcular Pagos"
+        />
       </div>
 
       {/* Modal de detalle */}

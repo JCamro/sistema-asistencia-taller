@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { 
   getEgresos, createEgreso, updateEgreso, deleteEgreso, 
   getResumenEgresos, getProfesores 
@@ -283,47 +284,47 @@ const EgresosPage = () => {
 
       {/* Tabla */}
       <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Tipo</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Monto</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Descripción</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Categoría</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Beneficiario</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Fecha</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Estado</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Cargando...</td></tr>
-            ) : filteredEgresos.length === 0 ? (
-              <tr><td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>No hay egresos</td></tr>
-            ) : (
-              filteredEgresos.map(egreso => (
-                <tr key={egreso.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }}>{getTipoLabel(egreso.tipo)}</td>
-                  <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600 }}>{formatMonto(egreso.monto)}</td>
-                  <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{egreso.descripcion || '-'}</td>
-                  <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{egreso.categoria || '-'}</td>
-                  <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }}>{egreso.beneficiario || egreso.profesor_nombre || '-'}</td>
-                  <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }}>{new Date(egreso.fecha).toLocaleDateString('es-PE')}</td>
-                  <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                    <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, background: `${getEstadoColor(egreso.estado)}20`, color: getEstadoColor(egreso.estado) }}>
-                      {getEstadoLabel(egreso.estado)}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                    <button onClick={() => abrirEditar(egreso)} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '0.75rem' }}>Editar</button>
-                    <button onClick={() => handleEliminar(egreso.id)} style={{ padding: '0.25rem 0.5rem', border: '1px solid #ef4444', borderRadius: '6px', background: 'white', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem' }}>Eliminar</button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        <ResponsiveTable<any>
+          columns={[
+            { key: 'tipo', label: 'Tipo', render: (e) => getTipoLabel(e.tipo) },
+            { key: 'monto', label: 'Monto', align: 'right', render: (e) => <span style={{ fontWeight: 600 }}>{formatMonto(e.monto)}</span> },
+            { key: 'descripcion', label: 'Descripción', render: (e) => e.descripcion || '-' },
+            { key: 'categoria', label: 'Categoría', render: (e) => e.categoria || '-' },
+            { key: 'beneficiario', label: 'Beneficiario', render: (e) => e.beneficiario || e.profesor_nombre || '-' },
+            { key: 'fecha', label: 'Fecha', render: (e) => new Date(e.fecha).toLocaleDateString('es-PE') },
+            { 
+              key: 'estado', 
+              label: 'Estado', 
+              align: 'center',
+              render: (e: any) => (
+                <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, background: `${getEstadoColor(e.estado)}20`, color: getEstadoColor(e.estado) }}>
+                  {getEstadoLabel(e.estado)}
+                </span>
+              ),
+            },
+          ]}
+          data={loading ? [] : filteredEgresos}
+          keyField="id"
+          actions={(e) => (
+            <>
+              <button
+                onClick={() => abrirEditar(e)}
+                className="touch-target"
+                style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '0.75rem' }}
+              >
+                Editar
+              </button>
+              <button
+                onClick={() => handleEliminar(e.id)}
+                className="touch-target"
+                style={{ padding: '0.25rem 0.5rem', border: '1px solid #ef4444', borderRadius: '6px', background: 'white', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem' }}
+              >
+                Eliminar
+              </button>
+            </>
+          )}
+          emptyMessage={loading ? 'Cargando...' : 'No hay egresos'}
+        />
       </div>
 
       {/* Modal */}

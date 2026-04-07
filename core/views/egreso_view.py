@@ -21,6 +21,7 @@ class EgresoViewSet(viewsets.ModelViewSet):
     search_fields = ['descripcion', 'beneficiario']
     ordering_fields = ['fecha', 'monto', 'id']
     ordering = ['-fecha', '-id']
+    # No pagination - list is typically small and frontend expects direct array
 
     def get_serializer_class(self):
         if hasattr(self, 'action') and self.action == 'list':

@@ -4,16 +4,18 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from ..models import Taller
 from ..serializers import TallerSerializer, TallerListSerializer
+from .pagination import StandardResultsSetPagination
 
 
 class TallerViewSet(viewsets.ModelViewSet):
-    queryset = Taller.objects.all()
+    queryset = Taller.objects.select_related('ciclo').all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['activo']
     search_fields = ['nombre', 'descripcion']
     ordering_fields = ['nombre']
     ordering = ['nombre']
+    pagination_class = StandardResultsSetPagination
 
     def get_serializer_class(self):
         if self.action == 'list':

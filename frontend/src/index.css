@@ -15,6 +15,35 @@ body {
   min-height: 100vh;
 }
 
+/* Responsive CSS Custom Properties */
+:root {
+  --breakpoint-sm: 480px;
+  --breakpoint-md: 768px;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+}
+
+/* Responsive Utility Classes */
+.hide-mobile { display: none; }
+.hide-desktop { display: block; }
+
+@media (max-width: 768px) {
+  .hide-mobile { display: block; }
+  .hide-desktop { display: none; }
+  .stack-on-mobile { flex-direction: column; }
+  .touch-target { min-height: 44px; min-width: 44px; }
+}
+
+@media (max-width: 480px) {
+  .hide-mobile { display: block; }
+}
+
+@media (min-width: 769px) {
+  .hide-desktop { display: block; }
+}
+
 /* Sidebar styles */
 .sidebar {
   width: 260px;

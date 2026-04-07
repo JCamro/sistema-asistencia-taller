@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, memo } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { getPreciosActivos, type PrecioPaquete } from '../api/endpoints';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface PrecioEntry {
   total: number;
@@ -105,6 +106,8 @@ function construirPromosDesdeAPI(data: PrecioPaquete[]): PromosMap {
 
 function CalculadoraPrecios() {
   const { cicloActual } = useCiclo();
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
   const [precios, setPrecios] = useState<PreciosMap>(PRECIOS_DEFAULT);
   const [promos, setPromos] = useState<PromosMap>({ combo_musical: {}, mixto: {}, intensivo: {} });
   const [loadingPrecios, setLoadingPrecios] = useState(true);
@@ -248,7 +251,7 @@ function CalculadoraPrecios() {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '1rem' : '1.5rem' }}>
         {/* Panel izquierdo - Agregar items */}
         <div>
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem', marginBottom: '1rem' }}>
@@ -287,7 +290,8 @@ function CalculadoraPrecios() {
                       onClick={() => setNuevoClases(n)}
                       style={{
                         flex: 1,
-                        padding: '0.5rem',
+                        padding: '0.75rem 0.5rem',
+                        minHeight: '44px',
                         border: nuevoClases === n ? '2px solid #8b5cf6' : '1px solid #d1d5db',
                         borderRadius: '8px',
                         background: nuevoClases === n ? '#ede9fe' : 'white',
@@ -307,7 +311,7 @@ function CalculadoraPrecios() {
                         type="button"
                         onClick={() => setCantidadSuelta(Math.max(1, cantidadSuelta - 1))}
                         style={{
-                          width: '36px', height: '36px',
+                          width: '44px', height: '44px',
                           border: '1px solid #d1d5db', borderRadius: '8px',
                           background: 'white', cursor: 'pointer',
                           fontSize: '1.25rem', fontWeight: '600',
@@ -330,7 +334,7 @@ function CalculadoraPrecios() {
                         type="button"
                         onClick={() => setCantidadSuelta(cantidadSuelta + 1)}
                         style={{
-                          width: '36px', height: '36px',
+                          width: '44px', height: '44px',
                           border: '1px solid #d1d5db', borderRadius: '8px',
                           background: 'white', cursor: 'pointer',
                           fontSize: '1.25rem', fontWeight: '600',
@@ -350,6 +354,7 @@ function CalculadoraPrecios() {
                 disabled={!nuevoNombre.trim()}
                 style={{
                   padding: '0.75rem',
+                  minHeight: '48px',
                   background: !nuevoNombre.trim() ? '#e5e7eb' : '#8b5cf6',
                   color: 'white',
                   border: 'none',
@@ -392,7 +397,7 @@ function CalculadoraPrecios() {
                     </div>
                     <button
                       onClick={() => eliminarItem(item.id)}
-                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: '600' }}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: '600', padding: '0.5rem', minHeight: '44px', minWidth: '44px' }}
                     >
                       ×
                     </button>

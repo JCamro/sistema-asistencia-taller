@@ -7,5 +7,9 @@ class ConfiguracionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Configuracion
-        fields = ['id', 'ciclo_activo', 'ciclo_activo_nombre', 'updated_at']
+        fields = [
+            'id', 'ciclo_activo', 'ciclo_activo_nombre',
+            'pago_dinamico_base', 'pago_dinamico_tope',
+            'updated_at'
+        ]
         read_only_fields = ['id', 'updated_at']

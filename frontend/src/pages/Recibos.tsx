@@ -1,7 +1,9 @@
 import { useState, useEffect, memo, useCallback } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { getApiBaseUrl } from '../utils/api';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface Alumno {
   id: number;
@@ -93,6 +95,8 @@ function RecibosPage() {
   const apiBase = getApiBaseUrl();
   const { cicloActual } = useCiclo();
   const { showApiError } = useToast();
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
   const [recibos, setRecibos] = useState<Recibo[]>([]);
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [matriculas, setMatriculas] = useState<Matricula[]>([]);
@@ -413,7 +417,7 @@ function RecibosPage() {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: isMobile ? '0.75rem' : '1rem', marginBottom: '1.5rem' }}>
         <div style={{ background: 'white', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <p style={{ color: '#6b7280', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Total</p>
           <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#111827' }}>S/. {total.toFixed(2)}</p>
@@ -432,68 +436,102 @@ function RecibosPage() {
         <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
           <input type="text" placeholder="Buscar por número o alumno..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: '100%', maxWidth: '400px', padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px' }} />
         </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#f9fafb' }}>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Número</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Alumno(s)</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Fecha</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Paquete</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Monto</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Saldo</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Estado</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRecibos.length === 0 ? (
-              <tr><td colSpan={8} style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>No hay recibos</td></tr>
-            ) : (
-              filteredRecibos.map((r) => {
+        <ResponsiveTable<Recibo>
+          columns={[
+            {
+              key: 'numero',
+              label: 'Número',
+              render: (r: Recibo) => <span style={{ fontFamily: 'monospace', fontWeight: '600', color: '#14b8a6' }}>{r.numero}</span>,
+            },
+            {
+              key: 'alumno',
+              label: 'Alumno(s)',
+              render: (r: Recibo) => (
+                r.alumnos_nombres && r.alumnos_nombres.length > 1 ? (
+                  <div style={{ fontWeight: '600', color: '#111827' }}>{getAlumnosDisplay(r)}</div>
+                ) : (
+                  <div style={{ fontWeight: '600', color: '#111827' }}>{r.alumno_nombre}</div>
+                )
+              ),
+            },
+            {
+              key: 'fecha',
+              label: 'Fecha',
+              render: (r: Recibo) => new Date(r.fecha_emision).toLocaleDateString('es-PE'),
+            },
+            {
+              key: 'paquete',
+              label: 'Paquete',
+              render: (r: Recibo) => (
+                <span style={{
+                  padding: '0.25rem 0.5rem',
+                  borderRadius: '4px',
+                  fontSize: '0.75rem',
+                  fontWeight: '500',
+                  background: r.paquete_aplicado === 'individual' ? '#f3f4f6' : '#dbeafe',
+                  color: r.paquete_aplicado === 'individual' ? '#6b7280' : '#1d4ed8',
+                }}>
+                  {r.paquete_display || getPaqueteLabel(r.paquete_aplicado)}
+                </span>
+              ),
+            },
+            {
+              key: 'monto',
+              label: 'Monto',
+              align: 'right',
+              render: (r: Recibo) => (
+                <span style={{ fontFamily: 'monospace' }}>
+                  S/. {Number(r.monto_total).toFixed(2)}
+                  {r.precio_editado && <span style={{ color: '#f59e0b', marginLeft: '0.25rem' }}>*</span>}
+                </span>
+              ),
+            },
+            {
+              key: 'saldo',
+              label: 'Saldo',
+              align: 'right',
+              render: (r: Recibo) => (
+                <span style={{ fontFamily: 'monospace', color: Number(r.saldo_pendiente) > 0 ? '#dc2626' : '#059669' }}>
+                  S/. {Number(r.saldo_pendiente).toFixed(2)}
+                </span>
+              ),
+            },
+            {
+              key: 'estado',
+              label: 'Estado',
+              align: 'center',
+              render: (r: Recibo) => {
                 const colors = getEstadoColor(r.estado);
                 return (
-                  <tr key={r.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '1rem' }}><span style={{ fontFamily: 'monospace', fontWeight: '600', color: '#14b8a6' }}>{r.numero}</span></td>
-                    <td style={{ padding: '1rem' }}>
-                      {r.alumnos_nombres && r.alumnos_nombres.length > 1 ? (
-                        <div style={{ fontWeight: '600', color: '#111827' }}>{getAlumnosDisplay(r)}</div>
-                      ) : (
-                        <div style={{ fontWeight: '600', color: '#111827' }}>{r.alumno_nombre}</div>
-                      )}
-                    </td>
-                    <td style={{ padding: '1rem', color: '#374151' }}>{new Date(r.fecha_emision).toLocaleDateString('es-PE')}</td>
-                    <td style={{ padding: '1rem' }}>
-                      <span style={{
-                        padding: '0.25rem 0.5rem',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        fontWeight: '500',
-                        background: r.paquete_aplicado === 'individual' ? '#f3f4f6' : '#dbeafe',
-                        color: r.paquete_aplicado === 'individual' ? '#6b7280' : '#1d4ed8',
-                      }}>
-                        {r.paquete_display || getPaqueteLabel(r.paquete_aplicado)}
-                      </span>
-                    </td>
-                    <td style={{ padding: '1rem', textAlign: 'right', fontFamily: 'monospace' }}>
-                      S/. {Number(r.monto_total).toFixed(2)}
-                      {r.precio_editado && <span style={{ color: '#f59e0b', marginLeft: '0.25rem' }}>*</span>}
-                    </td>
-                    <td style={{ padding: '1rem', textAlign: 'right', fontFamily: 'monospace', color: Number(r.saldo_pendiente) > 0 ? '#dc2626' : '#059669' }}>S/. {Number(r.saldo_pendiente).toFixed(2)}</td>
-                    <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '600', background: colors.bg, color: colors.color }}>
-                        {r.estado.charAt(0).toUpperCase() + r.estado.slice(1)}
-                      </span>
-                    </td>
-                    <td style={{ padding: '1rem', textAlign: 'right' }}>
-                      <button onClick={() => handleViewRecibo(r)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontWeight: '500', marginRight: '0.75rem' }}>Ver</button>
-                      <button onClick={() => handleEdit(r)} style={{ background: 'none', border: 'none', color: '#14b8a6', cursor: 'pointer', fontWeight: '500' }}>Editar</button>
-                    </td>
-                  </tr>
+                  <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '600', background: colors.bg, color: colors.color }}>
+                    {r.estado.charAt(0).toUpperCase() + r.estado.slice(1)}
+                  </span>
                 );
-              })
-            )}
-          </tbody>
-        </table>
+              },
+            },
+          ]}
+          data={filteredRecibos}
+          keyField="id"
+          actions={(r) => (
+            <>
+              <button
+                onClick={() => handleViewRecibo(r)}
+                className="touch-target"
+                style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontWeight: '500' }}
+              >
+                Ver
+              </button>
+              <button
+                onClick={() => handleEdit(r)}
+                className="touch-target"
+                style={{ background: 'none', border: 'none', color: '#14b8a6', cursor: 'pointer', fontWeight: '500' }}
+              >
+                Editar
+              </button>
+            </>
+          )}
+          emptyMessage="No hay recibos"
+        />
       </div>
 
       {showModal && (
@@ -504,7 +542,7 @@ function RecibosPage() {
             </div>
             <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
               <div style={{ display: 'grid', gap: '1rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>Número</label>
                     <input type="text" value={formData.numero} onChange={(e) => setFormData({ ...formData, numero: e.target.value })} required style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px' }} />
@@ -615,7 +653,7 @@ function RecibosPage() {
                   </div>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: isMobile ? '0.75rem' : '1rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>Monto Bruto (S/.)</label>
                     <input
@@ -658,7 +696,7 @@ function RecibosPage() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>Pagado (S/.)</label>
                     <input

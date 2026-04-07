@@ -548,7 +548,7 @@ function HorariosPage() {
           </p>
         </div>
 
-        <div style={{ minWidth: '320px' }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <label style={{
             display: 'block', fontSize: '0.8rem', fontWeight: '600',
             color: '#6b7280', marginBottom: '0.375rem', textTransform: 'uppercase',
@@ -596,7 +596,7 @@ function HorariosPage() {
 
       {/* Contenido principal */}
       {tallerSeleccionado && (
-        <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-start' }}>
+        <div className="stack-on-mobile" style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-start' }}>
           {/* Calendario */}
           <div style={{
             flex: horarioSeleccionado ? 7 : 1, minWidth: 0,
@@ -638,7 +638,7 @@ function HorariosPage() {
                   <p style={{ fontSize: '0.9rem' }}>Este taller no tiene clases programadas.</p>
                 </div>
               ) : (
-                <div style={{ overflowX: 'auto' }}>
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                   {/* Cabecera días */}
                   <div style={{
                     display: 'grid',
@@ -716,7 +716,7 @@ function HorariosPage() {
 
           {/* Panel lateral */}
           {horarioSeleccionado && (
-            <div style={{ flex: 3, minWidth: '280px', maxWidth: '360px' }}>
+            <div style={{ flex: 3, minWidth: '280px', maxWidth: '360px', width: '100%' }}>
               <PanelLateral
                 horario={horarioSeleccionado}
                 estaLleno={

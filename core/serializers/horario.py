@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from ..models import Horario
+from django.db.models import Prefetch
+from ..models import Horario, MatriculaHorario
 
 
 class HorarioSerializer(serializers.ModelSerializer):
@@ -21,12 +22,15 @@ class HorarioSerializer(serializers.ModelSerializer):
         return f"{obj.profesor.apellido}, {obj.profesor.nombre}"
 
     def get_alumnos(self, obj):
-        from ..models import MatriculaHorario
-        matriculas = MatriculaHorario.objects.filter(
-            horario=obj,
-            matricula__activo=True,
-            matricula__concluida=False
-        ).select_related('matricula__alumno')
+        # Use prefetched data if available, otherwise fall back to query
+        if hasattr(obj, '_prefetched_objects_cache') and '_matricula_horarios' in obj._prefetched_objects_cache:
+            matriculas = obj._prefetched_objects_cache['_matricula_horarios']
+        else:
+            matriculas = MatriculaHorario.objects.filter(
+                horario=obj,
+                matricula__activo=True,
+                matricula__concluida=False
+            ).select_related('matricula__alumno')
         return [
             {
                 'id': m.matricula.alumno.id,
@@ -45,7 +49,7 @@ class HorarioListSerializer(serializers.ModelSerializer):
     dia_nombre = serializers.CharField(source='get_dia_semana_display', read_only=True)
     cupo_disponible = serializers.IntegerField(read_only=True)
     alumnos = serializers.SerializerMethodField()
-    ocupacion = serializers.SerializerMethodField()
+    ocupacion = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Horario
@@ -60,12 +64,15 @@ class HorarioListSerializer(serializers.ModelSerializer):
         return f"{obj.profesor.apellido}, {obj.profesor.nombre}"
 
     def get_alumnos(self, obj):
-        from ..models import MatriculaHorario
-        matriculas = MatriculaHorario.objects.filter(
-            horario=obj,
-            matricula__activo=True,
-            matricula__concluida=False
-        ).select_related('matricula__alumno')
+        # Use prefetched data if available, otherwise fall back to query
+        if hasattr(obj, '_prefetched_objects_cache') and '_matricula_horarios' in obj._prefetched_objects_cache:
+            matriculas = obj._prefetched_objects_cache['_matricula_horarios']
+        else:
+            matriculas = MatriculaHorario.objects.filter(
+                horario=obj,
+                matricula__activo=True,
+                matricula__concluida=False
+            ).select_related('matricula__alumno')
         return [
             {
                 'id': m.matricula.alumno.id,
@@ -75,11 +82,3 @@ class HorarioListSerializer(serializers.ModelSerializer):
             }
             for m in matriculas
         ]
-
-    def get_ocupacion(self, obj):
-        from ..models import MatriculaHorario
-        return MatriculaHorario.objects.filter(
-            horario=obj,
-            matricula__activo=True,
-            matricula__concluida=False
-        ).count()

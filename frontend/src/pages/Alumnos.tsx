@@ -2,6 +2,7 @@ import { useState, useEffect, memo, useCallback } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { getApiBaseUrl } from '../utils/api';
 
 interface Alumno {
@@ -230,107 +231,74 @@ function AlumnosPage() {
           />
         </div>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#f9fafb' }}>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Nombre</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>DNI</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Teléfono</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Edad</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Email</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Estado</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Registro</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredAlumnos.length === 0 ? (
-              <tr>
-                <td colSpan={8} style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>
-                  {search ? 'No se encontraron resultados' : 'No hay alumnos registrados'}
-                </td>
-              </tr>
-            ) : (
-              filteredAlumnos.map((alumno) => (
-                <tr key={alumno.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: '1rem' }}>
-                    <div style={{ fontWeight: '600', color: '#111827' }}>{alumno.nombre} {alumno.apellido}</div>
-                  </td>
-                  <td style={{ padding: '1rem', color: '#374151', fontFamily: 'monospace' }}>{alumno.dni}</td>
-                  <td style={{ padding: '1rem', color: '#374151' }}>{alumno.telefono || '-'}</td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    {alumno.edad !== null ? (
-                      <span style={{
-                        padding: '0.25rem 0.5rem',
-                        borderRadius: '6px',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        background: '#e0e7ff',
-                        color: '#4338ca',
-                      }}>
-                        {alumno.edad} años
-                      </span>
-                    ) : (
-                      <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>-</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '1rem', color: '#374151' }}>{alumno.email || '-'}</td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <span style={{
-                      padding: '0.25rem 0.75rem',
-                      borderRadius: '9999px',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      background: alumno.activo ? '#d1fae5' : '#f3f4f6',
-                      color: alumno.activo ? '#059669' : '#6b7280',
-                    }}>
-                      {alumno.activo ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', color: '#6b7280' }}>
-                    {alumno.created_at ? (() => {
-                      const d = new Date(alumno.created_at);
-                      const day = String(d.getDate()).padStart(2, '0');
-                      const month = String(d.getMonth() + 1).padStart(2, '0');
-                      const year = d.getFullYear();
-                      return `${day}/${month}/${year}`;
-                    })() : '-'}
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'right' }}>
-                    <button
-                      onClick={() => handleEdit(alumno)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#6366f1',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: '500',
-                        marginRight: '1rem',
-                      }}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDelete(alumno.id, `${alumno.nombre} ${alumno.apellido}`)}
-                      disabled={deletingId === alumno.id}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: deletingId === alumno.id ? '#9ca3af' : '#ef4444',
-                        cursor: deletingId === alumno.id ? 'not-allowed' : 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: '500',
-                      }}
-                    >
-                      {deletingId === alumno.id ? 'Eliminando...' : 'Eliminar'}
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        <ResponsiveTable<Alumno>
+          columns={[
+            {
+              key: 'nombre',
+              label: 'Nombre',
+              render: (alumno) => (
+                <div style={{ fontWeight: '600', color: '#111827' }}>{alumno.nombre} {alumno.apellido}</div>
+              ),
+            },
+            { key: 'dni', label: 'DNI' },
+            { key: 'telefono', label: 'Teléfono', render: (alumno: Alumno) => alumno.telefono || '-' },
+            {
+              key: 'edad',
+              label: 'Edad',
+              align: 'center',
+              render: (alumno: Alumno) => alumno.edad !== null ? (
+                <span style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '600', background: '#e0e7ff', color: '#4338ca' }}>
+                  {alumno.edad} años
+                </span>
+              ) : '-',
+            },
+            { key: 'email', label: 'Email', render: (alumno: Alumno) => alumno.email || '-' },
+            {
+              key: 'activo',
+              label: 'Estado',
+              align: 'center',
+              render: (alumno: Alumno) => (
+                <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '600', background: alumno.activo ? '#d1fae5' : '#f3f4f6', color: alumno.activo ? '#059669' : '#6b7280' }}>
+                  {alumno.activo ? 'Activo' : 'Inactivo'}
+                </span>
+              ),
+            },
+            {
+              key: 'created_at',
+              label: 'Registro',
+              align: 'center',
+              render: (alumno: Alumno) => alumno.created_at ? (() => {
+                const d = new Date(alumno.created_at);
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = d.getFullYear();
+                return `${day}/${month}/${year}`;
+              })() : '-',
+            },
+          ]}
+          data={filteredAlumnos}
+          keyField="id"
+          actions={(alumno) => (
+            <>
+              <button
+                onClick={() => handleEdit(alumno)}
+                className="touch-target"
+                style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500' }}
+              >
+                Editar
+              </button>
+              <button
+                onClick={() => handleDelete(alumno.id, `${alumno.nombre} ${alumno.apellido}`)}
+                disabled={deletingId === alumno.id}
+                className="touch-target"
+                style={{ background: 'none', border: 'none', color: deletingId === alumno.id ? '#9ca3af' : '#ef4444', cursor: deletingId === alumno.id ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: '500' }}
+              >
+                {deletingId === alumno.id ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </>
+          )}
+          emptyMessage={search ? 'No se encontraron resultados' : 'No hay alumnos registrados'}
+        />
       </div>
 
       {filteredAlumnos.length === 0 && !search && (
@@ -381,7 +349,7 @@ function AlumnosPage() {
             </div>
             <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
               <div style={{ display: 'grid', gap: '1rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Nombre</label>
                     <input

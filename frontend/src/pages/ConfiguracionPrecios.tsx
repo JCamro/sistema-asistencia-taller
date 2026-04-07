@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
-import { getPrecios, createPrecio, updatePrecio, deletePrecio, type PrecioPaquete } from '../api/endpoints';
+import { getPrecios, createPrecio, updatePrecio, deletePrecio, getConfig, updateConfig, type PrecioPaquete } from '../api/endpoints';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 const CLASES_LABELS: Record<number, string> = {
   1: '1 clase',
@@ -29,10 +30,17 @@ type FormMode = 'create' | 'edit' | null;
 export default function ConfiguracionPrecios() {
   const { cicloActual } = useCiclo();
   const toast = useToast();
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
   const [precios, setPrecios] = useState<PrecioPaquete[]>([]);
   const [loading, setLoading] = useState(true);
   const [formMode, setFormMode] = useState<FormMode>(null);
   const [editando, setEditando] = useState<PrecioPaquete | null>(null);
+
+  // Configuracion de pagos
+  const [pagoBase, setPagoBase] = useState<string>('17.00');
+  const [pagoTope, setPagoTope] = useState<string>('35.00');
+  const [guardandoConfig, setGuardandoConfig] = useState(false);
 
   // Form state
   const [tipoTaller, setTipoTaller] = useState<'instrumento' | 'taller'>('instrumento');
@@ -56,9 +64,42 @@ export default function ConfiguracionPrecios() {
     }
   }, [cicloActual, toast]);
 
+  const cargarConfig = useCallback(async () => {
+    try {
+      const response = await getConfig();
+      // Fallback a valores por defecto si el backend no tiene los campos nuevos
+      const base = response.data.pago_dinamico_base;
+      const tope = response.data.pago_dinamico_tope;
+      setPagoBase(base != null ? Number(base).toFixed(2) : '17.00');
+      setPagoTope(tope != null ? Number(tope).toFixed(2) : '35.00');
+    } catch (error) {
+      console.error('Error cargando configuración:', error);
+      // Valores por defecto si falla
+      setPagoBase('17.00');
+      setPagoTope('35.00');
+    }
+  }, []);
+
+  const guardarConfigPagos = async () => {
+    setGuardandoConfig(true);
+    try {
+      await updateConfig({
+        pago_dinamico_base: parseFloat(pagoBase),
+        pago_dinamico_tope: parseFloat(pagoTope),
+      });
+      toast.showToast('Configuración de pagos actualizada', 'success');
+    } catch (error) {
+      console.error('Error guardando configuración:', error);
+      toast.showToast('Error al guardar configuración', 'error');
+    } finally {
+      setGuardandoConfig(false);
+    }
+  };
+
   useEffect(() => {
     cargarPrecios();
-  }, [cargarPrecios]);
+    cargarConfig();
+  }, [cargarPrecios, cargarConfig]);
 
   const abrirCrear = () => {
     setEditando(null);
@@ -191,7 +232,8 @@ export default function ConfiguracionPrecios() {
         <button
           onClick={abrirCrear}
           style={{
-            padding: '0.625rem 1.25rem',
+            padding: '0.75rem 1.25rem',
+            minHeight: '44px',
             background: '#8b5cf6',
             color: 'white',
             border: 'none',
@@ -312,7 +354,8 @@ export default function ConfiguracionPrecios() {
               onClick={guardar}
               disabled={guardando || !precioTotal}
               style={{
-                padding: '0.5rem 1.5rem',
+                padding: '0.75rem 1.5rem',
+                minHeight: '44px',
                 background: guardando || !precioTotal ? '#e5e7eb' : '#22c55e',
                 color: 'white',
                 border: 'none',
@@ -326,7 +369,8 @@ export default function ConfiguracionPrecios() {
             <button
               onClick={cancelar}
               style={{
-                padding: '0.5rem 1.5rem',
+                padding: '0.75rem 1.5rem',
+                minHeight: '44px',
                 background: '#e5e7eb',
                 color: '#374151',
                 border: 'none',
@@ -341,11 +385,13 @@ export default function ConfiguracionPrecios() {
         </div>
       )}
 
+      
+
       {/* === PRECIOS INDIVIDUALES (base) === */}
       <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', marginBottom: 16 }}>
         Precios Individuales
       </h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 32 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: isMobile ? '1rem' : 24, marginBottom: 32 }}>
         {/* Instrumentos */}
         <TablaPrecios
           titulo="Instrumentos"
@@ -390,6 +436,75 @@ export default function ConfiguracionPrecios() {
           onEditar={abrirEditar}
           onEliminar={eliminar}
         />
+      </div>
+      
+      {/* === CONFIGURACIÓN DE PAGOS A PROFESORES === */}
+      <div style={{
+        background: 'white',
+        borderRadius: 12,
+        border: '1px solid #e5e7eb',
+        padding: '1.5rem',
+        margin: '1.5rem 2.5rem',
+        marginBottom: 24
+      }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', marginBottom: 16 }}>
+          Pago a Profesores (Fórmula Dinámica)
+        </h2>
+        <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: 16 }}>
+          Configurá la base y el tope para el cálculo de pago dinámico. El profesor recibe base por el primer alumno, y 50% del valor de sesión de cada alumno adicional, hasta alcanzar el tope.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>
+              Base de pago (S/.)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={pagoBase}
+              onChange={(e) => setPagoBase(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 8 }}
+            />
+            <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Monto fijo por 1 alumno (default: 17)</span>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>
+              Tope máximo (S/.)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={pagoTope}
+              onChange={(e) => setPagoTope(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 8 }}
+            />
+            <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Monto máximo por clase (default: 35)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <button
+              onClick={guardarConfigPagos}
+              disabled={guardandoConfig}
+              style={{
+                padding: '0.75rem 1.5rem',
+                minHeight: '44px',
+                background: guardandoConfig ? '#e5e7eb' : '#8b5cf6',
+                color: 'white',
+                border: 'none',
+                borderRadius: 8,
+                fontWeight: 500,
+                cursor: guardandoConfig ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {guardandoConfig ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </div>
+        <div style={{ marginTop: 16, padding: '0.75rem', background: '#f3f4f6', borderRadius: 8, fontSize: '0.875rem', color: '#6b7280' }}>
+          <strong>Ejemplo:</strong> Con base S/. {pagoBase} y tope S/. {pagoTope}:<br/>
+          1 alumno → S/. {pagoBase} | 2 alumnos (S/. 20/sesión) → S/. {pagoBase} + S/. 10 = S/. {Number(pagoBase) + 10} | 3+ alumnos → hasta S/. {pagoTope}
+        </div>
       </div>
     </div>
   );
@@ -436,13 +551,13 @@ function TablaPrecios({ titulo, color, precios, onEditar, onEliminar }: TablaPre
                 <td style={{ padding: '10px 0', textAlign: 'center' }}>
                   <button
                     onClick={() => onEditar(precio)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#8b5cf6', marginRight: 8 }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#8b5cf6', marginRight: 8, padding: '0.5rem', minHeight: '44px', minWidth: '44px' }}
                   >
                     Editar
                   </button>
                   <button
                     onClick={() => onEliminar(precio)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#ef4444' }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#ef4444', padding: '0.5rem', minHeight: '44px', minWidth: '44px' }}
                   >
                     ×
                   </button>
@@ -507,13 +622,13 @@ function TablaPromos({ titulo, precios, onEditar, onEliminar }: TablaPromosProps
               <td style={{ padding: '10px 0', textAlign: 'center' }}>
                 <button
                   onClick={() => onEditar(precio)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#8b5cf6', marginRight: 8 }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#8b5cf6', marginRight: 8, padding: '0.5rem', minHeight: '44px', minWidth: '44px' }}
                 >
                   Editar
                 </button>
                 <button
                   onClick={() => onEliminar(precio)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#ef4444' }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#ef4444', padding: '0.5rem', minHeight: '44px', minWidth: '44px' }}
                 >
                   ×
                 </button>

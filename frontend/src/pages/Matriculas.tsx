@@ -3,6 +3,7 @@ import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import TraspasoModal from '../components/ui/TraspasoModal';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { getApiBaseUrl } from '../utils/api';
 
 const HORAS_GRID = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
@@ -145,24 +146,45 @@ function MatriculasPage() {
   const [menuAbierto, setMenuAbierto] = useState<number | null>(null);
   const [precioSugerido, setPrecioSugerido] = useState<number | null>(null);
   const [calculandoPrecio, setCalculandoPrecio] = useState(false);
+  const [matriculasHorarios, setMatriculasHorarios] = useState<Map<number, { dia_semana: number; hora_inicio: string }[]>>(new Map());
+  const [sortBy, setSortBy] = useState<'fecha' | 'nombre'>('fecha');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const fetchData = useCallback(async () => {
     if (!cicloActual) return;
     const token = localStorage.getItem('access_token');
     try {
-      const [matriculasRes, alumnosRes, talleresRes] = await Promise.all([
+      const [matriculasRes, alumnosRes, talleresRes, horariosMatriculasRes] = await Promise.all([
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/matriculas/`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/alumnos/`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/api/matriculas-horarios/?matricula__ciclo=${cicloActual.id}`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
-      const [matriculasData, alumnosData, talleresData] = await Promise.all([
+      const [matriculasData, alumnosData, talleresData, horariosMatriculasData] = await Promise.all([
         matriculasRes.json(),
         alumnosRes.json(),
         talleresRes.json(),
+        horariosMatriculasRes.json(),
       ]);
       setMatriculas(matriculasData.results || matriculasData);
       setAlumnos((alumnosData.results || alumnosData).filter((a: Alumno) => a.activo));
       setTalleres((talleresData.results || talleresData).filter((t: Taller) => t.activo));
+      
+      // Mapear horarios por matrícula
+      const mhMap = new Map<number, { dia_semana: number; hora_inicio: string }[]>();
+      const mhList: any[] = horariosMatriculasData.results || horariosMatriculasData;
+      mhList.forEach((mh: any) => {
+        const matriculaId = mh.matricula;
+        const horaInfo = {
+          dia_semana: mh.horario_dia_semana,
+          hora_inicio: mh.horario_hora_inicio,
+        };
+        if (!mhMap.has(matriculaId)) {
+          mhMap.set(matriculaId, []);
+        }
+        mhMap.get(matriculaId)!.push(horaInfo);
+      });
+      setMatriculasHorarios(mhMap);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -293,16 +315,114 @@ function MatriculasPage() {
     ).slice(0, 10);
   }, [alumnoSearch, alumnos]);
 
-  const filteredMatriculas = matriculas.filter((m) => {
-    const coincideBusqueda = m.alumno_nombre.toLowerCase().includes(search.toLowerCase()) || 
-                             m.taller_nombre.toLowerCase().includes(search.toLowerCase());
-    const coincideEstado = filtroEstado === 'todas' || 
-                          (filtroEstado === 'activa' && m.estado_calculado === 'activa') ||
-                          (filtroEstado === 'inactiva' && m.estado_calculado === 'inactiva') ||
-                          (filtroEstado === 'concluida' && m.estado_calculado === 'concluida') ||
-                          (filtroEstado === 'no_procesado' && m.estado_calculado === 'no_procesado');
-    return coincideBusqueda && coincideEstado;
-  });
+  // Mapa de días en español a número
+  const diaAMapa: Record<string, number> = {
+    'lunes': 0, 'lun': 0,
+    'martes': 1, 'mar': 1,
+    'miercoles': 2, 'miércoles': 2, 'mie': 2,
+    'jueves': 3, 'jue': 3,
+    'viernes': 4, 'vie': 4,
+    'sabado': 5, 'sábado': 5, 'sáb': 5, 'sab': 5,
+    'domingo': 6, 'dom': 6,
+  };
+
+  // Función para parsear hora (soporta "5pm", "5pm", "17:00", "17")
+  const parsearHora = (input: string): number | null => {
+    const inputLower = input.toLowerCase().trim();
+    // Caso: "5pm", "5pm", "6pm" etc
+    const pmMatch = inputLower.match(/^(\d{1,2})(pm)$/);
+    if (pmMatch) {
+      let hora = parseInt(pmMatch[1]);
+      if (hora === 12) return 12;
+      return hora + 12; // 5pm = 17, 6pm = 18
+    }
+    // Caso: "5am", "5am", "6am" etc
+    const amMatch = inputLower.match(/^(\d{1,2})(am)$/);
+    if (amMatch) {
+      let hora = parseInt(amMatch[1]);
+      if (hora === 12) return 0;
+      return hora;
+    }
+    // Caso: "17:00", "17:30", "17"
+    const horaMatch = inputLower.match(/^(\d{1,2})(?::(\d{2}))?$/);
+    if (horaMatch) {
+      return parseInt(horaMatch[1]);
+    }
+    return null;
+  };
+
+  const filteredMatriculas = useMemo(() => {
+    const searchLower = search.toLowerCase().trim();
+    
+    // Parsear búsqueda avanzada: buscar palabras clave de día y hora
+    const palabras = searchLower.split(/\s+/);
+    let filtroDia: number | null = null;
+    let filtroHora: number | null = null;
+    let filtroTexto: string[] = [];
+    
+    palabras.forEach(palabra => {
+      // Buscar día
+      if (diaAMapa[palabra] !== undefined) {
+        filtroDia = diaAMapa[palabra];
+      } else {
+        // Buscar hora
+        const horaParsed = parsearHora(palabra);
+        if (horaParsed !== null) {
+          filtroHora = horaParsed;
+        } else {
+          filtroTexto.push(palabra);
+        }
+      }
+    });
+
+    return matriculas
+      .filter((m) => {
+        // Filtro por texto (nombre alumno o taller) - solo si hay texto explícito
+        // Si solo hay día/hora, no filtrar por texto
+        const textoFiltro = filtroTexto.join(' ');
+        const coincideBusqueda = !textoFiltro || 
+          m.alumno_nombre.toLowerCase().includes(textoFiltro) || 
+          m.taller_nombre.toLowerCase().includes(textoFiltro);
+        
+        // Filtro por estado
+        const coincideEstado = filtroEstado === 'todas' || 
+          (filtroEstado === 'activa' && m.estado_calculado === 'activa') ||
+          (filtroEstado === 'inactiva' && m.estado_calculado === 'inactiva') ||
+          (filtroEstado === 'concluida' && m.estado_calculado === 'concluida') ||
+          (filtroEstado === 'no_procesado' && m.estado_calculado === 'no_procesado');
+        
+        // Filtro por día y hora usando horarios de la matrícula
+        const horariosMh = matriculasHorarios.get(m.id) || [];
+        let coincideDia = true;
+        let coincideHora = true;
+        
+        if (filtroDia !== null) {
+          coincideDia = horariosMh.some(h => h.dia_semana === filtroDia);
+        }
+        if (filtroHora !== null) {
+          // Coincide si la hora de inicio está en la hora exacta
+          coincideHora = horariosMh.some(h => {
+            const horaInicio = parseInt(h.hora_inicio?.substring(0, 2) || '0');
+            return horaInicio === filtroHora;
+          });
+        }
+        
+        return coincideBusqueda && coincideEstado && coincideDia && coincideHora;
+      })
+      .sort((a, b) => {
+        // Ordenar
+        if (sortBy === 'fecha') {
+          const fechaA = a.created_at || '';
+          const fechaB = b.created_at || '';
+          return sortOrder === 'desc' ? fechaB.localeCompare(fechaA) : fechaA.localeCompare(fechaB);
+        } else {
+          // Por nombre A-Z
+          const nombreA = a.alumno_nombre.toLowerCase();
+          const nombreB = b.alumno_nombre.toLowerCase();
+          return sortOrder === 'desc' ? nombreB.localeCompare(nombreA) : nombreA.localeCompare(nombreB);
+        }
+      });
+  }, [matriculas, search, filtroEstado, matriculasHorarios, sortBy, sortOrder]);
 
   const toggleHorario = (horarioId: number) => {
     const current = formData.horarios || [];
@@ -556,12 +676,6 @@ function MatriculasPage() {
     }
   };
 
-  const openTraspaso = (m: Matricula) => {
-    setTraspasandoId(m.id);
-    setTraspasandoNombre(m.alumno_nombre);
-    setTraspasandoTaller(m.taller_nombre);
-  };
-
   const cancelTraspaso = () => {
     setTraspasandoId(null);
     setTraspasandoNombre('');
@@ -606,80 +720,128 @@ function MatriculasPage() {
       {alumnos.length === 0 && <div style={{ padding: '1rem', background: '#fef3c7', borderRadius: '8px', marginBottom: '1.5rem', color: '#b45309', fontSize: '0.875rem' }}>⚠️ Debes crear alumnos y talleres primero.</div>}
 
       <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-        <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '0.75rem' }}>
-          <input type="text" placeholder="Buscar por alumno o taller..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }} />
-            <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}>
-              <option value="todas">Todas</option>
-              <option value="activa">Activas</option>
-              <option value="no_procesado">No Procesado</option>
-              <option value="inactiva">Inactivas</option>
-              <option value="concluida">Concluidas</option>
-            </select>
+        <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <input 
+            type="text" 
+            placeholder="Buscar por alumno, taller, día (ej: viernes) u hora (ej: 5pm)..." 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+            style={{ flex: 1, minWidth: '200px', padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }} 
+          />
+          <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}>
+            <option value="todas">Todas</option>
+            <option value="activa">Activas</option>
+            <option value="no_procesado">No Procesado</option>
+            <option value="inactiva">Inactivas</option>
+            <option value="concluida">Concluidas</option>
+          </select>
+          <select 
+            value={sortBy} 
+            onChange={(e) => setSortBy(e.target.value as 'fecha' | 'nombre')} 
+            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}
+          >
+            <option value="fecha">Ordenar: Fecha</option>
+            <option value="nombre">Ordenar: Nombre</option>
+          </select>
+          <button 
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            style={{ padding: '0.625rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+            title={sortOrder === 'asc' ? 'Ascendente' : 'Descendente'}
+          >
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </button>
         </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#f9fafb' }}>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Alumno</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Taller</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Sesiones</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Total</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Estado</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Registro</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredMatriculas.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>No hay matrículas</td></tr>
-            ) : (
-              filteredMatriculas.map((m) => (
-                <tr key={m.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: '1rem' }}><div style={{ fontWeight: '600', color: '#111827' }}>{m.alumno_nombre}</div></td>
-                  <td style={{ padding: '1rem', color: '#374151' }}>{m.taller_nombre}</td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <span style={{ fontFamily: 'monospace', color: m.sesiones_disponibles > 0 ? '#059669' : '#dc2626' }}>{m.sesiones_consumidas}/{m.sesiones_contratadas}</span>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'right', fontFamily: 'monospace', fontWeight: '600', color: '#111827' }}>S/. {m.precio_total}</td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <span style={{ 
-                      padding: '0.25rem 0.75rem', 
-                      borderRadius: '9999px', 
-                      fontSize: '0.75rem', 
-                      fontWeight: '600',
-                      background: m.estado_calculado === 'no_procesado' ? '#fef3c7' : m.estado_calculado === 'activa' ? '#d1fae5' : m.estado_calculado === 'concluida' ? '#fcd34d' : '#f3f4f6',
-                      color: m.estado_calculado === 'no_procesado' ? '#b45309' : m.estado_calculado === 'activa' ? '#059669' : m.estado_calculado === 'concluida' ? '#92400e' : '#6b7280'
-                    }}>
-                      {m.estado_calculado === 'no_procesado' ? 'No Procesado' : m.estado_calculado === 'activa' ? 'Activa' : m.estado_calculado === 'concluida' ? 'Concluida' : 'Inactiva'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', color: '#6b7280' }}>
-                    {m.created_at ? (() => {
-                      const d = new Date(m.created_at);
-                      const day = String(d.getDate()).padStart(2, '0');
-                      const month = String(d.getMonth() + 1).padStart(2, '0');
-                      const year = d.getFullYear();
-                      return `${day}/${month}/${year}`;
-                    })() : '-'}
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button onClick={() => { setVerHorarioMatriculaId(m.id); fetchHorariosDetalle(m.id); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500', marginRight: '0.75rem' }}>Ver</button>
-                    <button onClick={() => fetchAsistenciasDetalle(m)} style={{ background: 'none', border: 'none', color: '#8b5cf6', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500', marginRight: '0.75rem' }}>Asistencias</button>
-                    <div style={{ position: 'relative', display: 'inline-block' }}>
-                      <button onClick={(e) => { e.stopPropagation(); setMenuAbierto(menuAbierto === m.id ? null : m.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: '#6b7280', padding: '0.25rem 0.5rem' }}>⋮</button>
-                      {menuAbierto === m.id && (
-                        <div style={{ position: 'absolute', right: 0, top: '100%', background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 50, minWidth: '130px', marginTop: '0.25rem' }}>
-                          <button onClick={() => { handleEdit(m); setMenuAbierto(null); }} style={{ display: 'block', width: '100%', padding: '0.625rem 1rem', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '0.875rem', color: '#40E0D0', fontWeight: '500' }}>Editar</button>
-                          {m.activo && <button onClick={() => { openTraspaso(m); setMenuAbierto(null); }} style={{ display: 'block', width: '100%', padding: '0.625rem 1rem', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '0.875rem', color: '#2563EB', fontWeight: '500' }}>Traspasar</button>}
-                          <button onClick={() => { handleDelete(m.id, m.alumno_nombre); setMenuAbierto(null); }} disabled={deletingId === m.id} style={{ display: 'block', width: '100%', padding: '0.625rem 1rem', background: 'none', border: 'none', textAlign: 'left', cursor: deletingId === m.id ? 'not-allowed' : 'pointer', fontSize: '0.875rem', color: deletingId === m.id ? '#9ca3af' : '#ef4444', fontWeight: '500' }}>{deletingId === m.id ? 'Eliminando...' : 'Eliminar'}</button>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        <ResponsiveTable<Matricula>
+          columns={[
+            {
+              key: 'alumno_nombre',
+              label: 'Alumno',
+              render: (m) => <div style={{ fontWeight: '600', color: '#111827' }}>{m.alumno_nombre}</div>,
+            },
+            { key: 'taller_nombre', label: 'Taller' },
+            {
+              key: 'sesiones',
+              label: 'Sesiones',
+              align: 'center',
+              render: (m: Matricula) => (
+                <span style={{ fontFamily: 'monospace', color: m.sesiones_disponibles > 0 ? '#059669' : '#dc2626' }}>
+                  {m.sesiones_consumidas}/{m.sesiones_contratadas}
+                </span>
+              ),
+            },
+            {
+              key: 'precio_total',
+              label: 'Total',
+              align: 'right',
+              render: (m: Matricula) => <span style={{ fontFamily: 'monospace', fontWeight: '600' }}>S/. {m.precio_total}</span>,
+            },
+            {
+              key: 'estado',
+              label: 'Estado',
+              align: 'center',
+              render: (m: Matricula) => (
+                <span style={{
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: '9999px',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  background: m.estado_calculado === 'no_procesado' ? '#fef3c7' : m.estado_calculado === 'activa' ? '#d1fae5' : m.estado_calculado === 'concluida' ? '#fcd34d' : '#f3f4f6',
+                  color: m.estado_calculado === 'no_procesado' ? '#b45309' : m.estado_calculado === 'activa' ? '#059669' : m.estado_calculado === 'concluida' ? '#92400e' : '#6b7280'
+                }}>
+                  {m.estado_calculado === 'no_procesado' ? 'No Procesado' : m.estado_calculado === 'activa' ? 'Activa' : m.estado_calculado === 'concluida' ? 'Concluida' : 'Inactiva'}
+                </span>
+              ),
+            },
+            {
+              key: 'created_at',
+              label: 'Registro',
+              align: 'center',
+              render: (m: Matricula) => m.created_at ? (() => {
+                const d = new Date(m.created_at);
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = d.getFullYear();
+                return `${day}/${month}/${year}`;
+              })() : '-',
+            },
+          ]}
+          data={filteredMatriculas}
+          keyField="id"
+          actions={(m) => (
+            <>
+              <button
+                onClick={() => { setVerHorarioMatriculaId(m.id); fetchHorariosDetalle(m.id); }}
+                className="touch-target"
+                style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500' }}
+              >
+                Ver
+              </button>
+              <button
+                onClick={() => fetchAsistenciasDetalle(m)}
+                className="touch-target"
+                style={{ background: 'none', border: 'none', color: '#8b5cf6', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500' }}
+              >
+                Asistencias
+              </button>
+              <button
+                onClick={() => handleEdit(m)}
+                className="touch-target"
+                style={{ background: 'none', border: 'none', color: '#40E0D0', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500' }}
+              >
+                Editar
+              </button>
+              <button
+                onClick={() => handleDelete(m.id, m.alumno_nombre)}
+                disabled={deletingId === m.id}
+                className="touch-target"
+                style={{ background: 'none', border: 'none', color: deletingId === m.id ? '#9ca3af' : '#ef4444', cursor: deletingId === m.id ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: '500' }}
+              >
+                {deletingId === m.id ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </>
+          )}
+          emptyMessage="No hay matrículas"
+        />
       </div>
 
       {showModal && (
@@ -848,7 +1010,7 @@ function MatriculasPage() {
               {/* SECCIÓN 3: DETALLES DE PAGO */}
               <div style={{ marginBottom: '1.5rem' }}>
                 <h3 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.05em' }}>Detalles de Pago</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
                   
                   {/* Columna Izquierda */}
                   <div>
