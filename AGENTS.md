@@ -1,9 +1,9 @@
-# AGENTS.md - Panel de Asistencia
+# AGENTS.md — Panel de Asistencia (Taller de Música Elguera)
 
 ## Overview
 
-Administrative web app for managing educational-artistic workshops ("Taller de Música Elguera").
-- **Backend**: Django 6.0 + DRF + SimpleJWT (SQLite3)
+Administrative web app for managing educational-artistic workshops.
+- **Backend**: Django 6.0.3 + DRF 3.17.1 + SimpleJWT 5.5.1 (PostgreSQL in production)
 - **Frontend**: React 19 + Vite 8 + TypeScript 5.9 + Zustand
 - **Language**: Spanish (all user-facing text)
 - **Timezone**: `America/Lima`
@@ -16,12 +16,11 @@ Administrative web app for managing educational-artistic workshops ("Taller de M
 ```
 sistema-asistencia-taller/
 ├── config/                          # Django project config
-│   ├── settings.py                  # Settings (SQLite3, JWT, CORS)
-│   ├── urls.py                      # Root URL config
-│   ├── wsgi.py / asgi.py            # WSGI/ASGI entry points
-│   └── __init__.py
+│   ├── settings.py                  # Settings (JWT, CORS, whitenoise, PostgreSQL)
+│   ├── urls.py                      # Root URL: admin/, setup/, api/, api/docs/
+│   └── wsgi.py / asgi.py            # WSGI/ASGI entry points
 ├── core/                            # Main Django app
-│   ├── models/                      # 15 models (one file per entity)
+│   ├── models/                      # 17 models (one file per entity)
 │   │   ├── ciclo.py                 # Academic cycles
 │   │   ├── alumno.py                # Students
 │   │   ├── profesor.py              # Teachers
@@ -29,69 +28,179 @@ sistema-asistencia-taller/
 │   │   ├── horario.py               # Schedules
 │   │   ├── matricula.py             # Enrollments
 │   │   ├── matricula_horario.py     # Enrollment ↔ Schedule junction
-│   │   ├── asistencia.py            # Attendance records
+│   │   ├── asistencia.py             # Attendance records (indexed: fecha, estado, horario+fecha)
 │   │   ├── recibo.py                # Receipts (multi-student capable)
 │   │   ├── recibo_matricula.py      # Receipt ↔ Enrollment junction
-│   │   ├── precio_paquete.py        # Package pricing + promo detection
+│   │   ├── precio_paquete.py       # Package pricing + promo detection
 │   │   ├── pago_profesor.py         # Teacher payment summaries
 │   │   ├── pago_profesor_detalle.py # Teacher payment per-class detail
-│   │   ├── configuracion.py         # App config (active cycle, etc.)
+│   │   ├── configuracion.py         # App config (active cycle, dynamic payment config)
+│   │   ├── egreso.py                # Expenses
 │   │   └── historial_traspaso.py    # Student transfer history
 │   ├── serializers/                 # DRF serializers (list + detail per entity)
-│   ├── views/                       # ViewSets (one file per entity)
+│   ├── views/                       # ViewSets + function-based views
+│   │   ├── ciclo_view.py           # Pagination (StandardResultsSetPagination)
+│   │   ├── alumno_view.py           # Pagination + select_related(ciclo)
+│   │   ├── profesor_view.py          # Pagination + select_related(ciclo)
+│   │   ├── taller_view.py           # Pagination + select_related(ciclo)
+│   │   ├── horario_view.py           # Pagination + prefetch(matricula→alumno) + annotate(ocupacion)
+│   │   ├── matricula_view.py         # OuterRef inline fix + estado_calculado annotation
+│   │   ├── asistencia_view.py        # Pagination + select_related(matricula→alumno/taller)
+│   │   ├── recibo_view.py           # select_related + prefetch (no pagination)
+│   │   ├── pago_profesor_view.py    # Pagination + select_related
+│   │   ├── precio_paquete_view.py   # select_related (no pagination)
+│   │   ├── egreso_view.py           # select_related (no pagination)
+│   │   ├── dashboard_view.py        # KPIs via DB aggregations (Exists inline)
+│   │   ├── configuracion_view.py   # Singleton config
+│   │   ├── pagination.py            # StandardResultsSetPagination (page_size=20, max=100)
+│   │   └── setup_view.py            # Initial setup endpoint
 │   ├── services/                    # Business logic layer
 │   │   ├── pago_profesor_service.py # Teacher payment calculation engine
 │   │   ├── matricula_service.py     # Enrollment + pricing logic
 │   │   └── recibo_service.py        # Receipt generation + discounts
 │   ├── management/commands/
-│   │   └── seed_precios.py          # Seed default package prices
-│   ├── tests/                       # pytest-django tests
-│   │   ├── test_pago_profesor_service.py
-│   │   ├── test_matricula_service.py
-│   │   ├── test_recibo_service.py
-│   │   └── test_constants.py
-│   ├── constants.py                 # Payment calculation constants
-│   └── urls.py                      # API routing (router + manual paths)
+│   │   └── seed_precios.py          # Seed default package prices (idempotente)
+│   ├── constants.py                 # Payment constants (BASE_PAGO=17, TOPE_MAXIMO=35)
+│   ├── urls.py                      # API routing (DRF DefaultRouter + manual paths)
+│   └── tests/                       # pytest-django tests (105 passing)
+│       ├── test_pago_profesor_service.py
+│       ├── test_matricula_service.py
+│       ├── test_recibo_service.py
+│       └── test_constants.py
 ├── frontend/
 │   └── src/
 │       ├── api/
 │       │   ├── axios.ts             # Axios instance (auto token refresh)
-│       │   └── endpoints.ts         # All API endpoints + TypeScript interfaces
+│       │   └── endpoints.ts        # All API endpoints + TypeScript interfaces
 │       ├── components/
-│       │   └── ui/                  # Reusable UI components
+│       │   └── ui/                 # Reusable UI components
 │       │       ├── Button.tsx
 │       │       ├── Input.tsx
 │       │       ├── Card.tsx
 │       │       ├── Loading.tsx
 │       │       ├── Toast.tsx
 │       │       ├── ConfirmModal.tsx
-│       │       └── TraspasoModal.tsx
+│       │       ├── TraspasoModal.tsx
+│       │       ├── DataCard.tsx            # Mobile card component (ResponsiveTable sub-component)
+│       │       └── ResponsiveTable.tsx      # Table → cards on mobile (≤768px)
+│       ├── hooks/
+│       │   └── useWindowWidth.ts          # Hook: window width for JS-side breakpoint detection
 │       ├── contexts/
 │       │   ├── CicloContext.tsx      # Active cycle state management
 │       │   └── ToastContext.tsx      # Toast notification system
-│       ├── pages/                   # 14 page components
-│       │   ├── Login.tsx            # Login page (alternate version)
-│       │   ├── Dashboard.tsx        # KPIs + charts
-│       │   ├── Alumnos.tsx          # Student CRUD
-│       │   ├── Profesores.tsx       # Teacher CRUD
-│       │   ├── Talleres.tsx         # Workshop CRUD
+│       ├── pages/                   # 14 page components (all wrapped in memo())
+│       │   ├── Login.tsx            # Login (inline in App.tsx)
+│       │   ├── Dashboard.tsx        # KPIs + CalculadoraPrecios inline
+│       │   ├── Alumnos.tsx          # Student CRUD + ResponsiveTable
+│       │   ├── Profesores.tsx       # Teacher CRUD + ResponsiveTable
+│       │   ├── Talleres.tsx        # Workshop CRUD
 │       │   ├── TallerDetalle.tsx    # Workshop detail view
-│       │   ├── Horarios.tsx         # Schedule management
-│       │   ├── Matriculas.tsx       # Enrollment management
+│       │   ├── Horarios.tsx         # Schedule management (calendar grid)
+│       │   ├── Matriculas.tsx       # Enrollment management + ResponsiveTable
 │       │   ├── Asistencias.tsx      # Attendance tracking
-│       │   ├── Recibos.tsx          # Receipt management
+│       │   ├── Recibos.tsx          # Receipt management + ResponsiveTable
+│       │   ├── Egresos.tsx          # Expense management + ResponsiveTable
+│       │   ├── Finanzas.tsx        # Financial summary with tabs
 │       │   ├── ConfiguracionPrecios.tsx  # Package price configuration
 │       │   ├── CalculadoraPrecios.tsx    # Price calculator
-│       │   └── PagosProfesores.tsx       # Teacher payment calculator
+│       │   └── PagosProfesores.tsx       # Teacher payment calculator + ResponsiveTable
 │       ├── stores/
 │       │   └── authStore.ts         # Zustand auth store
-│       ├── App.tsx                  # Router + Sidebar + Login (inline)
+│       ├── App.tsx                  # Router + Sidebar (hamburger on mobile) + Login
+│       ├── index.css                 # Responsive CSS (breakpoints, utility classes)
 │       └── main.tsx                 # Vite entry point
-├── db.sqlite3                       # SQLite database
+├── start.sh                         # Production start script (migrate + collectstatic + gunicorn)
+├── Procfile                         # Railway: web: bash start.sh
+├── db.sqlite3                       # SQLite database (dev only)
 ├── manage.py                        # Django management
 ├── requirements.txt                 # Python dependencies
-└── pytest.ini                       # Test configuration
+├── pytest.ini                       # Test configuration
+└── .gitignore                       # Excludes: db.sqlite3, __pycache__, .coverage, .env
 ```
+
+---
+
+## API — Router Architecture
+
+**Pattern**: DRF `DefaultRouter` for CRUD resources + manual `path()` for custom actions and nested endpoints.
+
+```
+core/urls.py — URL structure:
+
+  Custom actions (function-based views)
+    POST /api/auth/login/                    — TokenObtainPairView
+    POST /api/auth/refresh/                 — TokenRefreshView
+    POST /api/auth/logout/                  — TokenBlacklistView
+    PATCH /api/config/                      — Set active cycle
+    POST /api/pagos-profesores/calcular-periodo/
+    GET  /api/pagos-profesores/detalle-clase/?horario_id=X&fecha=YYYY-MM-DD
+    GET  /api/ciclos/<id>/resumen/
+    GET  /api/ciclos/<id>/resumen-mensual/
+    GET  /api/ciclos/<id>/dashboard/
+    GET  /api/ciclos/<id>/alumnos/
+    GET  /api/ciclos/<id>/talleres/
+    GET  /api/ciclos/<id>/profesores/
+    GET  /api/ciclos/<id>/horarios/
+    GET  /api/ciclos/<id>/matriculas/
+    GET  /api/ciclos/<id>/asistencias/
+    GET  /api/ciclos/<id>/recibos/
+    GET  /api/ciclos/<id>/precios/
+    GET  /api/ciclos/<id>/egresos/
+
+  Router (ViewSet CRUD — automatic routes)
+    /api/ciclos/                    — CicloViewSet
+    /api/talleres/                  — TallerViewSet
+    /api/profesores/                — ProfesorViewSet
+    /api/alumnos/                   — AlumnoViewSet
+    /api/horarios/                  — HorarioViewSet
+    /api/matriculas/                — MatriculaViewSet
+    /api/matriculas-horarios/       — MatriculaHorarioViewSet
+    /api/asistencias/               — AsistenciaViewSet
+    /api/recibos/                   — ReciboViewSet
+    /api/pagos-profesores/          — PagoProfesorViewSet
+    /api/precios/                   — PrecioPaqueteViewSet
+    /api/egresos/                   — EgresoViewSet
+```
+
+### Paginated vs Non-Paginated ViewSets
+
+Paginated (page_size=20, max=100): `Alumno, Profesor, Taller, Horario, Matricula, Asistencia, Ciclo, PagoProfesor`
+
+Non-paginated (frontend expects direct array): `Recibo, PrecioPaquete, Egreso`
+
+---
+
+## Responsive Design
+
+### Breakpoints
+| Breakpoint | Width | Layout |
+|------------|-------|--------|
+| Mobile | `< 480px` | Cards, single column |
+| Tablet | `480px – 768px` | Cards, 1-2 columns |
+| Desktop | `> 768px` | Full table layout |
+
+### CSS System (`frontend/src/index.css`)
+```css
+:root {
+  --breakpoint-sm: 480px;
+  --breakpoint-md: 768px;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+}
+
+/* Utility classes */
+.hide-mobile    { display: none; }          /* shown ≥768px */
+.hide-desktop   { display: none; }           /* shown <768px */
+.stack-on-mobile { flex-direction: column; }  /* on <768px */
+.touch-target   { min-height: 44px; }       /* all interactive elements */
+```
+
+### Components
+- **`ResponsiveTable<T>`** — Table on desktop, card grid on mobile. Props: `columns`, `data`, `keyField`, `actions`. Mobile threshold: `≤768px` via `useWindowWidth`.
+- **`DataCard`** — Sub-component for mobile card rows. Props: `title?`, `children`, `actions?`, `onClick?`, `variant`.
+- **`useWindowWidth()`** — Hook returning `window.innerWidth`, updates on resize.
 
 ---
 
@@ -99,14 +208,13 @@ sistema-asistencia-taller/
 
 ### Backend (from project root)
 ```bash
-python manage.py runserver              # Start server :8000
+python manage.py runserver              # Dev server :8000
 python manage.py makemigrations         # Create migrations
 python manage.py migrate               # Apply migrations
 python manage.py shell                 # Django shell
-python manage.py seed_precios           # Seed default package prices
-python manage.py createsuperuser        # Create admin user
-pytest                                  # Run all tests
-pytest core/tests.py::TestClass::test   # Single test
+python manage.py seed_precios          # Seed default prices (idempotent)
+python manage.py createsuperuser       # Create admin user
+pytest                                  # Run all tests (105 passing)
 pytest --cov                            # With coverage
 ```
 
@@ -118,39 +226,14 @@ npm run lint      # ESLint check
 npm run preview   # Preview production build
 ```
 
----
-
-## API Endpoints
-
-All resources support CRUD at `/api/<resource>/` and filtering by cycle at `/api/ciclos/<ciclo_id>/<resource>/`.
-
-| Resource | Base Endpoint |
-|----------|--------------|
-| Auth | `/api/auth/login/`, `/api/auth/refresh/`, `/api/auth/logout/` |
-| Config | `/api/config/` |
-| Ciclos | `/api/ciclos/` |
-| Alumnos | `/api/alumnos/` or `/api/ciclos/<id>/alumnos/` |
-| Profesores | `/api/profesores/` or `/api/ciclos/<id>/profesores/` |
-| Talleres | `/api/talleres/` or `/api/ciclos/<id>/talleres/` |
-| Horarios | `/api/horarios/` or `/api/ciclos/<id>/horarios/` |
-| Matriculas | `/api/matriculas/` or `/api/ciclos/<id>/matriculas/` |
-| Asistencias | `/api/asistencias/` or `/api/ciclos/<id>/asistencias/` |
-| Recibos | `/api/recibos/` or `/api/ciclos/<id>/recibos/` |
-| Precios | `/api/precios/` or `/api/ciclos/<id>/precios/` |
-| Pagos Profesores | `/api/pagos-profesores/` |
-
-### Special Endpoints
-
-| Method | URL | Description |
-|--------|-----|-------------|
-| PATCH | `/api/config/` | Set active cycle |
-| GET | `/api/ciclos/<id>/resumen/` | Financial summary of cycle |
-| GET | `/api/ciclos/<id>/dashboard/` | Dashboard KPIs |
-| POST | `/api/pagos-profesores/calcular-periodo/` | Calculate teacher payments for date range |
-| GET | `/api/pagos-profesores/detalle-clase/?horario_id=X&fecha=YYYY-MM-DD` | Student breakdown per class |
-| GET | `/api/pagos-profesores/<id>/detalles/` | Payment details for a teacher |
-| POST | `/api/matriculas/calcular-precio/` | Calculate recommended price for enrollment |
-| GET | `/api/precios/activos/?ciclo_id=X` | Active prices for a cycle (individual + promos) |
+### Production Start (`start.sh`)
+```bash
+#!/bin/bash
+set -e
+python manage.py migrate --noinput
+python manage.py collectstatic --noinput --clear
+gunicorn config.asgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4
+```
 
 ---
 
@@ -169,10 +252,12 @@ All resources support CRUD at `/api/<resource>/` and filtering by cycle at `/api
 | `/matriculas` | Matriculas | Protected + Sidebar |
 | `/asistencias` | Asistencias | Protected + Sidebar |
 | `/recibos` | Recibos | Protected + Sidebar |
+| `/egresos` | Egresos | Protected + Sidebar |
+| `/finanzas` | Finanzas | Protected + Sidebar |
 | `/configuracion-precios` | ConfiguracionPrecios | Protected + Sidebar |
 | `/pagos-profesores` | PagosProfesores | Protected + Sidebar |
 
-**Navigation Flow**: Login → `/` (select cycle) → `/dashboard` (with sidebar)
+**Navigation Flow**: Login → `/` (select cycle) → `/dashboard` → sidebar navigation
 
 ---
 
@@ -183,22 +268,24 @@ All resources support CRUD at `/api/<resource>/` and filtering by cycle at `/api
 - **Alumno**: `ciclo` (FK), `nombre`, `apellido`, `dni`, `telefono`, `email`, `fecha_nacimiento`, `activo`
 - **Profesor**: `ciclo` (FK), `nombre`, `apellido`, `dni`, `telefono`, `email`, `fecha_nacimiento`, `activo`
 - **Taller**: `ciclo` (FK), `nombre`, `tipo` (instrumento/taller), `descripcion`, `activo`
-- **Horario**: `ciclo`, `taller`, `profesor`, `dia_semana`, `hora_inicio/fin`, `cupo_maximo`
+- **Horario**: `ciclo`, `taller`, `profesor`, `dia_semana`, `hora_inicio/fin`, `cupo_maximo`, `tipo_pago` (tarifa fija/dinámico)
 
 ### Enrollment & Attendance
-- **Matricula**: `alumno`, `taller`, `sesiones_contratadas`, `precio_total`, `concluida`, `metodo_pago`
+- **Matricula**: `alumno`, `taller`, `sesiones_contratadas`, `precio_total`, `precio_por_sesion`, `concluida`, `metodo_pago`
 - **MatriculaHorario**: `matricula`, `horario` (junction: which schedule a student attends)
-- **Asistencia**: `matricula`, `horario`, `fecha`, `hora`, `estado`
+- **Asistencia**: `matricula`, `horario`, `fecha`, `hora`, `estado` (presente/ausente/tardanza)
+  - **Indexes**: `db_index=True` on `fecha` and `estado`; composite index on `(horario, fecha)`
 
 ### Financial
-- **Recibo**: `numero`, `alumno` (nullable), `ciclo`, `monto_bruto/total/pagado`, `estado`, `paquete_aplicado`
+- **Recibo**: `numero`, `alumno` (nullable), `ciclo`, `monto_bruto`, `monto_total`, `monto_pagado`, `descuento`, `estado`, `paquete_aplicado`
 - **ReciboMatricula**: `recibo`, `matricula` (junction: multi-student receipts)
 - **PrecioPaquete**: `ciclo`, `tipo_taller`, `tipo_paquete`, `cantidad_clases`, `cantidad_clases_secundaria`, `precio_total`, `precio_por_sesion`, `activo`
 - **PagoProfesor**: `profesor`, `ciclo`, `horas_calculadas`, `monto_final`, `fecha_inicio`, `fecha_fin`, `total_alumnos_asistencias`, `ganancia_taller`
 - **PagoProfesorDetalle**: `pago_profesor`, `horario`, `fecha`, `num_alumnos`, `valor_generado`, `monto_base`, `monto_adicional`, `monto_profesor`, `ganancia_taller`
+- **Egreso**: `ciclo`, `tipo`, `monto`, `descripcion`, `categoria`, `beneficiario`, `profesor` (FK nullable), `fecha`, `estado`
 
 ### System
-- **Configuracion**: `clave`, `valor` (stores active cycle, global settings)
+- **Configuracion**: `clave`, `valor` (stores active cycle, dynamic payment config: `base_pago`, `tope_maximo`, `porcentaje_adicional`)
 - **HistorialTraspaso**: `alumno`, `ciclo_origen`, `ciclo_destino`, `fecha`
 
 ---
@@ -214,45 +301,39 @@ All resources support CRUD at `/api/<resource>/` and filtering by cycle at `/api
 | `mixto` | Instrument + Taller discount | Set (e.g., 12+8) |
 | `intensivo` | 20-class intensive package | `null` |
 
-### Price Calculator Logic
-The `CalculadoraPrecios` page loads all active prices + promos from `/api/precios/activos/`. Detection:
-- **Combo Musical**: 2+ instruments → sorted descending → key `"12+8"` → lookup in `combo_musical` promos
-- **Mixto**: 1 instrument + 1 taller → key `"max+min"` → lookup in `mixto` promos
-- **Intensivo**: Any item with 20 classes → lookup by `tipo_taller` in `intensivo` promos
-- **Discount**: `precioBruto - promo.total`
-
 ### Unique Constraint
 `(ciclo, tipo_taller, tipo_paquete, cantidad_clases, cantidad_clases_secundaria)` — allows asymmetric combos (12+12 and 12+8 as separate records).
 
+### Price Calculator Logic (`calcular_precio_recomendado`)
+1. Calculate brute price per item using `get_precio_individual(tipo_taller, cantidad_clases, ciclo_id)`
+2. Detect promo: combo_musical (2+ instruments) → mixto (1 instrument + 1 taller) → intensivo (20 classes)
+3. Apply discount if promo matches
+4. Fallback: `ciclo_id=None` (global prices) if no cycle-specific price found
+
 ---
 
-## Pagos Profesores - Payment Model
+## Pagos Profesores — Payment Model
 
 ### Formula (per class)
 ```
 0 alumnos   → S/. 0.00
-1 alumno   → S/. 17.00 fijo
-2+ alumnos → S/. 17.00 base + 50% del valor de sesión de cada alumno adicional
-Tope       → Máx S/. 35.00 por clase (excedente = ganancia del taller)
+1 alumno   → S/. 17.00 (BASE_PAGO) fijo
+2+ alumnos → S/. 17.00 + 50% (PORCENTAJE_ADICIONAL) × valor sesión cada alumno adicional
+Tope       → Máx S/. 35.00 (TOPE_MAXIMO) por clase
 ```
 
-### Example
-| Alumnos | Valor Sesión | Cálculo | Total Profesor | Ganancia Taller |
-|---------|--------------|----------|----------------|-----------------|
-| 1 | S/. 20.00 | S/. 17.00 | S/. 17.00 | S/. 3.00 |
-| 2 | S/. 20.00 + S/. 16.67 | 17 + 8.34 | S/. 25.34 | S/. 11.33 |
-| 3 | S/. 20 + S/. 16.67 + S/. 15 | 17 + 10 + 8 (tope) | S/. 35.00 | S/. 16.67 |
-
-Constants in `core/constants.py`: `BASE_PAGO=17`, `TOPE_MAXIMO=35`, `PORCENTAJE_ADICIONAL=0.50`
+### Dynamic Configuration
+Configurable via `Configuracion` table: `base_pago`, `tope_maximo`, `porcentaje_adicional`. Falls back to `core/constants.py`.
 
 ---
 
 ## Authentication & Security
 
 - **JWT**: Access token 8h, Refresh token 7d, rotation with blacklisting
-- **Auth flow**: Login → store tokens in localStorage → axios interceptor adds Bearer header → auto-refresh on 401
+- **Auth flow**: Login → store tokens in localStorage → axios interceptor adds Bearer → auto-refresh on 401
 - **Protected routes**: `ProtectedRoute` checks localStorage for `access_token` → redirects to `/login`
-- **Cycle selection**: Required before accessing any protected page (stored in `Configuracion` DB, NOT localStorage)
+- **Cycle selection**: Required before accessing protected pages (stored in `Configuracion` DB)
+- **localStorage**: Always wrap in try-catch (fails in private/incognito mode)
 
 ---
 
@@ -261,26 +342,25 @@ Constants in `core/constants.py`: `BASE_PAGO=17`, `TOPE_MAXIMO=35`, `PORCENTAJE_
 ### Backend (Django/Python)
 - **Naming**: `snake_case` for all Python identifiers
 - **Validation**: In serializers only, never in views
-- **Queries**: Use `select_related` / `prefetch_related` for optimization
+- **Queries**: Use `select_related` / `prefetch_related` — **every** ViewSet has optimized queries
+- **N+1 prevention**: `Exists` annotations defined **inline** inside `annotate()` calls, never stored as separate variables referencing `OuterRef` from outside the filter scope
 - **Models**: One model per file in `core/models/`
 - **Views**: One ViewSet per file in `core/views/`
 - **Services**: Business logic in `core/services/`, views stay thin
-- **Imports**: Group stdlib, third-party, local; use relative imports within app
-- **Error handling**: Try-except with specific exceptions, return proper HTTP status codes
+- **Pagination**: `StandardResultsSetPagination` on most ViewSets; omit pagination where frontend expects direct arrays
 
 ### Frontend (React/TypeScript)
 - **Naming**: `camelCase` for variables/functions, `PascalCase` for components/interfaces
 - **Files**: `PascalCase.tsx` for pages, `camelCase.ts` for utilities
 - **HTTP**: axios instance from `api/axios.ts` (handles token refresh automatically)
 - **State**: Zustand for auth, React Context for cycle management and toasts
-- **Forms**: react-hook-form + zod for validation
-- **Styles**: Inline styles (Tailwind removed due to PostCSS issues)
-- **Performance**: Wrap page components with `memo()` to prevent unnecessary re-renders
-- **Types**: Strict TypeScript; define interfaces in `api/endpoints.ts`
+- **Styles**: Inline styles + CSS utility classes — no Tailwind
+- **Performance**: Wrap **every** page component with `memo()`; generic components (`ResponsiveTable`, `DataCard`) are `memo()` wrapped
+- **Responsive**: Use `useWindowWidth()` hook + `ResponsiveTable` for table-to-cards pattern; `grid-template-columns: repeat(auto-fit, minmax(Xpx, 1fr))` for card grids; form grids: `repeat(auto-fit, minmax(200px, 1fr))`
 
 ### TypeScript Config
 - Target: ES2023, strict mode enabled
-- `noUnusedLocals`, `noUnusedParameters` enabled
+- `noUnusedLocals: true`, `noUnusedParameters: true`
 - JSX: react-jsx transform
 - Module: ESNext with bundler resolution
 
@@ -292,13 +372,15 @@ Constants in `core/constants.py`: `BASE_PAGO=17`, `TOPE_MAXIMO=35`, `PORCENTAJE_
 2. **Active Cycle**: Stored in `Configuracion` DB table, NOT localStorage. Use `PATCH /api/config/` to set.
 3. **All entities have FK to Ciclo**: Alumno, Profesor, Taller, Horario all require a ciclo.
 4. **Receipts can be multi-student**: `alumno` field is nullable; use `ReciboMatricula` junction table.
-5. **Matricula states**: Active by default, can be marked `concluida` (disappears from schedule view).
+5. **Matricula states**: Active by default, can be marked `concluida`.
 6. **JWT Tokens**: Access (8h), Refresh (7d) with blacklisting on rotation.
-7. **localStorage**: Always wrap in try-catch (fails in private/incognito mode).
+7. **localStorage**: Always wrap in try-catch.
 8. **Language**: All user-facing text in Spanish.
 9. **Horarios filter required**: Taller/instrumento filter is mandatory — no "show all" option.
-10. **Pagos Profesores**: Always filter by ciclo + date range to avoid duplicates.
-11. **PrecioPaquete combos**: Use `cantidad_clases_secundaria` for asymmetric combos (12+8 vs 12+12).
+10. **PrecioPaquete combos**: Use `cantidad_clases_secundaria` for asymmetric combos (12+8 vs 12+12).
+11. **N+1 queries**: Always use `select_related`/`prefetch_related`; annotate with `Exists` inline (never store `Exists(OuterRef(...))` outside the annotate call).
+12. **Responsive components**: Use `ResponsiveTable` for all list views with tables. Use `useWindowWidth()` for custom responsive logic.
+13. **Touch targets**: Minimum 44px height via `.touch-target` CSS class for all interactive elements on mobile.
 
 ---
 
@@ -308,10 +390,6 @@ Constants in `core/constants.py`: `BASE_PAGO=17`, `TOPE_MAXIMO=35`, `PORCENTAJE_
 ```typescript
 const { cicloActual, ciclos, setCicloActual, seleccionarCiclo, recargar, isLoading } = useCiclo();
 ```
-- `cicloActual`: Currently selected cycle object
-- `seleccionarCiclo(ciclo)`: Select cycle + redirect to `/dashboard`
-- `setCicloActual(ciclo)`: Set cycle without redirect
-- `recargar()`: Reload cycle data
 
 ### ToastContext
 ```typescript
@@ -319,74 +397,46 @@ const toast = useToast();
 toast.showToast('Mensaje', 'success' | 'error' | 'warning');
 ```
 
-### Auth Store (Zustand)
+### useWindowWidth
 ```typescript
-const { login, logout, isLoading } = useAuthStore();
+const width = useWindowWidth(); // number — window.innerWidth, updates on resize
+const isMobile = width <= 768;
 ```
 
 ---
 
-## Extensibility
+## Deployment
 
-### Adding a new entity
-1. Create model in `core/models/<entity>.py`, export in `__init__.py`
-2. Create serializer in `core/serializers/<entity>.py`, export in `__init__.py`
-3. Create ViewSet in `core/views/<entity>_view.py`, export in `__init__.py`
-4. Register in `core/urls.py` (router + cycle-filtered routes)
-5. Create migration: `python manage.py makemigrations`
-6. Add endpoint function in `frontend/src/api/endpoints.ts`
-7. Create page in `frontend/src/pages/<Entity>.tsx`
-8. Add route in `App.tsx` + sidebar link
+### Railway (Backend)
+1. Connect repo → select `deployv4` branch
+2. Environment variables:
+   - `DATABASE_URL` — PostgreSQL (auto-provided by Railway)
+   - `SECRET_KEY` — generate a secure random string
+   - `DEBUG=false`
+   - `ALLOWED_HOSTS` — your Railway subdomain (e.g., `tu-app.railway.app`)
+   - `CORS_ALLOWED_ORIGINS` — frontend Vercel URL
+3. Start command: `bash start.sh`
+4. Seed prices after first deploy: `python manage.py seed_precios`
 
-### Adding a new payment calculation system
-1. Update `core/services/pago_profesor_service.py`
-2. Add/remove fields to `PagoProfesor` model if needed
-3. Create `PagoProfesorDetalle` entries for per-class breakdown
-4. Update serializer in `core/serializers/pago_profesor.py`
-5. Create new frontend endpoint if additional data is needed
-6. Update `PagosProfesores.tsx` page with new UI
+### Vercel (Frontend)
+1. Import repo → select frontend directory
+2. Framework: Vite
+3. Build command: `npm run build`
+4. Output directory: `dist`
+5. Environment variable: `VITE_API_URL=https://your-railway-url/api`
 
----
-
-## Deployment Notes
-
-### Current State
-- **Database**: SQLite3 (file-based, NOT suitable for production)
-- **Secrets**: Hardcoded in `config/settings.py` (`SECRET_KEY`, `DEBUG=True`)
-- **CORS**: Wide open (`CORS_ALLOW_ALL_ORIGINS = True`)
-- **Static files**: No `collectstatic` or whitenoise configured
-- **No `.env` file**: Environment variables not externalized
-
-### Vercel Deployment (Frontend Only)
-Vercel can host the React frontend as a static SPA. The backend MUST be deployed separately.
-
-**Frontend → Vercel**:
+### start.sh (Production Start)
 ```bash
-# In Vercel dashboard:
-# - Framework: Vite
-# - Build command: npm run build
-# - Output directory: dist
-# - Environment variable: VITE_API_URL=https://your-backend-url/api
+#!/bin/bash
+set -e
+python manage.py migrate --noinput
+python manage.py collectstatic --noinput --clear
+gunicorn config.asgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4
 ```
 
-**Required `frontend/vercel.json`** for SPA routing:
-```json
-{
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}
-```
-
-**Backend options** (pick one):
-- **Railway**: Django-friendly, supports SQLite → PostgreSQL migration, auto-deploy from git
-- **Render**: Free tier available, PostgreSQL included
-- **Fly.io**: Docker-based, good for Django
-- **DigitalOcean App Platform**: Managed, PostgreSQL included
-
-**Production checklist before deploying backend**:
-1. Switch to PostgreSQL (replace SQLite3 in settings)
-2. Move `SECRET_KEY` to env var
-3. Set `DEBUG = False`
-4. Set `ALLOWED_HOSTS` to your domain
-5. Restrict `CORS_ALLOWED_ORIGINS` to frontend domain
-6. Add `whitenoise` for static files (or use S3/CDN)
-7. Set `VITE_API_URL` in Vercel to backend URL
+### Production Stack
+- **Database**: PostgreSQL (Railway) — SQLite only in dev
+- **WSGI**: Gunicorn with 2 workers, 4 threads
+- **Static files**: whitenoise (CompressedManifestStaticFilesStorage)
+- **Secret key**: Environment variable (never hardcoded in production)
+- **CORS**: Restricted to known origins (`CORS_ALLOW_ALL_ORIGINS = DEBUG`)
