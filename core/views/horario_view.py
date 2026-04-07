@@ -16,7 +16,8 @@ class HorarioViewSet(viewsets.ModelViewSet):
     search_fields = ['taller__nombre', 'profesor__nombre', 'profesor__apellido']
     ordering_fields = ['dia_semana', 'hora_inicio']
     ordering = ['dia_semana', 'hora_inicio']
-    pagination_class = StandardResultsSetPagination
+    # Sin paginación para endpoint nested — dropdown necesita todos los horarios
+    pagination_class = None
 
     def get_serializer_class(self):
         if self.action == 'list':
