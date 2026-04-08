@@ -75,6 +75,7 @@ interface MatriculaFormData {
   metodo_pago: string;
   activo: boolean;
   concluida: boolean;
+  fecha_matricula: string;
 }
 
 interface AsistenciaDetalle {
@@ -109,6 +110,7 @@ const initialFormData: MatriculaFormData = {
   metodo_pago: 'efectivo',
   activo: true,
   concluida: false,
+  fecha_matricula: new Date().toISOString().split('T')[0],
 };
 
 function MatriculasPage() {
@@ -467,6 +469,7 @@ function MatriculasPage() {
         sesiones_contratadas: formData.sesiones_contratadas,
         precio_total: parseFloat(formData.precio_total),
         metodo_pago: formData.metodo_pago,
+        fecha_matricula: formData.fecha_matricula,
       };
 
       if (editingId) {
@@ -593,6 +596,7 @@ function MatriculasPage() {
       metodo_pago: matricula.metodo_pago || 'efectivo',
       activo: matricula.activo,
       concluida: matricula.concluida,
+      fecha_matricula: matricula.fecha_matricula ? matricula.fecha_matricula.split('T')[0] : new Date().toISOString().split('T')[0],
     });
     setShowModal(true);
   };
@@ -1021,6 +1025,16 @@ function MatriculasPage() {
                         value={formData.sesiones_contratadas}
                         onChange={(e) => setFormData({ ...formData, sesiones_contratadas: parseInt(e.target.value) || 1 })}
                         min={1}
+                        style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Fecha de Matrícula</label>
+                      <input
+                        type="date"
+                        value={formData.fecha_matricula}
+                        onChange={(e) => setFormData({ ...formData, fecha_matricula: e.target.value })}
+                        required
                         style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
                       />
                     </div>

@@ -378,7 +378,7 @@ function AlumnosPage() {
                     value={formData.dni}
                     onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
                     required
-                    maxLength={8}
+                    maxLength={15}
                     style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
                   />
                 </div>

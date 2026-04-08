@@ -50,7 +50,9 @@ const EgresosPage = () => {
       ]);
       setEgresos(egresosRes.data);
       setResumen(resumenRes.data);
-      setProfesores(profesoresRes.data);
+      // DRF pagination: data.results contains the actual array (cast to any to handle paginated vs array)
+      const profesData = profesoresRes.data as any;
+      setProfesores(profesData.results || profesData || []);
     } catch (error) {
       console.error('Error:', error);
       toast.showToast('Error al cargar egresos', 'error');

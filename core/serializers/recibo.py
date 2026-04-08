@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from ..models import Recibo, ReciboMatricula, Matricula
 from ..services import ReciboService
-from datetime import datetime
 
 
 class ReciboMatriculaSerializer(serializers.ModelSerializer):
@@ -131,20 +130,28 @@ class CalcularPrecioSerializer(serializers.Serializer):
             total = 0
             detalles = []
             
+            # Obtener el ciclo de la primera matrícula para buscar precios específicos
+            ciclo_id = None
             matriculas_data = []
             for mid in matricula_ids:
-                matricula = Matricula.objects.select_related('taller', 'alumno').get(id=mid)
+                matricula = Matricula.objects.select_related('taller', 'alumno', 'ciclo').get(id=mid)
+                
+                # Usar el ciclo de la matrícula para precios específicos
+                if ciclo_id is None and matricula.ciclo_id:
+                    ciclo_id = matricula.ciclo_id
+                
                 precio = PrecioPaquete.get_precio_individual(
                     matricula.taller.tipo,
-                    matricula.sesiones_contratadas
+                    matricula.sesiones_contratadas,
+                    ciclo_id
                 )
                 # Si no hay precio configurado, usar precio_por_sesion de la matrícula
                 if precio:
                     precio_val = precio['precio_total']
                 else:
                     # Fallback: calcular desde precio_por_sesion de la matrícula
-                    precio_por_sesion = matricula.precio_por_sesion or 0
-                    precio_val = float(precio_por_sesion) * matricula.sesiones_contratadas
+                    precio_por_sesion = float(matricula.precio_por_sesion or 0)
+                    precio_val = precio_por_sesion * matricula.sesiones_contratadas
                 total += precio_val
                 detalles.append({
                     'matricula_id': mid,
@@ -155,25 +162,29 @@ class CalcularPrecioSerializer(serializers.Serializer):
                     'precio_individual': precio_val
                 })
                 matriculas_data.append({
-                    'tipo': matricula.taller.tipo,
-                    'sesiones': matricula.sesiones_contratadas,
-                    'precio': precio_val
+                    'tipo_taller': matricula.taller.tipo,
+                    'cantidad_clases': matricula.sesiones_contratadas
                 })
 
-            paquete_detectado = self._detectar_paquete(matriculas_data)
+            # Usar PrecioPaquete.calcular_precio_recomendado que lee de la BD
+            resultado_precio = PrecioPaquete.calcular_precio_recomendado(matriculas_data, ciclo_id)
             
-            precio_sugerido = total
-            descuento = 0
+            if resultado_precio:
+                return {
+                    'precio_bruto': resultado_precio['precio_bruto'],
+                    'precio_sugerido': resultado_precio['precio_sugerido'],
+                    'descuento': resultado_precio['descuento'],
+                    'paquete_detectado': resultado_precio['paquete_detectado'],
+                    'desglose': resultado_precio.get('desglose', []),
+                    'detalles': detalles
+                }
             
-            if paquete_detectado != 'individual':
-                precio_sugerido = self._calcular_precio_paquete(paquete_detectado, matriculas_data)
-                descuento = total - precio_sugerido
-
+            # Fallback si no se pudo calcular
             return {
                 'precio_bruto': total,
-                'precio_sugerido': precio_sugerido,
-                'descuento': descuento,
-                'paquete_detectado': paquete_detectado,
+                'precio_sugerido': total,
+                'descuento': 0,
+                'paquete_detectado': 'individual',
                 'desglose': [],
                 'detalles': detalles
             }
@@ -190,60 +201,3 @@ class CalcularPrecioSerializer(serializers.Serializer):
                 'desglose': [],
                 'detalles': []
             }
-    
-    def _detectar_paquete(self, matriculas_data):
-        if len(matriculas_data) < 2:
-            return 'individual'
-        
-        tipos = [m['tipo'] for m in matriculas_data]
-        sesiones = [m['sesiones'] for m in matriculas_data]
-        
-        tiene_instrumento = 'instrumento' in tipos
-        tiene_taller = 'taller' in tipos
-        
-        sesiones_set = set(sesiones)
-        sesiones_sorted = sorted(sesiones_set)
-        
-        # Caso: solo instrumentos
-        if tiene_instrumento and not tiene_taller:
-            if sesiones_sorted == [12]:
-                return 'combo_musical_12'
-            elif sesiones_sorted == [8]:
-                return 'combo_musical_8'
-            elif sesiones_sorted == [8, 12]:
-                return 'combo_musical_12_8'
-        
-        # Caso: mixto (instrumento + taller)
-        if tiene_instrumento and tiene_taller:
-            if sesiones_sorted == [12]:
-                return 'mixto_12'
-            elif sesiones_sorted == [8]:
-                return 'mixto_8'
-            elif sesiones_sorted == [8, 12]:
-                return 'mixto_12_8'
-        
-        # Caso: solo talleres
-        if tiene_taller and not tiene_instrumento:
-            if 12 in sesiones_set:
-                return 'intensivo_taller'
-            elif 8 in sesiones_set:
-                return 'intensivo_taller'
-        
-        return 'individual'
-    
-    def _calcular_precio_paquete(self, paquete, matriculas_data):
-        precios_paquete = {
-            'combo_musical_12': 360,
-            'combo_musical_8': 220,
-            'combo_musical_12_8': 280,
-            'mixto_12': 340,
-            'mixto_8': 320,
-            'mixto_12_8': 380,
-            'intensivo_instrumento': 280,
-            'intensivo_taller': 160,
-        }
-        
-        if paquete in precios_paquete:
-            return precios_paquete[paquete]
-        
-        return sum(m['precio'] for m in matriculas_data)

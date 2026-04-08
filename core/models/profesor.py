@@ -10,7 +10,7 @@ class Profesor(models.Model):
     )
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
-    dni = models.CharField(max_length=8)
+    dni = models.CharField(max_length=15)
     telefono = models.CharField(max_length=20, blank=True)
     email = models.EmailField(blank=True)
     fecha_nacimiento = models.DateField(null=True, blank=True)
