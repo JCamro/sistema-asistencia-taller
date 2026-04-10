@@ -13,9 +13,13 @@ class Recibo(models.Model):
         ('combo_musical_12', 'Combo Musical 12+12'),
         ('combo_musical_8', 'Combo Musical 8+8'),
         ('combo_musical_12_8', 'Combo Musical 12+8'),
+        ('combo_musical_8_8', 'Combo Musical 8+8 (otro)'),
+        ('combo_musical_12_12', 'Combo Musical 12+12 (otro)'),
         ('mixto_12', 'Mixto 12+12'),
         ('mixto_8', 'Mixto 8+8'),
         ('mixto_12_8', 'Mixto 12+8'),
+        ('mixto_8_8', 'Mixto 8+8 (otro)'),
+        ('mixto_12_12', 'Mixto 12+12 (otro)'),
         ('intensivo_instrumento', 'Intensivo Instrumento'),
         ('intensivo_taller', 'Intensivo Taller'),
     ]
