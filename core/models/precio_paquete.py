@@ -14,13 +14,6 @@ class PrecioPaquete(models.Model):
         ('intensivo', 'Intensivo'),
     ]
 
-    CANTIDAD_CLASES_CHOICES = [
-        (1, 'Clase suelta'),
-        (8, 'Paquete 8 clases'),
-        (12, 'Paquete 12 clases'),
-        (20, 'Paquete 20 clases'),
-    ]
-
     ciclo = models.ForeignKey(
         'Ciclo',
         on_delete=models.CASCADE,
@@ -41,11 +34,9 @@ class PrecioPaquete(models.Model):
         verbose_name='Tipo de Paquete'
     )
     cantidad_clases = models.IntegerField(
-        choices=CANTIDAD_CLASES_CHOICES,
         verbose_name='Cantidad de Clases'
     )
     cantidad_clases_secundaria = models.IntegerField(
-        choices=CANTIDAD_CLASES_CHOICES,
         null=True,
         blank=True,
         verbose_name='Cantidad de Clases Secundaria',
@@ -77,6 +68,13 @@ class PrecioPaquete(models.Model):
         if self.cantidad_clases_secundaria:
             clases = f"{self.cantidad_clases}+{self.cantidad_clases_secundaria}"
         return f"{ciclo_nombre} - {self.get_tipo_paquete_display()} - {self.get_tipo_taller_display()} - {clases} clases: S/. {self.precio_total}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.cantidad_clases < 1:
+            raise ValidationError({'cantidad_clases': 'La cantidad de clases debe ser al menos 1.'})
+        if self.cantidad_clases_secundaria is not None and self.cantidad_clases_secundaria < 1:
+            raise ValidationError({'cantidad_clases_secundaria': 'La cantidad de clases secundaria debe ser al menos 1.'})
 
     @classmethod
     def get_precio_individual(cls, tipo_taller, cantidad_clases, ciclo_id=None):
