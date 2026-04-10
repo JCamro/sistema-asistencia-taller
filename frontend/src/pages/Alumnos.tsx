@@ -3,22 +3,8 @@ import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import { ResponsiveTable } from '../components/ui/ResponsiveTable';
-import { getApiBaseUrl } from '../utils/api';
-
-interface Alumno {
-  id: number;
-  ciclo: number;
-  nombre: string;
-  apellido: string;
-  dni: string;
-  telefono: string;
-  email: string;
-  fecha_nacimiento: string | null;
-  edad: number | null;
-  activo: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { getAlumnos, createAlumno, updateAlumno, deleteAlumno } from '../api/endpoints';
+import type { Alumno } from '../api/endpoints';
 
 interface AlumnoFormData {
   nombre: string;
@@ -43,7 +29,6 @@ const initialFormData: AlumnoFormData = {
 function AlumnosPage() {
   const { cicloActual } = useCiclo();
   const { showToast, showApiError } = useToast();
-  const apiBase = getApiBaseUrl();
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -56,13 +41,9 @@ function AlumnosPage() {
 
   const fetchAlumnos = useCallback(async () => {
     if (!cicloActual) return;
-    const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/alumnos/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setAlumnos(data.results || data);
+      const res = await getAlumnos(cicloActual.id);
+      setAlumnos(res.data.results || res.data);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -88,31 +69,12 @@ function AlumnosPage() {
       return;
     }
     setSaving(true);
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      showToast('No hay token de autenticación', 'error');
-      setSaving(false);
-      return;
-    }
     try {
       const payload = { ...formData, ciclo: cicloActual.id };
-      console.log('Enviando:', payload);
-      const url = editingId
-        ? `${apiBase}/api/alumnos/${editingId}/`
-        : `${apiBase}/api/ciclos/${cicloActual.id}/alumnos/`;
-      const method = editingId ? 'PATCH' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      const responseData = await res.json();
-      console.log('Respuesta:', res.status, responseData);
-      if (!res.ok) {
-        throw new Error(JSON.stringify(responseData));
+      if (editingId) {
+        await updateAlumno(editingId, payload);
+      } else {
+        await createAlumno(payload);
       }
       setShowModal(false);
       setEditingId(null);
@@ -148,12 +110,8 @@ function AlumnosPage() {
   const confirmDelete = async () => {
     if (!deletingId) return;
     setSaving(true);
-    const token = localStorage.getItem('access_token');
     try {
-      await fetch(`${apiBase}/api/alumnos/${deletingId}/`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await deleteAlumno(deletingId);
       fetchAlumnos();
     } catch (err) {
       console.error('Error:', err);

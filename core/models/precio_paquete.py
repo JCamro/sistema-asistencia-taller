@@ -83,36 +83,33 @@ class PrecioPaquete(models.Model):
         """Obtiene precio para un paquete individual. Busca primero por ciclo, luego global."""
         # Try cycle-specific first
         if ciclo_id:
-            try:
-                precio = cls.objects.get(
-                    ciclo_id=ciclo_id,
-                    tipo_taller=tipo_taller,
-                    tipo_paquete='individual',
-                    cantidad_clases=cantidad_clases,
-                    activo=True
-                )
-                return {
-                    'precio_total': float(precio.precio_total),
-                    'precio_por_sesion': float(precio.precio_por_sesion)
-                }
-            except cls.DoesNotExist:
-                pass
-        
-        # Fallback to global (ciclo=None)
-        try:
-            precio = cls.objects.get(
-                ciclo__isnull=True,
+            precio = cls.objects.filter(
+                ciclo_id=ciclo_id,
                 tipo_taller=tipo_taller,
                 tipo_paquete='individual',
                 cantidad_clases=cantidad_clases,
                 activo=True
-            )
+            ).first()
+            if precio:
+                return {
+                    'precio_total': float(precio.precio_total),
+                    'precio_por_sesion': float(precio.precio_por_sesion)
+                }
+        
+        # Fallback to global (ciclo=None)
+        precio = cls.objects.filter(
+            ciclo__isnull=True,
+            tipo_taller=tipo_taller,
+            tipo_paquete='individual',
+            cantidad_clases=cantidad_clases,
+            activo=True
+        ).first()
+        if precio:
             return {
                 'precio_total': float(precio.precio_total),
                 'precio_por_sesion': float(precio.precio_por_sesion)
             }
-        except cls.DoesNotExist:
-            return None
+        return None
 
     @classmethod
     def calcular_precio_recomendado(cls, matriculas_data, ciclo_id=None):
@@ -203,21 +200,21 @@ class PrecioPaquete(models.Model):
                 'activo': True,
             }
             if cid:
-                return cls.objects.get(ciclo_id=cid, **filtro)
-            return cls.objects.get(ciclo__isnull=True, **filtro)
+                return cls.objects.filter(ciclo_id=cid, **filtro).first()
+            return cls.objects.filter(ciclo__isnull=True, **filtro).first()
 
-        try:
-            combo = _buscar_combo(ciclo_id)
-        except cls.DoesNotExist:
-            try:
-                combo = _buscar_combo(None)
-            except cls.DoesNotExist:
-                return {'aplica': False, 'descuento': 0, 'desglose': []}
+        combo = _buscar_combo(ciclo_id)
+        if not combo:
+            combo = _buscar_combo(None)
+        if not combo:
+            return {'aplica': False, 'descuento': 0, 'desglose': []}
 
-        precio_individual = (
-            cls.get_precio_individual('instrumento', primaria, ciclo_id)['precio_total'] +
-            cls.get_precio_individual('instrumento', secundaria, ciclo_id)['precio_total']
-        )
+        precio_individual_primaria = cls.get_precio_individual('instrumento', primaria, ciclo_id)
+        precio_individual_secundaria = cls.get_precio_individual('instrumento', secundaria, ciclo_id)
+        if not precio_individual_primaria or not precio_individual_secundaria:
+            return {'aplica': False, 'descuento': 0, 'desglose': []}
+
+        precio_individual = precio_individual_primaria['precio_total'] + precio_individual_secundaria['precio_total']
         descuento = precio_individual - float(combo.precio_total)
         mitad = float(combo.precio_total) / 2
         return {
@@ -244,21 +241,21 @@ class PrecioPaquete(models.Model):
                 'activo': True,
             }
             if cid:
-                return cls.objects.get(ciclo_id=cid, **filtro)
-            return cls.objects.get(ciclo__isnull=True, **filtro)
+                return cls.objects.filter(ciclo_id=cid, **filtro).first()
+            return cls.objects.filter(ciclo__isnull=True, **filtro).first()
 
-        try:
-            mixto = _buscar_mixto(ciclo_id)
-        except cls.DoesNotExist:
-            try:
-                mixto = _buscar_mixto(None)
-            except cls.DoesNotExist:
-                return {'aplica': False, 'descuento': 0, 'desglose': []}
+        mixto = _buscar_mixto(ciclo_id)
+        if not mixto:
+            mixto = _buscar_mixto(None)
+        if not mixto:
+            return {'aplica': False, 'descuento': 0, 'desglose': []}
 
-        precio_individual = (
-            cls.get_precio_individual('instrumento', instrumento['cantidad_clases'], ciclo_id)['precio_total'] +
-            cls.get_precio_individual('taller', taller['cantidad_clases'], ciclo_id)['precio_total']
-        )
+        precio_inst = cls.get_precio_individual('instrumento', instrumento['cantidad_clases'], ciclo_id)
+        precio_taller = cls.get_precio_individual('taller', taller['cantidad_clases'], ciclo_id)
+        if not precio_inst or not precio_taller:
+            return {'aplica': False, 'descuento': 0, 'desglose': []}
+
+        precio_individual = precio_inst['precio_total'] + precio_taller['precio_total']
         descuento = precio_individual - float(mixto.precio_total)
         return {
             'aplica': True,

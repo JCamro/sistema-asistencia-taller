@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     # Third party
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',  # Para blacklist de refresh tokens
     'corsheaders',
     'django_filters',
     'drf_spectacular',
@@ -152,6 +153,13 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+# Portal-specific throttle rates (student_login uses DNI as cache key)
+REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
+    'user': '20/minute',
+    'anon': '3/minute',
+    'student_login': '20/hour',
 }
 
 # CORS Configuration

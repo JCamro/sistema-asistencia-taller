@@ -15,6 +15,7 @@ class MatriculaSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+    fecha_matricula = serializers.DateTimeField(required=False, allow_null=True)
 
     class Meta:
         model = Matricula

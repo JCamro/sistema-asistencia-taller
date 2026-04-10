@@ -6,6 +6,7 @@ import {
   getEgresos, createEgreso, updateEgreso, deleteEgreso, 
   getResumenEgresos, getProfesores 
 } from '../api/endpoints';
+import { formatMonto } from '../utils/formatters';
 
 const EgresosPage = () => {
   const { cicloActual } = useCiclo();
@@ -186,10 +187,6 @@ const EgresosPage = () => {
     setFormBeneficiario('');
     setFormProfesor(null);
     setFormEstado('pendiente');
-  };
-
-  const formatMonto = (monto: number) => {
-    return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(monto);
   };
 
   const getTipoLabel = (tipo: string) => {
