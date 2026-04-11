@@ -172,6 +172,98 @@ function CalculadoraPrecios() {
     setItems(items.filter(i => i.id !== id));
   };
 
+  // Helper para formar combos de manera óptima
+  const formarCombosInstrumentos = (
+    instrumentos: ItemSeleccionado[],
+    precioMap: Record<number, PrecioEntry>
+  ): {
+    combos: { inst1: ItemSeleccionado; inst2: ItemSeleccionado; clases1: number; clases2: number; precioCombo: number; ahorro: number }[];
+    individuales: ItemSeleccionado[];
+    descuentoTotal: number;
+  } => {
+    if (instrumentos.length < 2) {
+      return { combos: [], individuales: instrumentos, descuentoTotal: 0 };
+    }
+
+    // Ordenar promos por tamaño total descendente (12+12 > 12+8 > 8+8)
+    const promosOrdenadas = Object.entries(promos.combo_musical)
+      .map(([key, val]) => {
+        const [c1, c2] = key.split('+').map(Number);
+        return { key, ...val, totalClases: c1 + c2 };
+      })
+      .sort((a, b) => b.totalClases - a.totalClases);
+
+    const usados = new Set<number>();
+    const combos: { inst1: ItemSeleccionado; inst2: ItemSeleccionado; clases1: number; clases2: number; precioCombo: number; ahorro: number }[] = [];
+    const individuales: ItemSeleccionado[] = [];
+    let descuentoTotal = 0;
+
+    // Para cada promo disponible, formar todos los combos posibles
+    for (const promo of promosOrdenadas) {
+      const [p1, p2] = promo.key.split('+').map(Number);
+
+      // Contar cuántos pares podemos formar sin repetir instrumentos
+      // Necesitamos 2 instrumentos: uno de p1 clases y otro de p2 clases
+      let restantes = [...instrumentos.map((i, idx) => ({ ...i, idx }))];
+
+      for (const combo of combos) {
+        // Filtrar los ya usados en combos anteriores
+        restantes = restantes.filter(r => r.idx !== instrumentos.findIndex(i => i.id === combo.inst1.id) &&
+                                                r.idx !== instrumentos.findIndex(i => i.id === combo.inst2.id));
+      }
+
+      // Buscar pares disponibles para esta promo
+      while (true) {
+        const disponibles1 = restantes.filter((r, idx) => {
+          const realIdx = instrumentos.findIndex(i => i.id === r.id);
+          return r.clases === p1 && !usados.has(realIdx);
+        });
+        const disponibles2 = restantes.filter((r, idx) => {
+          const realIdx = instrumentos.findIndex(i => i.id === r.id);
+          return r.clases === p2 && !usados.has(realIdx);
+        });
+
+        if (disponibles1.length === 0 || disponibles2.length === 0) break;
+
+        const inst1 = disponibles1[0];
+        const inst2 = disponibles2[0];
+        const realIdx1 = instrumentos.findIndex(i => i.id === inst1.id);
+        const realIdx2 = instrumentos.findIndex(i => i.id === inst2.id);
+
+        if (realIdx1 === -1 || realIdx2 === -1) break;
+
+        usados.add(realIdx1);
+        usados.add(realIdx2);
+
+        const precioInd1 = precioMap[p1]?.total ?? 0;
+        const precioInd2 = precioMap[p2]?.total ?? 0;
+        const ahorro = (precioInd1 + precioInd2) - promo.total;
+
+        combos.push({
+          inst1: instrumentos[realIdx1],
+          inst2: instrumentos[realIdx2],
+          clases1: p1,
+          clases2: p2,
+          precioCombo: promo.total,
+          ahorro,
+        });
+        descuentoTotal += ahorro;
+
+        // Remover de restantes para evitar reutilizar
+        restantes = restantes.filter(r => r.id !== inst1.id && r.id !== inst2.id);
+      }
+    }
+
+    // Los instrumentos no usados van como individuales
+    instrumentos.forEach((inst, idx) => {
+      if (!usados.has(idx)) {
+        individuales.push(inst);
+      }
+    });
+
+    return { combos, individuales, descuentoTotal };
+  };
+
   const calcularPrecio = () => {
     if (items.length === 0) return null;
 
@@ -192,48 +284,48 @@ function CalculadoraPrecios() {
     }
 
     // --- COMBO MUSICAL (2+ instrumentos) ---
-    // La promo aplica solo a los 2 instrumentos del combo; los demás pagan individual
     if (instrumentos.length >= 2) {
-      const instOrdenados = [...instrumentos].sort((a, b) => b.clases - a.clases);
-      const primaria = instOrdenados[0].clases;
-      const secundaria = instOrdenados[1].clases;
-      const key = `${primaria}+${secundaria}`;
+      const resultadoCombos = formarCombosInstrumentos(instrumentos, precios.instrumento);
 
-      if (promos.combo_musical[key]) {
-        const precioCombo = promos.combo_musical[key].total;
-        const precioIndividual2 = (precios.instrumento[primaria]?.total ?? 0) + (precios.instrumento[secundaria]?.total ?? 0);
-        descuento = precioIndividual2 - precioCombo;
+      if (resultadoCombos.combos.length > 0) {
+        descuento = resultadoCombos.descuentoTotal;
 
-        // Los 2 instrumentos del combo van al desglose con precio del combo (dividido en 2)
-        const precioMitad = precioCombo / 2;
-        desglose.push({
-          nombre: instOrdenados[0].nombre,
-          tipo: 'instrumento',
-          clases: primaria,
-          precio: precioMitad,
-        });
-        desglose.push({
-          nombre: instOrdenados[1].nombre,
-          tipo: 'instrumento',
-          clases: secundaria,
-          precio: precioMitad,
-        });
-
-        // Los instrumentos restantes (3+) van a precio individual
-        for (let i = 2; i < instOrdenados.length; i++) {
-          const item = instOrdenados[i];
-          const precioInd = precios.instrumento[item.clases]?.total ?? 0;
+        // Agregar combos al desglose
+        for (const combo of resultadoCombos.combos) {
+          const precioMitad = combo.precioCombo / 2;
           desglose.push({
-            nombre: item.nombre,
+            nombre: combo.inst1.nombre,
             tipo: 'instrumento',
-            clases: item.clases,
+            clases: combo.clases1,
+            precio: precioMitad,
+          });
+          desglose.push({
+            nombre: combo.inst2.nombre,
+            tipo: 'instrumento',
+            clases: combo.clases2,
+            precio: precioMitad,
+          });
+        }
+
+        // Agregar individuales al desglose
+        for (const inst of resultadoCombos.individuales) {
+          const precioInd = precios.instrumento[inst.clases]?.total ?? 0;
+          desglose.push({
+            nombre: inst.nombre,
+            tipo: 'instrumento',
+            clases: inst.clases,
             precio: precioInd,
           });
         }
 
-        promoAplicada = `Combo Musical (${primaria} + ${secundaria} clases)`;
+        if (resultadoCombos.combos.length === 1) {
+          const c = resultadoCombos.combos[0];
+          promoAplicada = `Combo Musical (${c.clases1} + ${c.clases2} clases)`;
+        } else {
+          promoAplicada = `Combo Musical (${resultadoCombos.combos.length} combinaciones)`;
+        }
       } else {
-        // No hay promo configurada para este combo - cobrar todo individual
+        // No hay promo configurada - cobrar todo individual
         for (const item of items) {
           const precio = precios[item.tipo][item.clases];
           if (precio) {
