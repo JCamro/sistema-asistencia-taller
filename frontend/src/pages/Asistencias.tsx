@@ -151,6 +151,20 @@ function AsistenciasPage() {
     }
   }, [talleres, tallerSeleccionado, horarioSeleccionado, horariosFiltrados]);
 
+  // Auto-seleccionar taller si hay uno solo ese día
+  useEffect(() => {
+    if (talleres.length === 1 && !tallerSeleccionado) {
+      setTallerSeleccionado(talleres[0].id);
+    }
+  }, [talleres, tallerSeleccionado]);
+
+  // Auto-seleccionar horario si hay uno solo para el taller seleccionado y aún no se ha seleccionado
+  useEffect(() => {
+    if (horariosFiltrados.length === 1 && !horarioSeleccionado && tallerSeleccionado) {
+      setHorarioSeleccionado(horariosFiltrados[0].id);
+    }
+  }, [horariosFiltrados, horarioSeleccionado, tallerSeleccionado]);
+
   useEffect(() => {
     if (horarioSeleccionado) {
       const horario = horarios.find(h => h.id === horarioSeleccionado);
