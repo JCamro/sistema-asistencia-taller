@@ -183,48 +183,167 @@ function CalculadoraPrecios() {
     let promoAplicada = '';
     const desglose: { nombre: string; tipo: string; clases: number; precio: number }[] = [];
 
-    // Calcular precio bruto individual
+    // Calcular precio bruto individual de todos los items
     for (const item of items) {
       const precio = precios[item.tipo][item.clases];
       if (precio) {
         precioBruto += precio.total;
-        desglose.push({
-          nombre: item.nombre,
-          tipo: item.tipo,
-          clases: item.clases,
-          precio: precio.total,
-        });
       }
     }
 
-    // Detectar Combo Musical (2+ instrumentos) - usa promos de API si existen
+    // --- COMBO MUSICAL (2+ instrumentos) ---
+    // La promo aplica solo a los 2 instrumentos del combo; los demás pagan individual
     if (instrumentos.length >= 2) {
-      const clases = instrumentos.map(i => i.clases).sort((a, b) => b - a);
-      // Key: "primaria+secundaria" (ej: "12+8", "12+12", "8+8")
-      const key = `${clases[0]}+${clases[1]}`;
+      const instOrdenados = [...instrumentos].sort((a, b) => b.clases - a.clases);
+      const primaria = instOrdenados[0].clases;
+      const secundaria = instOrdenados[1].clases;
+      const key = `${primaria}+${secundaria}`;
+
       if (promos.combo_musical[key]) {
-        descuento = precioBruto - promos.combo_musical[key].total;
-        promoAplicada = `Combo Musical (${clases[0]} + ${clases[1]} clases)`;
+        const precioCombo = promos.combo_musical[key].total;
+        const precioIndividual2 = (precios.instrumento[primaria]?.total ?? 0) + (precios.instrumento[secundaria]?.total ?? 0);
+        descuento = precioIndividual2 - precioCombo;
+
+        // Los 2 instrumentos del combo van al desglose con precio del combo (dividido en 2)
+        const precioMitad = precioCombo / 2;
+        desglose.push({
+          nombre: instOrdenados[0].nombre,
+          tipo: 'instrumento',
+          clases: primaria,
+          precio: precioMitad,
+        });
+        desglose.push({
+          nombre: instOrdenados[1].nombre,
+          tipo: 'instrumento',
+          clases: secundaria,
+          precio: precioMitad,
+        });
+
+        // Los instrumentos restantes (3+) van a precio individual
+        for (let i = 2; i < instOrdenados.length; i++) {
+          const item = instOrdenados[i];
+          const precioInd = precios.instrumento[item.clases]?.total ?? 0;
+          desglose.push({
+            nombre: item.nombre,
+            tipo: 'instrumento',
+            clases: item.clases,
+            precio: precioInd,
+          });
+        }
+
+        promoAplicada = `Combo Musical (${primaria} + ${secundaria} clases)`;
+      } else {
+        // No hay promo configurada para este combo - cobrar todo individual
+        for (const item of items) {
+          const precio = precios[item.tipo][item.clases];
+          if (precio) {
+            desglose.push({
+              nombre: item.nombre,
+              tipo: item.tipo,
+              clases: item.clases,
+              precio: precio.total,
+            });
+          }
+        }
       }
     }
-    // Detectar Mixto (1 instrumento + 1 taller)
+    // --- MIXTO (1 instrumento + 1 taller) ---
     else if (instrumentos.length === 1 && talleres.length === 1) {
       const primaria = Math.max(instrumentos[0].clases, talleres[0].clases);
       const secundaria = Math.min(instrumentos[0].clases, talleres[0].clases);
       const key = `${primaria}+${secundaria}`;
+
       if (promos.mixto[key]) {
-        descuento = precioBruto - promos.mixto[key].total;
+        const precioMixto = promos.mixto[key].total;
+        const precioIndividual2 =
+          (precios[instrumentos[0].tipo][instrumentos[0].clases]?.total ?? 0) +
+          (precios[talleres[0].tipo][talleres[0].clases]?.total ?? 0);
+        descuento = precioIndividual2 - precioMixto;
+
+        const precioMitad = precioMixto / 2;
+        desglose.push({
+          nombre: instrumentos[0].nombre,
+          tipo: instrumentos[0].tipo,
+          clases: instrumentos[0].clases,
+          precio: precioMitad,
+        });
+        desglose.push({
+          nombre: talleres[0].nombre,
+          tipo: talleres[0].tipo,
+          clases: talleres[0].clases,
+          precio: precioMitad,
+        });
+
         promoAplicada = `Mixto (${primaria} + ${secundaria} clases)`;
+      } else {
+        for (const item of items) {
+          const precio = precios[item.tipo][item.clases];
+          if (precio) {
+            desglose.push({
+              nombre: item.nombre,
+              tipo: item.tipo,
+              clases: item.clases,
+              precio: precio.total,
+            });
+          }
+        }
       }
     }
-    // Detectar Intensivo (20 clases)
+    // --- INTENSIVO (20 clases) ---
     else if (items.some(i => i.clases === 20)) {
       const item20 = items.find(i => i.clases === 20);
       if (item20 && promos.intensivo[item20.tipo]) {
         const precioIndividual = precios[item20.tipo][20]?.total ?? 0;
         const precioPromo = promos.intensivo[item20.tipo].total;
         descuento = precioIndividual - precioPromo;
+
+        for (const item of items) {
+          if (item.clases === 20 && item.tipo === item20.tipo) {
+            desglose.push({
+              nombre: item.nombre,
+              tipo: item.tipo,
+              clases: 20,
+              precio: precioPromo,
+            });
+          } else {
+            const precio = precios[item.tipo][item.clases];
+            if (precio) {
+              desglose.push({
+                nombre: item.nombre,
+                tipo: item.tipo,
+                clases: item.clases,
+                precio: precio.total,
+              });
+            }
+          }
+        }
         promoAplicada = `Intensivo ${item20.tipo} (20 clases)`;
+      } else {
+        for (const item of items) {
+          const precio = precios[item.tipo][item.clases];
+          if (precio) {
+            desglose.push({
+              nombre: item.nombre,
+              tipo: item.tipo,
+              clases: item.clases,
+              precio: precio.total,
+            });
+          }
+        }
+      }
+    }
+    // --- SIN PROMOCION ---
+    else {
+      for (const item of items) {
+        const precio = precios[item.tipo][item.clases];
+        if (precio) {
+          desglose.push({
+            nombre: item.nombre,
+            tipo: item.tipo,
+            clases: item.clases,
+            precio: precio.total,
+          });
+        }
       }
     }
 
