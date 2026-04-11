@@ -3,6 +3,7 @@ import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import { ResponsiveTable } from '../components/ui/ResponsiveTable';
+import { Pagination } from '../components/ui/Pagination';
 import { getHistorialPagosProfesor, getProfesores, createProfesor, updateProfesor, deleteProfesor } from '../api/endpoints';
 import { formatMonto } from '../utils/formatters';
 import { useWindowWidth } from '../hooks/useWindowWidth';
@@ -50,12 +51,17 @@ function ProfesoresPage() {
   const [historialModalOpen, setHistorialModalOpen] = useState(false);
   const [historialPagos, setHistorialPagos] = useState<any[]>([]);
   const [historialLoading, setHistorialLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const fetchProfesores = useCallback(async () => {
+  const fetchProfesores = useCallback(async (page: number = 1) => {
     if (!cicloActual) return;
+    setLoading(true);
     try {
-      const res = await getProfesores(cicloActual.id);
+      const res = await getProfesores(cicloActual.id, page);
       setProfesores(res.data.results || res.data);
+      setTotalPages(Math.ceil((res.data.count || 0) / 20) || 1);
+      setCurrentPage(page);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -64,8 +70,12 @@ function ProfesoresPage() {
   }, [cicloActual]);
 
   useEffect(() => {
-    fetchProfesores();
+    fetchProfesores(1);
   }, [fetchProfesores]);
+
+  const handlePageChange = (page: number) => {
+    fetchProfesores(page);
+  };
 
   const filteredProfesores = profesores.filter(
     (p) =>
@@ -88,7 +98,7 @@ function ProfesoresPage() {
       setShowModal(false);
       setEditingId(null);
       setFormData(initialFormData);
-      fetchProfesores();
+      fetchProfesores(currentPage);
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -123,7 +133,7 @@ function ProfesoresPage() {
     setSaving(true);
     try {
       await deleteProfesor(deletingId);
-      fetchProfesores();
+      fetchProfesores(currentPage);
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -287,6 +297,15 @@ function ProfesoresPage() {
           )}
           emptyMessage={search ? 'No se encontraron resultados' : 'No hay profesores registrados'}
         />
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
+        )}
       </div>
 
       {showModal && (

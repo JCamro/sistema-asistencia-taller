@@ -3,6 +3,7 @@ import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import { ResponsiveTable } from '../components/ui/ResponsiveTable';
+import { Pagination } from '../components/ui/Pagination';
 import { getAlumnos, createAlumno, updateAlumno, deleteAlumno } from '../api/endpoints';
 import type { Alumno } from '../api/endpoints';
 
@@ -38,12 +39,17 @@ function AlumnosPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deletingName, setDeletingName] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const fetchAlumnos = useCallback(async () => {
+  const fetchAlumnos = useCallback(async (page: number = 1) => {
     if (!cicloActual) return;
+    setLoading(true);
     try {
-      const res = await getAlumnos(cicloActual.id);
+      const res = await getAlumnos(cicloActual.id, page);
       setAlumnos(res.data.results || res.data);
+      setTotalPages(Math.ceil((res.data.count || 0) / 20) || 1);
+      setCurrentPage(page);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -52,8 +58,12 @@ function AlumnosPage() {
   }, [cicloActual]);
 
   useEffect(() => {
-    fetchAlumnos();
+    fetchAlumnos(1);
   }, [fetchAlumnos]);
+
+  const handlePageChange = (page: number) => {
+    fetchAlumnos(page);
+  };
 
   const filteredAlumnos = alumnos.filter(
     (a) =>
@@ -79,7 +89,7 @@ function AlumnosPage() {
       setShowModal(false);
       setEditingId(null);
       setFormData(initialFormData);
-      fetchAlumnos();
+      fetchAlumnos(currentPage);
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -112,7 +122,7 @@ function AlumnosPage() {
     setSaving(true);
     try {
       await deleteAlumno(deletingId);
-      fetchAlumnos();
+      fetchAlumnos(currentPage);
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -257,6 +267,15 @@ function AlumnosPage() {
           )}
           emptyMessage={search ? 'No se encontraron resultados' : 'No hay alumnos registrados'}
         />
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
+        )}
       </div>
 
       {filteredAlumnos.length === 0 && !search && (

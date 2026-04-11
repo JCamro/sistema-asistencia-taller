@@ -251,48 +251,72 @@ export const updateCiclo = (id: number, data: Partial<Ciclo>) => api.patch(`/cic
 export const deleteCiclo = (id: number) => api.delete(`/ciclos/${id}/`);
 
 // Talleres (filtrados por ciclo)
-export const getTalleres = (cicloId?: number) => 
-  cicloId ? api.get<PaginatedResponse<Taller>>(`/ciclos/${cicloId}/talleres/`) : api.get<PaginatedResponse<Taller>>('/talleres/');
+export const getTalleres = (cicloId?: number, page?: number) => {
+  const params = page ? `?page=${page}` : '';
+  return cicloId 
+    ? api.get<PaginatedResponse<Taller>>(`/ciclos/${cicloId}/talleres/${params}`)
+    : api.get<PaginatedResponse<Taller>>(`/talleres/${params}`);
+};
 export const getTaller = (id: number) => api.get<Taller>(`/talleres/${id}/`);
 export const createTaller = (data: Partial<Taller>) => api.post('/talleres/', data);
 export const updateTaller = (id: number, data: Partial<Taller>) => api.patch(`/talleres/${id}/`, data);
 export const deleteTaller = (id: number) => api.delete(`/talleres/${id}/`);
 
 // Profesores (filtrados por ciclo)
-export const getProfesores = (cicloId?: number) =>
-  cicloId ? api.get<PaginatedResponse<Profesor>>(`/ciclos/${cicloId}/profesores/`) : api.get<PaginatedResponse<Profesor>>('/profesores/');
+export const getProfesores = (cicloId?: number, page?: number) => {
+  const params = page ? `?page=${page}` : '';
+  return cicloId 
+    ? api.get<PaginatedResponse<Profesor>>(`/ciclos/${cicloId}/profesores/${params}`)
+    : api.get<PaginatedResponse<Profesor>>(`/profesores/${params}`);
+};
 export const getProfesor = (id: number) => api.get<Profesor>(`/profesores/${id}/`);
 export const createProfesor = (data: Partial<Profesor>) => api.post('/profesores/', data);
 export const updateProfesor = (id: number, data: Partial<Profesor>) => api.patch(`/profesores/${id}/`, data);
 export const deleteProfesor = (id: number) => api.delete(`/profesores/${id}/`);
 
 // Alumnos (filtrados por ciclo)
-export const getAlumnos = (cicloId?: number) =>
-  cicloId ? api.get<PaginatedResponse<Alumno>>(`/ciclos/${cicloId}/alumnos/`) : api.get<PaginatedResponse<Alumno>>('/alumnos/');
+export const getAlumnos = (cicloId?: number, page?: number) => {
+  const params = page ? `?page=${page}` : '';
+  return cicloId 
+    ? api.get<PaginatedResponse<Alumno>>(`/ciclos/${cicloId}/alumnos/${params}`)
+    : api.get<PaginatedResponse<Alumno>>(`/alumnos/${params}`);
+};
 export const getAlumno = (id: number) => api.get<Alumno>(`/alumnos/${id}/`);
 export const createAlumno = (data: Partial<Alumno>) => api.post('/alumnos/', data);
 export const updateAlumno = (id: number, data: Partial<Alumno>) => api.patch(`/alumnos/${id}/`, data);
 export const deleteAlumno = (id: number) => api.delete(`/alumnos/${id}/`);
 
-// Horarios
-export const getHorarios = (cicloId?: number) =>
-  cicloId ? api.get<Horario[]>(`/ciclos/${cicloId}/horarios/`) : api.get<Horario[]>('/horarios/');
+// Horarios (paginado)
+export const getHorarios = (cicloId?: number, page?: number) => {
+  const params = page ? `?page=${page}` : '';
+  return cicloId 
+    ? api.get<PaginatedResponse<Horario>>(`/ciclos/${cicloId}/horarios/${params}`)
+    : api.get<PaginatedResponse<Horario>>(`/horarios/${params}`);
+};
 export const getHorario = (id: number) => api.get<Horario>(`/horarios/${id}/`);
 export const createHorario = (data: Partial<Horario>) => api.post('/horarios/', data);
 export const updateHorario = (id: number, data: Partial<Horario>) => api.patch(`/horarios/${id}/`, data);
 export const deleteHorario = (id: number) => api.delete(`/horarios/${id}/`);
 
-// Matriculas
-export const getMatriculas = (cicloId?: number) =>
-  cicloId ? api.get<Matricula[]>(`/ciclos/${cicloId}/matriculas/`) : api.get<Matricula[]>('/matriculas/');
+// Matriculas (paginado)
+export const getMatriculas = (cicloId?: number, page?: number) => {
+  const params = page ? `?page=${page}` : '';
+  return cicloId 
+    ? api.get<PaginatedResponse<Matricula>>(`/ciclos/${cicloId}/matriculas/${params}`)
+    : api.get<PaginatedResponse<Matricula>>(`/matriculas/${params}`);
+};
 export const getMatricula = (id: number) => api.get<Matricula>(`/matriculas/${id}/`);
 export const createMatricula = (data: Partial<Matricula>) => api.post('/matriculas/', data);
 export const updateMatricula = (id: number, data: Partial<Matricula>) => api.patch(`/matriculas/${id}/`, data);
 export const deleteMatricula = (id: number) => api.delete(`/matriculas/${id}/`);
 
-// Asistencias
-export const getAsistencias = (cicloId?: number) =>
-  cicloId ? api.get<Asistencia[]>(`/ciclos/${cicloId}/asistencias/`) : api.get<Asistencia[]>('/asistencias/');
+// Asistencias (paginado)
+export const getAsistencias = (cicloId?: number, page?: number) => {
+  const params = page ? `?page=${page}` : '';
+  return cicloId 
+    ? api.get<PaginatedResponse<Asistencia>>(`/ciclos/${cicloId}/asistencias/${params}`)
+    : api.get<PaginatedResponse<Asistencia>>(`/asistencias/${params}`);
+};
 export const createAsistencia = (data: Partial<Asistencia>) => api.post('/asistencias/', data);
 export const updateAsistencia = (id: number, data: Partial<Asistencia>) => api.patch(`/asistencias/${id}/`, data);
 
