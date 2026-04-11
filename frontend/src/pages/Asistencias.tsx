@@ -138,7 +138,7 @@ function AsistenciasPage() {
   }, [horariosDelDia]);
 
   const horariosFiltrados = useMemo(() => {
-    if (!tallerSeleccionado) return [];
+    if (!tallerSeleccionado) return horariosDelDia; // Mostrar todos si no hay taller seleccionado
     return horariosDelDia.filter(h => h.taller === tallerSeleccionado);
   }, [horariosDelDia, tallerSeleccionado]);
 
@@ -150,20 +150,6 @@ function AsistenciasPage() {
       setHorarioSeleccionado(null);
     }
   }, [talleres, tallerSeleccionado, horarioSeleccionado, horariosFiltrados]);
-
-  // Auto-seleccionar taller si hay uno solo ese día
-  useEffect(() => {
-    if (talleres.length === 1 && !tallerSeleccionado) {
-      setTallerSeleccionado(talleres[0].id);
-    }
-  }, [talleres, tallerSeleccionado]);
-
-  // Auto-seleccionar horario si hay uno solo para el taller seleccionado y aún no se ha seleccionado
-  useEffect(() => {
-    if (horariosFiltrados.length === 1 && !horarioSeleccionado && tallerSeleccionado) {
-      setHorarioSeleccionado(horariosFiltrados[0].id);
-    }
-  }, [horariosFiltrados, horarioSeleccionado, tallerSeleccionado]);
 
   useEffect(() => {
     if (horarioSeleccionado) {
