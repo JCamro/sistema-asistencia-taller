@@ -12,7 +12,7 @@ class MatriculaHorarioViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['matricula', 'horario', 'matricula__ciclo']
     search_fields = ['matricula__alumno__nombre', 'matricula__alumno__apellido', 'horario__taller__nombre']
-    http_method_names = ['get', 'post', 'head', 'options']
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def get_queryset(self):
         queryset = super().get_queryset()
