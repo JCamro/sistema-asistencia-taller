@@ -214,11 +214,11 @@ function CalculadoraPrecios() {
 
       // Buscar pares disponibles para esta promo
       while (true) {
-        const disponibles1 = restantes.filter((r, idx) => {
+        const disponibles1 = restantes.filter((r) => {
           const realIdx = instrumentos.findIndex(i => i.id === r.id);
           return r.clases === p1 && !usados.has(realIdx);
         });
-        const disponibles2 = restantes.filter((r, idx) => {
+        const disponibles2 = restantes.filter((r) => {
           const realIdx = instrumentos.findIndex(i => i.id === r.id);
           return r.clases === p2 && !usados.has(realIdx);
         });
