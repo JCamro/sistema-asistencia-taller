@@ -106,6 +106,69 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
         
         return Response(resultados)
 
+    @action(detail=False, methods=['get'], url_path='recuperables')
+    def recuperables(self, request, ciclo_id=None):
+        """
+        GET /api/ciclos/:ciclo_id/asistencias/recuperables/?horario_id=X
+
+        Retorna alumnos que pueden ser agregados como recuperación en un horario.
+        Un alumno es elegible si:
+        1. Tiene matrícula activa y no concluida en el ciclo
+        2. NO está registrado regularmente en ese horario (MatriculaHorario)
+        3. NO tiene ya una asistencia (regular o recuperación) para ese horario/fecha
+        """
+        horario_id = request.query_params.get('horario_id')
+        fecha = request.query_params.get('fecha')
+
+        if not ciclo_id or not horario_id:
+            return Response({'error': 'Faltan parámetros: ciclo_id, horario_id'}, status=400)
+
+        try:
+            horario = Horario.objects.get(id=horario_id)
+        except Horario.DoesNotExist:
+            return Response({'error': 'Horario no encontrado'}, status=404)
+
+        if str(horario.ciclo_id) != str(ciclo_id):
+            return Response({'error': 'El horario no pertenece a este ciclo'}, status=400)
+
+        # Alumnos ya registrados regularmente en este horario
+        matriculas_horario = MatriculaHorario.objects.filter(
+            horario_id=horario_id
+        ).select_related('matricula__alumno', 'matricula__taller')
+
+        alumnos_regulares_ids = set(mh.matricula.alumno_id for mh in matriculas_horario)
+
+        # Alumnos que ya tienen asistencia (regular o recuperación) para este horario/fecha
+        if fecha:
+            existentes = Asistencia.objects.filter(
+                horario_id=horario_id,
+                fecha=fecha
+            ).select_related('matricula__alumno')
+            for a in existentes:
+                if a.matricula:
+                    alumnos_regulares_ids.add(a.matricula.alumno_id)
+
+        # Alumnos con matrícula activa/no concluida en el ciclo, excluidos los ya en el horario
+        matriculas = Matricula.objects.filter(
+            ciclo_id=ciclo_id,
+            activo=True,
+            concluida=False
+        ).exclude(
+            alumno_id__in=alumnos_regulares_ids
+        ).select_related('alumno', 'taller')
+
+        resultados = []
+        for m in matriculas:
+            resultados.append({
+                'matricula_id': m.id,
+                'alumno_id': m.alumno.id,
+                'alumno_nombre': f"{m.alumno.apellido}, {m.alumno.nombre}",
+                'sesiones_disponibles': m.sesiones_disponibles,
+                'taller_nombre': m.taller.nombre,
+            })
+
+        return Response(resultados)
+
     def create(self, request, *args, **kwargs):
         ciclo_id = self.kwargs.get('ciclo_id')
         if ciclo_id:
