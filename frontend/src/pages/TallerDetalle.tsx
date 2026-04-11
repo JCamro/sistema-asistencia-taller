@@ -4,6 +4,7 @@ import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import { getApiBaseUrl } from '../utils/api';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface Taller {
   id: number;
@@ -61,6 +62,8 @@ function TallerDetalle() {
   const { cicloActual, isLoading: isCicloLoading } = useCiclo();
   const { showToast, showApiError } = useToast();
   const apiBase = getApiBaseUrl();
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
   
   const [taller, setTaller] = useState<Taller | null>(null);
   const [horarios, setHorarios] = useState<Horario[]>([]);
@@ -444,8 +447,8 @@ function TallerDetalle() {
         ← Volver a Talleres
       </button>
 
-      <div style={{ display: 'flex', gap: '1.5rem', flex: 1 }}>
-        <div style={{ flex: 7, minWidth: 0 }}>
+      <div style={{ display: 'flex', gap: '1.5rem', flex: 1, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+        <div style={{ flex: isMobile ? '1 1 100%' : 7, minWidth: 0, width: isMobile ? '100%' : undefined }}>
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem', marginBottom: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
@@ -516,7 +519,7 @@ function TallerDetalle() {
                           background: estaLleno ? '#fecaca' : '#86efac',
                           borderRadius: '6px',
                           padding: '0.375rem',
-                          fontSize: '0.7rem',
+                          fontSize: isMobile ? '0.8rem' : '0.7rem',
                           color: estaLleno ? '#7f1d1d' : '#14532d',
                         }}>
                           <div style={{ fontWeight: '600', marginBottom: '0.125rem' }}>
@@ -535,7 +538,7 @@ function TallerDetalle() {
           </div>
         </div>
 
-        <div style={{ flex: 3, minWidth: '280px', maxWidth: '360px' }}>
+        <div style={{ flex: isMobile ? '1 1 100%' : '3 1 280px', maxWidth: isMobile ? '100%' : '360px', width: '100%', marginTop: isMobile ? '1rem' : 0 }}>
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem', position: 'sticky', top: '1rem' }}>
             {panelEstado === 'vacio' && (
               <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#9ca3af' }}>

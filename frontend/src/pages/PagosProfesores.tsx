@@ -3,6 +3,7 @@ import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { getApiBaseUrl } from '../utils/api';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface ResultadoPago {
   profesor_id: number;
@@ -68,6 +69,8 @@ function PagosProfesoresPage() {
   const apiBase = getApiBaseUrl();
   const { cicloActual, isLoading: isCicloLoading } = useCiclo();
   const { showToast, showApiError } = useToast();
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
   
   const [resultados, setResultados] = useState<ResultadoPago[]>([]);
   const [loading, setLoading] = useState(false);
@@ -299,7 +302,7 @@ function PagosProfesoresPage() {
       {/* Resumen total */}
       {resultados.length > 0 && (
         <div style={{ 
-          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem',
+          display: 'grid', gridTemplateColumns: isMobile ? 'repeat(1, 1fr)' : 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem',
         }}>
           <div style={{ background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)', borderRadius: '12px', border: '1px solid #c7d2fe', padding: '1.25rem', textAlign: 'center' }}>
             <div style={{ fontSize: '2rem', fontWeight: '800', color: '#4338ca' }}>{totalClases}</div>
@@ -381,7 +384,7 @@ function PagosProfesoresPage() {
             </div>
             
             {/* Resumen del profesor */}
-            <div style={{ padding: '1.25rem 2rem', background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%)', borderBottom: '1px solid #c7d2fe', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+            <div style={{ padding: isMobile ? '1rem' : '1.25rem 2rem', background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%)', borderBottom: '1px solid #c7d2fe', display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '1rem' }}>
               <div style={{ textAlign: 'center', padding: '0.75rem', background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                 <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#4338ca' }}>{selectedPago.clases_dictadas}</div>
                 <div style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: '600' }}>Clases</div>

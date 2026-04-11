@@ -5,6 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import { getTalleres, createTaller, updateTaller, deleteTaller } from '../api/endpoints';
 import type { Taller } from '../api/endpoints';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface TallerFormData {
   nombre: string;
@@ -24,6 +25,8 @@ function TalleresPage() {
   const navigate = useNavigate();
   const { cicloActual } = useCiclo();
   const { showApiError } = useToast();
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
   const [talleres, setTalleres] = useState<Taller[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -208,7 +211,7 @@ function TalleresPage() {
           )}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '160px' : '240px'}, 1fr))`, gap: '1rem' }}>
           {filteredTalleres.map((taller, index) => (
             <div
               key={taller.id}
@@ -265,6 +268,7 @@ function TalleresPage() {
                       fontSize: '0.75rem',
                       fontWeight: '600',
                       cursor: 'pointer',
+                      minHeight: '44px',
                     }}
                   >
                     Ver Detalle
@@ -281,6 +285,7 @@ function TalleresPage() {
                       fontSize: '0.75rem',
                       fontWeight: '600',
                       cursor: 'pointer',
+                      minHeight: '44px',
                     }}
                   >
                     Editar
@@ -298,6 +303,7 @@ function TalleresPage() {
                       fontSize: '0.75rem',
                       fontWeight: '600',
                       cursor: deletingId === taller.id ? 'not-allowed' : 'pointer',
+                      minHeight: '44px',
                     }}
                   >
                     {deletingId === taller.id ? '...' : 'Eliminar'}
