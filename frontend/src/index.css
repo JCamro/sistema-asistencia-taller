@@ -28,22 +28,17 @@ body {
 }
 
 /* Responsive Utility Classes */
+/* .hide-desktop = hide on desktop (≥769px), show on mobile (≤768px) */
+/* .hide-mobile = hide on mobile (≤768px), show on desktop (≥769px) */
+.hide-desktop { display: none; }
 .hide-mobile { display: none; }
-.hide-desktop { display: block; }
 
 @media (max-width: 768px) {
-  .hide-mobile { display: block; }
-  .hide-desktop { display: none; }
-  .stack-on-mobile { flex-direction: column; }
-  .touch-target { min-height: 44px; min-width: 44px; }
-}
-
-@media (max-width: 480px) {
-  .hide-mobile { display: block; }
+  .hide-desktop { display: block; }
 }
 
 @media (min-width: 769px) {
-  .hide-desktop { display: block; }
+  .hide-mobile { display: block; }
 }
 
 /* Main content base styles */
