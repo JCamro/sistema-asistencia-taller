@@ -542,69 +542,45 @@ function AsistenciasPage() {
                         </span>
                       </div>
                     </div>
-                    {/* Lista de alumnos */}
+                    {/* Lista de alumnos - solo lectura */}
                     {alumnosDelHorario.length === 0 ? (
-                      <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-                        Sin alumnos matriculados
+                      <div style={{ padding: '0.5rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.75rem' }}>
+                        Sin alumnos
                       </div>
                     ) : (
-                      alumnosDelHorario.map((alumno) => {
-                        const estadoInfo = getEstadoInfo(alumno.estado);
-                        const tieneAsistencia = !!alumno.asistencia_id;
-                        return (
-                          <div key={alumno.matricula_id} style={{ padding: '0.75rem 1rem', borderTop: '1px solid #f3f4f6' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div>
-                                <div style={{ fontWeight: '500', color: '#111827' }}>{alumno.alumno_nombre}</div>
-                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{alumno.sesiones_disponibles} sesiones disp.</div>
-                              </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', padding: '0.5rem' }}>
+                        {alumnosDelHorario.map((alumno) => {
+                          const estadoInfo = getEstadoInfo(alumno.estado);
+                          return (
+                            <div
+                              key={alumno.matricula_id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                padding: '0.375rem 0.75rem',
+                                background: '#f9fafb',
+                                borderRadius: '6px',
+                                fontSize: '0.8rem',
+                              }}
+                            >
+                              <span style={{ fontWeight: '500', color: '#111827' }}>{alumno.alumno_nombre}</span>
                               <span
-                                onClick={() => {
-                                  if (alumno.asistencia_id) {
-                                    const asistencia = historialAsistencias.find(a => a.id === alumno.asistencia_id);
-                                    if (asistencia) handleEditAsistencia(asistencia);
-                                  }
-                                }}
                                 style={{
-                                  padding: '0.25rem 0.75rem',
-                                  borderRadius: '6px',
-                                  fontSize: '0.75rem',
+                                  padding: '0.125rem 0.5rem',
+                                  borderRadius: '4px',
+                                  fontSize: '0.65rem',
                                   fontWeight: '600',
                                   background: estadoInfo.bg,
                                   color: estadoInfo.color,
-                                  cursor: tieneAsistencia ? 'pointer' : 'default',
                                 }}
                               >
                                 {estadoInfo.label}
                               </span>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                              {ESTADOS.map((estado) => (
-                                <button
-                                  key={estado.value}
-                                  onClick={() => handleCambiarEstado(alumno, estado.value, horario.id, horario.profesor)}
-                                  disabled={saving || tieneAsistencia}
-                                  style={{
-                                    flex: 1,
-                                    padding: '0.5rem',
-                                    minHeight: '36px',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: '600',
-                                    cursor: saving || tieneAsistencia ? 'not-allowed' : 'pointer',
-                                    background: '#f3f4f6',
-                                    color: '#374151',
-                                    opacity: saving || tieneAsistencia ? 0.5 : 1,
-                                  }}
-                                >
-                                  {estado.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 );
