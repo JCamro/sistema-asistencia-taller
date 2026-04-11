@@ -41,6 +41,8 @@ function AlumnosPage() {
   const [deletingName, setDeletingName] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [sortBy, setSortBy] = useState<'nombre' | 'fecha'>('nombre');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const fetchAlumnos = useCallback(async (page: number = 1) => {
     if (!cicloActual) return;
@@ -65,12 +67,24 @@ function AlumnosPage() {
     fetchAlumnos(page);
   };
 
-  const filteredAlumnos = alumnos.filter(
-    (a) =>
-      a.nombre.toLowerCase().includes(search.toLowerCase()) ||
-      a.apellido.toLowerCase().includes(search.toLowerCase()) ||
-      a.dni?.includes(search)
-  );
+  const filteredAlumnos = alumnos
+    .filter(
+      (a) =>
+        a.nombre.toLowerCase().includes(search.toLowerCase()) ||
+        a.apellido.toLowerCase().includes(search.toLowerCase()) ||
+        a.dni?.includes(search)
+    )
+    .sort((a, b) => {
+      if (sortBy === 'nombre') {
+        const nombreA = `${a.apellido} ${a.nombre}`.toLowerCase();
+        const nombreB = `${b.apellido} ${b.nombre}`.toLowerCase();
+        return sortOrder === 'asc' ? nombreA.localeCompare(nombreB) : nombreB.localeCompare(nombreA);
+      } else {
+        const fechaA = a.created_at || '';
+        const fechaB = b.created_at || '';
+        return sortOrder === 'asc' ? fechaA.localeCompare(fechaB) : fechaB.localeCompare(fechaA);
+      }
+    });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,14 +196,15 @@ function AlumnosPage() {
       </div>
 
       <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-        <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <input
             type="text"
             placeholder="Buscar por nombre, apellido o DNI..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
-              width: '100%',
+              flex: 1,
+              minWidth: '200px',
               padding: '0.625rem 1rem',
               border: '1px solid #d1d5db',
               borderRadius: '8px',
@@ -197,6 +212,21 @@ function AlumnosPage() {
               outline: 'none',
             }}
           />
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'nombre' | 'fecha')}
+            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}
+          >
+            <option value="nombre">Ordenar: Nombre</option>
+            <option value="fecha">Ordenar: Fecha</option>
+          </select>
+          <button
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            style={{ padding: '0.625rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+            title={sortOrder === 'asc' ? 'Ascendente' : 'Descendente'}
+          >
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </button>
         </div>
 
         <ResponsiveTable<Alumno>
