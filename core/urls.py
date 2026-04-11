@@ -32,6 +32,9 @@ urlpatterns = [
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/logout/', TokenBlacklistView.as_view(), name='token_blacklist'),
     
+    # Portal endpoints (student-facing API)
+    path('portal/', include('core.views.portal.urls')),
+    
     # Usuarios
     path('usuarios/cambiar-password/', CambiarPasswordView.as_view(), name='cambiar-password'),
     
