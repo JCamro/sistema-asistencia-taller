@@ -73,6 +73,8 @@ function AsistenciasPage() {
   const [tallerSeleccionado, setTallerSeleccionado] = useState<number | null>(null);
   const [horarioSeleccionado, setHorarioSeleccionado] = useState<number | null>(null);
   const [alumnosHorario, setAlumnosHorario] = useState<AlumnoHorario[]>([]);
+  const [alumnosPorHorario, setAlumnosPorHorario] = useState<Map<number, AlumnoHorario[]>>(new Map());
+  const [loadingTodosAlumnos, setLoadingTodosAlumnos] = useState(false);
   const [showRecuperacion, setShowRecuperacion] = useState(false);
   const [busquedaRecuperacion, setBusquedaRecuperacion] = useState('');
   const [resultadosBusqueda, setResultadosBusqueda] = useState<any[]>([]);
@@ -138,9 +140,34 @@ function AsistenciasPage() {
   }, [horariosDelDia]);
 
   const horariosFiltrados = useMemo(() => {
-    if (!tallerSeleccionado) return horariosDelDia; // Mostrar todos si no hay taller seleccionado
+    if (!tallerSeleccionado) return horariosDelDia;
     return horariosDelDia.filter(h => h.taller === tallerSeleccionado);
   }, [horariosDelDia, tallerSeleccionado]);
+
+  // Fetch alumnos para todos los horarios del día
+  const fetchTodosAlumnos = useCallback(async () => {
+    if (!cicloActual || horariosFiltrados.length === 0 || !fecha) return;
+    setLoadingTodosAlumnos(true);
+    const token = localStorage.getItem('access_token');
+    try {
+      const promises = horariosFiltrados.map(async (h) => {
+        const url = `${apiBase}/api/ciclos/${cicloActual.id}/asistencias/por-horario/?horario_id=${h.id}&fecha=${fecha}`;
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return { horarioId: h.id, alumnos: [] };
+        const data = await res.json();
+        const alumnos = Array.isArray(data) ? data : (data.results || []);
+        return { horarioId: h.id, alumnos };
+      });
+      const results = await Promise.all(promises);
+      const mapa = new Map<number, AlumnoHorario[]>();
+      results.forEach(({ horarioId, alumnos }) => mapa.set(horarioId, alumnos));
+      setAlumnosPorHorario(mapa);
+    } catch (err) {
+      console.error('Error:', err);
+    } finally {
+      setLoadingTodosAlumnos(false);
+    }
+  }, [cicloActual, horariosFiltrados, fecha, apiBase]);
 
   useEffect(() => {
     if (tallerSeleccionado && !talleres.some(t => t.id === tallerSeleccionado)) {
@@ -195,6 +222,13 @@ function AsistenciasPage() {
       fetchAlumnosHorario();
     }
   }, [horarioSeleccionado, fecha, fetchAlumnosHorario]);
+
+  // Fetch alumnos para todos los horarios cuando cambia la fecha o los filtros
+  useEffect(() => {
+    if (fecha && horariosFiltrados.length > 0) {
+      fetchTodosAlumnos();
+    }
+  }, [fecha, horariosFiltrados, fetchTodosAlumnos]);
 
   const handleCambiarEstado = async (alumno: AlumnoHorario, nuevoEstado: string) => {
     if (!cicloActual || !profesorSeleccionado) {
@@ -472,6 +506,120 @@ function AsistenciasPage() {
           </div>
         </div>
       </div>
+
+      {/* Vista grouped por taller: muestra todos los alumnos del día cuando se filtra por taller */}
+      {tallerSeleccionado && horariosFiltrados.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {loadingTodosAlumnos ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>Cargando alumnos...</div>
+          ) : (
+            horariosFiltrados
+              .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio))
+              .map((horario) => {
+                const alumnosDelHorario = alumnosPorHorario.get(horario.id) || [];
+                return (
+                  <div key={horario.id} style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+                    {/* Header del horario */}
+                    <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <span style={{ fontWeight: '600', color: '#111827' }}>
+                          {horario.hora_inicio?.substring(0, 5)} - {horario.hora_fin?.substring(0, 5)}
+                        </span>
+                        <span style={{ marginLeft: '1rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                          Prof. {horario.profesor_nombre}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <span style={{ padding: '0.125rem 0.5rem', background: '#d1fae5', color: '#059669', borderRadius: '4px', fontSize: '0.625rem', fontWeight: '600' }}>
+                          {alumnosDelHorario.filter(a => a.estado === 'asistio').length} asist.
+                        </span>
+                        <span style={{ padding: '0.125rem 0.5rem', background: '#fee2e2', color: '#dc2626', borderRadius: '4px', fontSize: '0.625rem', fontWeight: '600' }}>
+                          {alumnosDelHorario.filter(a => a.estado === 'falta' || a.estado === 'falta_grave').length} falt.
+                        </span>
+                      </div>
+                    </div>
+                    {/* Lista de alumnos */}
+                    {alumnosDelHorario.length === 0 ? (
+                      <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
+                        Sin alumnos matriculados
+                      </div>
+                    ) : (
+                      alumnosDelHorario.map((alumno) => {
+                        const estadoInfo = getEstadoInfo(alumno.estado);
+                        const tieneAsistencia = !!alumno.asistencia_id;
+                        return (
+                          <div key={alumno.matricula_id} style={{ padding: '0.75rem 1rem', borderTop: '1px solid #f3f4f6' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div>
+                                <div style={{ fontWeight: '500', color: '#111827' }}>{alumno.alumno_nombre}</div>
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{alumno.sesiones_disponibles} sesiones disp.</div>
+                              </div>
+                              <span
+                                onClick={() => {
+                                  if (alumno.asistencia_id) {
+                                    const asistencia = historialAsistencias.find(a => a.id === alumno.asistencia_id);
+                                    if (asistencia) handleEditAsistencia(asistencia);
+                                  }
+                                }}
+                                style={{
+                                  padding: '0.25rem 0.75rem',
+                                  borderRadius: '6px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  background: estadoInfo.bg,
+                                  color: estadoInfo.color,
+                                  cursor: tieneAsistencia ? 'pointer' : 'default',
+                                }}
+                              >
+                                {estadoInfo.label}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                              {ESTADOS.map((estado) => (
+                                <button
+                                  key={estado.value}
+                                  onClick={() => handleCambiarEstado(alumno, estado.value)}
+                                  disabled={saving || tieneAsistencia}
+                                  style={{
+                                    flex: 1,
+                                    padding: '0.5rem',
+                                    minHeight: '36px',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '600',
+                                    cursor: saving || tieneAsistencia ? 'not-allowed' : 'pointer',
+                                    background: '#f3f4f6',
+                                    color: '#374151',
+                                    opacity: saving || tieneAsistencia ? 0.5 : 1,
+                                  }}
+                                >
+                                  {estado.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                );
+              })
+          )}
+        </div>
+      )}
+
+      {!tallerSeleccionado && horariosDelDia.length > 0 && (
+        <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+          Seleccioná un taller para ver los alumnos del día
+        </div>
+      )}
+
+      {horariosDelDia.length === 0 && !loading && (
+        <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+          No hay horarios programados para este día
+        </div>
+      )}
 
       {horarioSeleccionado && (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: isMobile ? '1rem' : '1.5rem' }}>
