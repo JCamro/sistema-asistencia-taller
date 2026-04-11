@@ -7,10 +7,13 @@ import {
   getResumenEgresos, getProfesores 
 } from '../api/endpoints';
 import { formatMonto } from '../utils/formatters';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 const EgresosPage = () => {
   const { cicloActual } = useCiclo();
   const toast = useToast();
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
   const [egresos, setEgresos] = useState<any[]>([]);
   const [profesores, setProfesores] = useState<any[]>([]);
   const [resumen, setResumen] = useState<{gasto_taller: number; pago_profesor: number; gasto_personal: number; total: number}>({ gasto_taller: 0, pago_profesor: 0, gasto_personal: 0, total: 0 });
@@ -34,12 +37,6 @@ const EgresosPage = () => {
   const [formEstado, setFormEstado] = useState('pendiente');
   const [guardando, setGuardando] = useState(false);
 
-  useEffect(() => {
-    if (cicloActual) {
-      loadData();
-    }
-  }, [cicloActual]);
-
   const loadData = async () => {
     if (!cicloActual) return;
     setLoading(true);
@@ -60,6 +57,12 @@ const EgresosPage = () => {
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    if (cicloActual) {
+      loadData();
+    }
+  }, [cicloActual]);
 
   const filteredEgresos = useMemo(() => {
     let result = egresos.filter(e => {
@@ -224,7 +227,7 @@ const EgresosPage = () => {
       </div>
 
       {/* Resumen Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         <div style={{ background: '#fef3c7', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(212, 175, 55, 0.2)' }}>
           <p style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gasto Taller</p>
           <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#92400e' }}>{formatMonto(resumen.gasto_taller)}</p>

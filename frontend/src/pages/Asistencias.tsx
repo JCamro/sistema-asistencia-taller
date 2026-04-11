@@ -164,12 +164,9 @@ function AsistenciasPage() {
     if (!cicloActual || !horarioSeleccionado || !fecha) return;
     setLoadingAlumnos(true);
     const token = localStorage.getItem('access_token');
-    console.log('fetchAlumnosHorario called:', { cicloActual: cicloActual.id, horarioSeleccionado, fecha });
     try {
       const url = `${apiBase}/api/ciclos/${cicloActual.id}/asistencias/por-horario/?horario_id=${horarioSeleccionado}&fecha=${fecha}`;
-      console.log('Fetching URL:', url);
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-      console.log('Response status:', res.status);
       if (!res.ok) {
         const errorData = await res.json();
         console.error('Error API:', errorData);
@@ -177,7 +174,6 @@ function AsistenciasPage() {
         return;
       }
       const data = await res.json();
-      console.log('Data received:', data);
       if (Array.isArray(data)) {
         setAlumnosHorario(data);
       } else if (data.results) {

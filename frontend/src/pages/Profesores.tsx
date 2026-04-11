@@ -5,6 +5,7 @@ import ConfirmModal from '../components/ui/ConfirmModal';
 import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { getHistorialPagosProfesor, getProfesores, createProfesor, updateProfesor, deleteProfesor } from '../api/endpoints';
 import { formatMonto } from '../utils/formatters';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 import type { Profesor } from '../api/endpoints';
 
@@ -35,6 +36,8 @@ const initialFormData: ProfesorFormData = {
 function ProfesoresPage() {
   const { cicloActual } = useCiclo();
   const { showApiError } = useToast();
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
   const [profesores, setProfesores] = useState<Profesor[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -484,7 +487,8 @@ function ProfesoresPage() {
               ) : historialPagos.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#6b7280' }}>No hay pagos registrados</p>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? '500px' : 'auto' }}>
                   <thead>
                     <tr style={{ background: '#f9fafb' }}>
                       <th style={{ padding: '0.5rem', textAlign: 'left', fontSize: '0.75rem', color: '#6b7280' }}>Fecha</th>
@@ -515,6 +519,7 @@ function ProfesoresPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
               <button
                 onClick={() => setHistorialModalOpen(false)}

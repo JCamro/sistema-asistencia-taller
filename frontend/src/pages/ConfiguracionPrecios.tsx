@@ -469,7 +469,7 @@ export default function ConfiguracionPrecios() {
         borderRadius: 12,
         border: '1px solid #e5e7eb',
         padding: '1.5rem',
-        margin: '1.5rem 2.5rem',
+        margin: isMobile ? '1rem' : '1.5rem 2.5rem',
         marginBottom: 24
       }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', marginBottom: 16 }}>

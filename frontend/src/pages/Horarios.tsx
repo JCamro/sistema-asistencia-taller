@@ -2,6 +2,7 @@ import { useState, useEffect, memo, useCallback, useMemo, useRef } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import { getApiBaseUrl } from '../utils/api';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface Taller {
   id: number;
@@ -430,6 +431,8 @@ function HorariosPage() {
   const { cicloActual, isLoading: isCicloLoading } = useCiclo();
   const { showApiError } = useToast();
   const apiBase = getApiBaseUrl();
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
   const [talleres, setTalleres] = useState<Taller[]>([]);
   const [tallerSeleccionado, setTallerSeleccionado] = useState<number | null>(null);
   const [horarios, setHorarios] = useState<Horario[]>([]);
@@ -644,7 +647,7 @@ function HorariosPage() {
                     display: 'grid',
                     gridTemplateColumns: '72px repeat(7, 1fr)',
                     background: '#f9fafb', borderBottom: '1px solid #e5e7eb',
-                    minWidth: '700px',
+                    minWidth: isMobile ? '500px' : '700px',
                   }}>
                     <div style={{
                       padding: '0.75rem 0.5rem', fontSize: '0.7rem', fontWeight: '600',
@@ -669,7 +672,7 @@ function HorariosPage() {
                       display: 'grid',
                       gridTemplateColumns: '72px repeat(7, 1fr)',
                       borderBottom: '1px solid #f3f4f6',
-                      minWidth: '700px',
+                      minWidth: isMobile ? '500px' : '700px',
                     }}>
                       <div style={{
                         padding: '0.625rem 0.25rem', fontSize: '0.75rem',
