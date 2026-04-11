@@ -229,11 +229,12 @@ function CalculadoraPrecios() {
         if (disponibles1.length === 0 || disponibles2.length === 0) break;
 
         const inst1 = disponibles1[0];
-        const inst2 = disponibles2[0];
-
-        // Si es el mismo instrumento, no podemos formar par - avanzar al siguiente tipo de promo
-        if (inst1.id === inst2.id) break;
-
+        
+        // Buscar en disponibles2 un instrumento DIFERENTE a inst1
+        const inst2Idx = restantes.findIndex((r) => r.id !== inst1.id && r.clases === p2);
+        if (inst2Idx === -1) break;
+        
+        const inst2 = restantes[inst2Idx];
         const realIdx1 = instrumentos.findIndex(i => i.id === inst1.id);
         const realIdx2 = instrumentos.findIndex(i => i.id === inst2.id);
 
