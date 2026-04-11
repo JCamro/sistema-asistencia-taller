@@ -230,9 +230,12 @@ function AsistenciasPage() {
     }
   }, [fecha, horariosFiltrados, fetchTodosAlumnos]);
 
-  const handleCambiarEstado = async (alumno: AlumnoHorario, nuevoEstado: string) => {
-    if (!cicloActual || !profesorSeleccionado) {
-      showToast('Por favor selecciona un profesor primero', 'warning');
+  const handleCambiarEstado = async (alumno: AlumnoHorario, nuevoEstado: string, horarioId?: number, profesorId?: number) => {
+    const horarioActual = horarioId || horarioSeleccionado;
+    const profesorActual = profesorId || profesorSeleccionado;
+    
+    if (!cicloActual || !profesorActual) {
+      showToast('Seleccionar un horario primero', 'warning');
       return;
     }
     setSaving(true);
@@ -253,8 +256,8 @@ function AsistenciasPage() {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             matricula: alumno.matricula_id,
-            horario: horarioSeleccionado,
-            profesor: profesorSeleccionado,
+            horario: horarioActual,
+            profesor: profesorActual,
             fecha: fecha,
             hora: horaActual,
             estado: nuevoEstado,
@@ -271,6 +274,7 @@ function AsistenciasPage() {
       }
       
       await fetchAlumnosHorario();
+      await fetchTodosAlumnos();
       const resList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -578,7 +582,7 @@ function AsistenciasPage() {
                               {ESTADOS.map((estado) => (
                                 <button
                                   key={estado.value}
-                                  onClick={() => handleCambiarEstado(alumno, estado.value)}
+                                  onClick={() => handleCambiarEstado(alumno, estado.value, horario.id, horario.profesor)}
                                   disabled={saving || tieneAsistencia}
                                   style={{
                                     flex: 1,
