@@ -11,12 +11,6 @@ const FinanzasPage = memo(function FinanzasPage() {
   const [recibos, setRecibos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (cicloActual) {
-      loadData();
-    }
-  }, [cicloActual]);
-
   const loadData = async () => {
     if (!cicloActual) return;
     setLoading(true);
@@ -37,6 +31,12 @@ const FinanzasPage = memo(function FinanzasPage() {
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    if (cicloActual) {
+      loadData();
+    }
+  }, [cicloActual]);
 
   const formatMonto = (monto: number | string) => {
     const num = typeof monto === 'string' ? parseFloat(monto) : monto;

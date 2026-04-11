@@ -37,12 +37,6 @@ const EgresosPage = () => {
   const [formEstado, setFormEstado] = useState('pendiente');
   const [guardando, setGuardando] = useState(false);
 
-  useEffect(() => {
-    if (cicloActual) {
-      loadData();
-    }
-  }, [cicloActual]);
-
   const loadData = async () => {
     if (!cicloActual) return;
     setLoading(true);
@@ -63,6 +57,12 @@ const EgresosPage = () => {
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    if (cicloActual) {
+      loadData();
+    }
+  }, [cicloActual]);
 
   const filteredEgresos = useMemo(() => {
     let result = egresos.filter(e => {
