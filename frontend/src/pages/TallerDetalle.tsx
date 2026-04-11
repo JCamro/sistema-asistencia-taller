@@ -105,10 +105,6 @@ function TallerDetalle() {
         }),
         fetch(`${apiBase}/api/horarios/?taller=${tallerId}&page_size=100`, {
           headers: { Authorization: `Bearer ${token}` },
-        }).then(res => {
-          console.log('🔍 DEBUG ENDPOINT - URL llamada:', `${apiBase}/api/horarios/?taller=${tallerId}&page_size=100`);
-          console.log('🔍 DEBUG ENDPOINT - Status:', res.status);
-          return res;
         }),
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/profesores/`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -130,8 +126,6 @@ function TallerDetalle() {
         parseJson(profesoresRes),
       ]);
       
-      console.log('API Responses:', { tallerData, horariosData, profesoresData });
-      
       if (tallerData.error) {
         console.error('Taller API error:', tallerData);
       }
@@ -142,17 +136,7 @@ function TallerDetalle() {
       if (!tallerData.error) setTaller(tallerData);
       if (!horariosData.error) {
         const todosHorarios = horariosData.results || horariosData;
-        console.log('🔍 DEBUG - TODOS los horarios crudos del backend (sin filtro):', todosHorarios);
-        console.log('🔍 DEBUG - Cantidad total de horarios:', todosHorarios.length);
-        console.log('🔍 DEBUG - Lista de dias/talleres:', todosHorarios.map((h: any) => `dia=${h.dia_semana}(${h.dia_nombre}) taller=${h.taller} hora=${h.hora_inicio}`));
-        
         const horariosFiltrados = todosHorarios.filter((h: Horario) => h.activo);
-        console.log('🔍 DEBUG - Horarios ACTIVOS filtrados:', horariosFiltrados.length);
-        
-        // Ver específicamente los de viernes (dia_semana=4)
-        const viernesHorarios = horariosFiltrados.filter((h: any) => h.dia_semana === 4);
-        console.log('🔍 DEBUG - Horarios de VIERNES:', viernesHorarios.map((h: any) => `${h.hora_inicio} - taller:${h.taller}`));
-        
         setHorarios(horariosFiltrados);
       }
       if (!profesoresData.error) setProfesores((profesoresData.results || profesoresData).filter((p: Profesor) => p.activo));
@@ -177,17 +161,13 @@ function TallerDetalle() {
 
   const gridHorarios = useMemo(() => {
     const grid: { [key: string]: Horario } = {};
-    console.log('🔍 DEBUG gridHorarios - horarios recibidos:', horarios);
-    console.log('🔍 DEBUG gridHorarios - length:', horarios.length);
     horarios.forEach((h) => {
       const horaRaw = h.hora_inicio;
       const horaNormalizada = normalizarHora(horaRaw);
       const diaNum = Number(h.dia_semana);
       const key = `${diaNum}-${horaNormalizada}`;
-      console.log(`🔍 DEBUG - Horario: ${h.taller_nombre}, dia_semana=${h.dia_semana} (${typeof h.dia_semana}), hora_inicio=${horaRaw} -> ${horaNormalizada}, key="${key}"`);
       grid[key] = h;
     });
-    console.log('🔍 DEBUG gridHorarios - keys generadas:', Object.keys(grid));
     return grid;
   }, [horarios]);
 
@@ -489,9 +469,6 @@ function TallerDetalle() {
                   const horaStr = getHoraLabel(hora);
                   const key = `${dia.value}-${horaStr}`;
                   const horario = gridHorarios[key];
-                  if (dia.value === 4 && horaStr === '17:00') {
-                    console.log(`🔍 DEBUG CELDAS - Buscando key="${key}" para VIERNES 17:00, encontrado:`, horario);
-                  }
                   const estaLleno = horario ? (horario.ocupacion ?? 0) >= horario.cupo_maximo : false;
                   
                   return (
