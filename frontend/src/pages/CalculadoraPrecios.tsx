@@ -193,9 +193,6 @@ function CalculadoraPrecios() {
       })
       .sort((a, b) => b.totalClases - a.totalClases);
 
-    console.log('[DEBUG formarCombos] promosOrdenadas:', promosOrdenadas);
-    console.log('[DEBUG formarCombos] instrumentos entrada:', instrumentos.map(i => ({ id: i.id, nombre: i.nombre, clases: i.clases })));
-
     const usados = new Set<number>();
     const combos: { inst1: ItemSeleccionado; inst2: ItemSeleccionado; clases1: number; clases2: number; precioCombo: number; ahorro: number }[] = [];
     const individuales: ItemSeleccionado[] = [];
@@ -291,19 +288,12 @@ function CalculadoraPrecios() {
       }
     }
 
-    console.log('[DEBUG calcularPrecio] items:', items.map(i => ({ nombre: i.nombre, tipo: i.tipo, clases: i.clases })));
-    console.log('[DEBUG calcularPrecio] precioBruto:', precioBruto);
-    console.log('[DEBUG calcularPrecio] promos.combo_musical:', promos.combo_musical);
-
     // --- COMBO MUSICAL (2+ instrumentos) ---
     if (instrumentos.length >= 2) {
-      console.log('[DEBUG] Instrumentos para combo:', instrumentos.length);
       const resultadoCombos = formarCombosInstrumentos(instrumentos, precios.instrumento);
-      console.log('[DEBUG] resultadoCombos:', JSON.stringify(resultadoCombos, null, 2));
 
       if (resultadoCombos.combos.length > 0) {
         descuento = resultadoCombos.descuentoTotal;
-        console.log('[DEBUG] descuento asignado:', descuento);
 
         // Agregar combos al desglose
         for (const combo of resultadoCombos.combos) {
@@ -340,7 +330,6 @@ function CalculadoraPrecios() {
           promoAplicada = `Combo Musical (${resultadoCombos.combos.length} combinaciones)`;
         }
       } else {
-        console.log('[DEBUG] No se formaron combos, cobrando individual');
         // No hay promo configurada - cobrar todo individual
         for (const item of items) {
           const precio = precios[item.tipo][item.clases];
