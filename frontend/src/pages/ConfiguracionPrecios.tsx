@@ -4,12 +4,11 @@ import { useToast } from '../contexts/ToastContext';
 import { getPrecios, createPrecio, updatePrecio, deletePrecio, getConfig, updateConfig, type PrecioPaquete } from '../api/endpoints';
 import { useWindowWidth } from '../hooks/useWindowWidth';
 
-const CLASES_LABELS: Record<number, string> = {
-  1: '1 clase',
-  8: '8 clases',
-  12: '12 clases',
-  20: '20 clases',
-};
+// Helper para formatear cantidad de clases
+const formatClases = (n: number): string => n === 1 ? '1 clase' : `${n} clases`;
+
+// Chips de sugerencias para cantidad de clases
+const SUGERENCIAS_CLASES = [4, 8, 12, 16, 20, 24];
 
 const TIPO_PAQUETE_LABELS: Record<string, string> = {
   individual: 'Individual',
@@ -169,7 +168,7 @@ export default function ConfiguracionPrecios() {
   };
 
   const eliminar = async (precio: PrecioPaquete) => {
-    const label = `${TIPO_PAQUETE_LABELS[precio.tipo_paquete]} - ${precio.tipo_taller} - ${CLASES_LABELS[precio.cantidad_clases]}`;
+    const label = `${TIPO_PAQUETE_LABELS[precio.tipo_paquete]} - ${precio.tipo_taller} - ${formatClases(precio.cantidad_clases)}`;
     if (!window.confirm(`¿Eliminar "${label}"?`)) return;
     try {
       await deletePrecio(precio.id);
@@ -209,14 +208,6 @@ export default function ConfiguracionPrecios() {
   const promosComboMusical = preciosPromos.filter(p => p.tipo_paquete === 'combo_musical').sort((a, b) => a.cantidad_clases - b.cantidad_clases);
   const promosMixto = preciosPromos.filter(p => p.tipo_paquete === 'mixto').sort((a, b) => a.cantidad_clases - b.cantidad_clases);
   const promosIntensivo = preciosPromos.filter(p => p.tipo_paquete === 'intensivo').sort((a, b) => a.cantidad_clases - b.cantidad_clases);
-
-  // Opciones de clases según tipo de paquete
-  const clasesOptions: Record<string, number[]> = {
-    individual: [1, 8, 12, 20],
-    combo_musical: [8, 12],
-    mixto: [8, 12],
-    intensivo: [20],
-  };
 
   return (
     <div>
@@ -277,14 +268,9 @@ export default function ConfiguracionPrecios() {
                 value={tipoPaquete}
                 onChange={(e) => {
                   setTipoPaquete(e.target.value);
-                  // Reset cantidad_clases to first valid option
-                  const opts = clasesOptions[e.target.value];
-                  if (opts && !opts.includes(cantidadClases)) {
-                    setCantidadClases(opts[0]);
-                  }
                   // Set/reset secondary classes for combo/mixto
                   if (e.target.value === 'combo_musical' || e.target.value === 'mixto') {
-                    setCantidadClasesSecundaria(cantidadClasesSecundaria ?? opts?.[0] ?? 8);
+                    setCantidadClasesSecundaria(cantidadClasesSecundaria ?? 8);
                   } else {
                     setCantidadClasesSecundaria(null);
                   }
@@ -299,28 +285,67 @@ export default function ConfiguracionPrecios() {
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>Clases</label>
-              <select
+              <input
+                type="number"
+                min="1"
                 value={cantidadClases}
-                onChange={(e) => setCantidadClases(parseInt(e.target.value))}
+                onChange={(e) => setCantidadClases(Math.max(1, parseInt(e.target.value) || 1))}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 8 }}
-              >
-                {(clasesOptions[tipoPaquete] || [1, 8, 12, 20]).map(n => (
-                  <option key={n} value={n}>{CLASES_LABELS[n]}</option>
+              />
+              <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                {SUGERENCIAS_CLASES.map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setCantidadClases(n)}
+                    style={{
+                      padding: '2px 10px',
+                      fontSize: '0.75rem',
+                      border: cantidadClases === n ? '2px solid #8b5cf6' : '1px solid #d1d5db',
+                      borderRadius: 12,
+                      background: cantidadClases === n ? '#ede9fe' : 'white',
+                      color: cantidadClases === n ? '#7c3aed' : '#6b7280',
+                      cursor: 'pointer',
+                      fontWeight: cantidadClases === n ? 600 : 400,
+                    }}
+                  >
+                    {n}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
             {(tipoPaquete === 'combo_musical' || tipoPaquete === 'mixto') && (
               <div>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>Clases secundarias</label>
-                <select
+                <input
+                  type="number"
+                  min="1"
                   value={cantidadClasesSecundaria ?? ''}
-                  onChange={(e) => setCantidadClasesSecundaria(parseInt(e.target.value))}
+                  onChange={(e) => setCantidadClasesSecundaria(e.target.value ? Math.max(1, parseInt(e.target.value)) : null)}
+                  placeholder="Ej: 8"
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 8 }}
-                >
-                  {(clasesOptions[tipoPaquete] || [8, 12]).map(n => (
-                    <option key={n} value={n}>{CLASES_LABELS[n]}</option>
+                />
+                <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                  {[4, 8, 12, 16, 20].map(n => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setCantidadClasesSecundaria(n)}
+                      style={{
+                        padding: '2px 10px',
+                        fontSize: '0.75rem',
+                        border: cantidadClasesSecundaria === n ? '2px solid #8b5cf6' : '1px solid #d1d5db',
+                        borderRadius: 12,
+                        background: cantidadClasesSecundaria === n ? '#ede9fe' : 'white',
+                        color: cantidadClasesSecundaria === n ? '#7c3aed' : '#6b7280',
+                        cursor: 'pointer',
+                        fontWeight: cantidadClasesSecundaria === n ? 600 : 400,
+                      }}
+                    >
+                      {n}
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
             )}
             <div>
@@ -541,7 +566,7 @@ function TablaPrecios({ titulo, color, precios, onEditar, onEliminar }: TablaPre
           <tbody>
             {precios.map((precio) => (
               <tr key={precio.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                <td style={{ padding: '10px 0', fontWeight: 500 }}>{CLASES_LABELS[precio.cantidad_clases]}</td>
+                <td style={{ padding: '10px 0', fontWeight: 500 }}>{formatClases(precio.cantidad_clases)}</td>
                 <td style={{ padding: '10px 0', textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
                   S/. {Number(precio.precio_total).toFixed(2)}
                 </td>
@@ -611,7 +636,7 @@ function TablaPromos({ titulo, precios, onEditar, onEliminar }: TablaPromosProps
               <td style={{ padding: '10px 0', fontWeight: 500 }}>
                 {precio.cantidad_clases_secundaria
                   ? `${precio.cantidad_clases} + ${precio.cantidad_clases_secundaria} clases`
-                  : CLASES_LABELS[precio.cantidad_clases]}
+                  : formatClases(precio.cantidad_clases)}
                 <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: 6 }}>
                   ({precio.tipo_taller})
                 </span>

@@ -45,7 +45,7 @@ sistema-asistencia-taller/
 │   │   ├── taller_view.py           # Pagination + select_related(ciclo)
 │   │   ├── horario_view.py           # Pagination + prefetch(matricula→alumno) + annotate(ocupacion)
 │   │   ├── matricula_view.py         # OuterRef inline fix + estado_calculado annotation
-│   │   ├── asistencia_view.py        # Pagination + select_related(matricula→alumno/taller)
+│   │   ├── asistencia_view.py        # ViewSet + por_horario action (no standalone function)
 │   │   ├── recibo_view.py           # select_related + prefetch (no pagination)
 │   │   ├── pago_profesor_view.py    # Pagination + select_related
 │   │   ├── precio_paquete_view.py   # select_related (no pagination)
@@ -53,7 +53,16 @@ sistema-asistencia-taller/
 │   │   ├── dashboard_view.py        # KPIs via DB aggregations (Exists inline)
 │   │   ├── configuracion_view.py   # Singleton config
 │   │   ├── pagination.py            # StandardResultsSetPagination (page_size=20, max=100)
-│   │   └── setup_view.py            # Initial setup endpoint
+│   │   ├── setup_view.py            # Initial setup endpoint
+│   │   └── portal/                   # Portal API (student-facing)
+│   │       ├── auth_view.py
+│   │       ├── ciclos_view.py
+│   │       ├── matriculas_view.py
+│   │       ├── horarios_view.py
+│   │       ├── asistencia_view.py
+│   │       ├── pagos_view.py
+│   │       ├── dashboard_view.py
+│   │       └── me_view.py
 │   ├── services/                    # Business logic layer
 │   │   ├── pago_profesor_service.py # Teacher payment calculation engine
 │   │   ├── matricula_service.py     # Enrollment + pricing logic
@@ -61,11 +70,16 @@ sistema-asistencia-taller/
 │   ├── management/commands/
 │   │   └── seed_precios.py          # Seed default package prices (idempotente)
 │   ├── constants.py                 # Payment constants (BASE_PAGO=17, TOPE_MAXIMO=35)
+│   ├── validators.py                # Shared validators (alphanumeric_validator)
+│   ├── serializer_helpers.py        # Shared serializer helpers (get_nombre_completo, get_alumnos_nombres, etc.)
 │   ├── urls.py                      # API routing (DRF DefaultRouter + manual paths)
-│   └── tests/                       # pytest-django tests (105 passing)
+│   └── tests/                       # pytest-django tests (161 passing)
 │       ├── test_pago_profesor_service.py
 │       ├── test_matricula_service.py
 │       ├── test_recibo_service.py
+│       ├── test_recibo_service_edge_cases.py
+│       ├── test_precio_paquete.py
+│       ├── test_asistencia_por_horario.py
 │       └── test_constants.py
 ├── frontend/
 │   └── src/
@@ -105,7 +119,10 @@ sistema-asistencia-taller/
 │       │   ├── CalculadoraPrecios.tsx    # Price calculator
 │       │   └── PagosProfesores.tsx       # Teacher payment calculator + ResponsiveTable
 │       ├── stores/
-│       │   └── authStore.ts         # Zustand auth store
+│       │   └── authStore.ts         # Zustand auth store (with persist middleware)
+│       ├── utils/
+│       │   ├── timezone.ts          # UTC↔Lima date helpers (utcToLimaDate, formatLimaDate)
+│       │   └── formatters.ts       # Shared formatters (formatMonto)
 │       ├── App.tsx                  # Router + Sidebar (hamburger on mobile) + Login
 │       ├── index.css                 # Responsive CSS (breakpoints, utility classes)
 │       └── main.tsx                 # Vite entry point
@@ -143,6 +160,7 @@ core/urls.py — URL structure:
     GET  /api/ciclos/<id>/horarios/
     GET  /api/ciclos/<id>/matriculas/
     GET  /api/ciclos/<id>/asistencias/
+    GET  /api/ciclos/<id>/asistencias/por-horario/  — AsistenciaViewSet.por_horario action
     GET  /api/ciclos/<id>/recibos/
     GET  /api/ciclos/<id>/precios/
     GET  /api/ciclos/<id>/egresos/
@@ -160,6 +178,18 @@ core/urls.py — URL structure:
     /api/pagos-profesores/          — PagoProfesorViewSet
     /api/precios/                   — PrecioPaqueteViewSet
     /api/egresos/                   — EgresoViewSet
+
+  Portal API (student-facing, /api/portal/)
+    POST /api/portal/auth/login/              — Portal JWT login (DNI-only)
+    POST /api/portal/auth/refresh/           — Token refresh
+    POST /api/portal/auth/logout/           — Token blacklist
+    GET  /api/portal/me/                    — Student profile
+    GET  /api/portal/ciclos/               — Active cycles for student
+    GET  /api/portal/ciclos/<id>/matriculas/  — Student enrollments
+    GET  /api/portal/ciclos/<id>/horarios/  — Schedule by cycle
+    GET  /api/portal/ciclos/<id>/asistencias/  — Attendance by cycle
+    GET  /api/portal/ciclos/<id>/pagos/     — Pending receipts
+    GET  /api/portal/ciclos/<id>/dashboard/ — Attendance stats
 ```
 
 ### Paginated vs Non-Paginated ViewSets
@@ -214,7 +244,7 @@ python manage.py migrate               # Apply migrations
 python manage.py shell                 # Django shell
 python manage.py seed_precios          # Seed default prices (idempotent)
 python manage.py createsuperuser       # Create admin user
-pytest                                  # Run all tests (105 passing)
+pytest                                  # Run all tests (161 passing)
 pytest --cov                            # With coverage
 ```
 
@@ -305,10 +335,11 @@ gunicorn config.asgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4
 `(ciclo, tipo_taller, tipo_paquete, cantidad_clases, cantidad_clases_secundaria)` — allows asymmetric combos (12+12 and 12+8 as separate records).
 
 ### Price Calculator Logic (`calcular_precio_recomendado`)
-1. Calculate brute price per item using `get_precio_individual(tipo_taller, cantidad_clases, ciclo_id)`
+1. Calculate brute price per item using `get_precio_individual(tipo_taller, cantidad_clases, ciclo_id)` — uses `.filter().first()` (not `.get()`) to handle duplicate prices gracefully
 2. Detect promo: combo_musical (2+ instruments) → mixto (1 instrument + 1 taller) → intensivo (20 classes)
 3. Apply discount if promo matches
 4. Fallback: `ciclo_id=None` (global prices) if no cycle-specific price found
+5. All promo detectors (`_detectar_combo_musical`, `_detectar_mixto`, `_detectar_intensivo`) use null-safe lookups — missing prices fall through to individual pricing
 
 ---
 
@@ -348,6 +379,7 @@ Configurable via `Configuracion` table: `base_pago`, `tope_maximo`, `porcentaje_
 - **Views**: One ViewSet per file in `core/views/`
 - **Services**: Business logic in `core/services/`, views stay thin
 - **Pagination**: `StandardResultsSetPagination` on most ViewSets; omit pagination where frontend expects direct arrays
+- **Shared helpers**: Validators go in `core/validators.py`, serializer helpers in `core/serializer_helpers.py`. Import from there, never duplicate.
 
 ### Frontend (React/TypeScript)
 - **Naming**: `camelCase` for variables/functions, `PascalCase` for components/interfaces
@@ -381,6 +413,7 @@ Configurable via `Configuracion` table: `base_pago`, `tope_maximo`, `porcentaje_
 11. **N+1 queries**: Always use `select_related`/`prefetch_related`; annotate with `Exists` inline (never store `Exists(OuterRef(...))` outside the annotate call).
 12. **Responsive components**: Use `ResponsiveTable` for all list views with tables. Use `useWindowWidth()` for custom responsive logic.
 13. **Touch targets**: Minimum 44px height via `.touch-target` CSS class for all interactive elements on mobile.
+14. **Shared validators/helpers**: Import `alphanumeric_validator` from `core.validators` and helpers from `core.serializer_helpers`. Never duplicate validators or helper methods in serializers.
 
 ---
 

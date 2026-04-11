@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class Matricula(models.Model):
@@ -29,7 +30,7 @@ class Matricula(models.Model):
     precio_por_sesion = models.DecimalField(max_digits=10, decimal_places=2)
     metodo_pago = models.CharField(max_length=20, choices=METODO_PAGO, default='efectivo')
     observaciones = models.TextField(blank=True)
-    fecha_matricula = models.DateTimeField(auto_now_add=True)
+    fecha_matricula = models.DateTimeField(default=timezone.now)
     activo = models.BooleanField(default=True)
     concluida = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -3,25 +3,10 @@ import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import { ResponsiveTable } from '../components/ui/ResponsiveTable';
-import { getHistorialPagosProfesor } from '../api/endpoints';
-import { getApiBaseUrl } from '../utils/api';
+import { getHistorialPagosProfesor, getProfesores, createProfesor, updateProfesor, deleteProfesor } from '../api/endpoints';
+import { formatMonto } from '../utils/formatters';
 
-interface Profesor {
-  id: number;
-  ciclo: number;
-  nombre: string;
-  apellido: string;
-  dni: string;
-  telefono: string;
-  email: string;
-  fecha_nacimiento: string | null;
-  edad: number | null;
-  activo: boolean;
-  es_gerente: boolean;
-  observaciones: string;
-  created_at: string;
-  updated_at: string;
-}
+import type { Profesor } from '../api/endpoints';
 
 interface ProfesorFormData {
   nombre: string;
@@ -50,7 +35,6 @@ const initialFormData: ProfesorFormData = {
 function ProfesoresPage() {
   const { cicloActual } = useCiclo();
   const { showApiError } = useToast();
-  const apiBase = getApiBaseUrl();
   const [profesores, setProfesores] = useState<Profesor[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -66,13 +50,9 @@ function ProfesoresPage() {
 
   const fetchProfesores = useCallback(async () => {
     if (!cicloActual) return;
-    const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/profesores/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setProfesores(data.results || data);
+      const res = await getProfesores(cicloActual.id);
+      setProfesores(res.data.results || res.data);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -95,23 +75,12 @@ function ProfesoresPage() {
     e.preventDefault();
     if (!cicloActual) return;
     setSaving(true);
-    const token = localStorage.getItem('access_token');
     try {
-      const url = editingId
-        ? `${apiBase}/api/profesores/${editingId}/`
-        : `${apiBase}/api/ciclos/${cicloActual.id}/profesores/`;
-      const method = editingId ? 'PATCH' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ ...formData, ciclo: cicloActual.id }),
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(JSON.stringify(errorData));
+      const payload = { ...formData, ciclo: cicloActual.id };
+      if (editingId) {
+        await updateProfesor(editingId, payload);
+      } else {
+        await createProfesor(payload);
       }
       setShowModal(false);
       setEditingId(null);
@@ -135,7 +104,7 @@ function ProfesoresPage() {
       email: profesor.email || '',
       fecha_nacimiento: profesor.fecha_nacimiento || '',
       activo: profesor.activo,
-      es_gerente: profesor.es_gerente,
+      es_gerente: profesor.es_gerente ?? false,
       observaciones: profesor.observaciones || '',
     });
     setShowModal(true);
@@ -149,12 +118,8 @@ function ProfesoresPage() {
   const confirmDelete = async () => {
     if (!deletingId) return;
     setSaving(true);
-    const token = localStorage.getItem('access_token');
     try {
-      await fetch(`${apiBase}/api/profesores/${deletingId}/`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await deleteProfesor(deletingId);
       fetchProfesores();
     } catch (err) {
       console.error('Error:', err);
@@ -187,10 +152,6 @@ function ProfesoresPage() {
       console.error('Error:', error);
     }
     setHistorialLoading(false);
-  };
-
-  const formatMonto = (monto: number) => {
-    return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(monto);
   };
 
   if (loading) {

@@ -3,17 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
-import { getApiBaseUrl } from '../utils/api';
-
-interface Taller {
-  id: number;
-  ciclo: number;
-  nombre: string;
-  tipo: string;
-  tipo_display: string;
-  descripcion: string;
-  activo: boolean;
-}
+import { getTalleres, createTaller, updateTaller, deleteTaller } from '../api/endpoints';
+import type { Taller } from '../api/endpoints';
 
 interface TallerFormData {
   nombre: string;
@@ -33,7 +24,6 @@ function TalleresPage() {
   const navigate = useNavigate();
   const { cicloActual } = useCiclo();
   const { showApiError } = useToast();
-  const apiBase = getApiBaseUrl();
   const [talleres, setTalleres] = useState<Taller[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -47,13 +37,9 @@ function TalleresPage() {
 
   const fetchTalleres = useCallback(async () => {
     if (!cicloActual) return;
-    const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setTalleres(data.results || data);
+      const res = await getTalleres(cicloActual.id);
+      setTalleres(res.data.results || res.data);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -75,23 +61,12 @@ function TalleresPage() {
     e.preventDefault();
     if (!cicloActual) return;
     setSaving(true);
-    const token = localStorage.getItem('access_token');
     try {
-      const url = editingId
-        ? `${apiBase}/api/talleres/${editingId}/`
-        : `${apiBase}/api/ciclos/${cicloActual.id}/talleres/`;
-      const method = editingId ? 'PATCH' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ ...formData, ciclo: cicloActual.id }),
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(JSON.stringify(errorData));
+      const payload = { ...formData, ciclo: cicloActual.id };
+      if (editingId) {
+        await updateTaller(editingId, payload);
+      } else {
+        await createTaller(payload);
       }
       setShowModal(false);
       setEditingId(null);
@@ -124,16 +99,8 @@ function TalleresPage() {
   const confirmDelete = async () => {
     if (!deletingId || !cicloActual) return;
     setSaving(true);
-    const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/${deletingId}/`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(JSON.stringify(errorData));
-      }
+      await deleteTaller(deletingId);
       fetchTalleres();
     } catch (err) {
       console.error('Error:', err);

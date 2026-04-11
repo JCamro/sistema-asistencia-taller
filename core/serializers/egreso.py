@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from ..models import Egreso, Profesor
+from ..serializer_helpers import get_profesor_nombre
 
 
 class EgresoSerializer(serializers.ModelSerializer):
@@ -20,9 +21,7 @@ class EgresoSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
     def get_profesor_nombre(self, obj):
-        if obj.profesor:
-            return f"{obj.profesor.apellido}, {obj.profesor.nombre}"
-        return None
+        return get_profesor_nombre(obj)
 
 
 class EgresoListSerializer(serializers.ModelSerializer):
@@ -40,6 +39,4 @@ class EgresoListSerializer(serializers.ModelSerializer):
         ]
 
     def get_profesor_nombre(self, obj):
-        if obj.profesor:
-            return f"{obj.profesor.apellido}, {obj.profesor.nombre}"
-        return None
+        return get_profesor_nombre(obj)

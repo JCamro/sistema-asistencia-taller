@@ -255,18 +255,23 @@ function AsistenciasPage() {
   };
 
   const buscarAlumnoRecuperacion = async () => {
-    if (!cicloActual || !busquedaRecuperacion) return;
+    if (!cicloActual || !horarioSeleccionado || !busquedaRecuperacion) return;
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/alumnos/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // Usar el endpoint de recuperables que filtra correctamente
+      const res = await fetch(
+        `${apiBase}/api/ciclos/${cicloActual.id}/asistencias/recuperables/?horario_id=${horarioSeleccionado}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) {
+        console.error('Error fetching recuperables:', res.status);
+        setResultadosBusqueda([]);
+        return;
+      }
       const data = await res.json();
-      const alumnos = data.results || data;
-      const filtrados = alumnos.filter((a: any) =>
-        a.nombre.toLowerCase().includes(busquedaRecuperacion.toLowerCase()) ||
-        a.apellido.toLowerCase().includes(busquedaRecuperacion.toLowerCase()) ||
-        a.dni.includes(busquedaRecuperacion)
+      // Filtrar por búsqueda del usuario
+      const filtrados = (data || []).filter((a: any) =>
+        a.alumno_nombre.toLowerCase().includes(busquedaRecuperacion.toLowerCase())
       );
       setResultadosBusqueda(filtrados.slice(0, 5));
     } catch (err) {
@@ -275,30 +280,18 @@ function AsistenciasPage() {
   };
 
   const agregarRecuperacion = async (alumno: any) => {
-    if (!cicloActual || !horarioSeleccionado || !profesorSeleccionado) return;
+    if (!cicloActual || !horarioSeleccionado || !profesorSeleccionado || !alumno.matricula_id) return;
     setSaving(true);
     const token = localStorage.getItem('access_token');
 
     try {
-      const resMat = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/matriculas/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const dataMat = await resMat.json();
-      const matriculas = dataMat.results || dataMat;
-      const matAlumno = matriculas.find((m: any) => m.alumno === alumno.id && m.activo);
-
-      if (!matAlumno) {
-        showToast('El alumno no tiene matrícula activa', 'warning');
-        return;
-      }
-
       const horaActual = new Date().toTimeString().slice(0, 5);
 
-      await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
+      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          matricula: matAlumno.id,
+          matricula: alumno.matricula_id,
           horario: horarioSeleccionado,
           profesor: profesorSeleccionado,
           fecha: fecha,
@@ -307,6 +300,14 @@ function AsistenciasPage() {
           es_recuperacion: true,
         }),
       });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error('Error API:', errorData);
+        showApiError(new Error(JSON.stringify(errorData)));
+        setSaving(false);
+        return;
+      }
 
       setShowRecuperacion(false);
       setBusquedaRecuperacion('');
@@ -648,10 +649,15 @@ function AsistenciasPage() {
             />
             <button onClick={buscarAlumnoRecuperacion} style={{ width: '100%', padding: '0.75rem', minHeight: '44px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', marginBottom: '1rem', cursor: 'pointer' }}>Buscar</button>
             <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              {resultadosBusqueda.length === 0 && busquedaRecuperacion && (
+                <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>
+                  No hay alumnos disponibles para recuperación en este horario
+                </div>
+              )}
               {resultadosBusqueda.map((alumno) => (
-                <div key={alumno.id} onClick={() => agregarRecuperacion(alumno)} style={{ padding: '0.75rem', borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}>
-                  <div style={{ fontWeight: '500' }}>{alumno.apellido}, {alumno.nombre}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>DNI: {alumno.dni}</div>
+                <div key={alumno.matricula_id} onClick={() => agregarRecuperacion(alumno)} style={{ padding: '0.75rem', borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}>
+                  <div style={{ fontWeight: '500' }}>{alumno.alumno_nombre}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Taller: {alumno.taller_nombre} · {alumno.sesiones_disponibles} sesiones disponibles</div>
                 </div>
               ))}
             </div>

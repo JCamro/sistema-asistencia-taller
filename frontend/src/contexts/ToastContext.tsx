@@ -15,12 +15,36 @@ export function useToast() {
 }
 
 function parseApiError(error: unknown): string {
+  // Manejar errores de axios (que tienen response.data con el error del backend)
+  if (error && typeof error === 'object' && 'response' in error) {
+    const axiosError = error as { response?: { data?: unknown } };
+    if (axiosError.response?.data) {
+      const data = axiosError.response.data;
+      // Si es un objeto con errores de validación de Django
+      if (typeof data === 'object' && data !== null) {
+        const dataObj = data as Record<string, unknown>;
+        const parts: string[] = [];
+        for (const [key, value] of Object.entries(dataObj)) {
+          if (key === 'detail') return String(value);
+          if (key === 'non_field_errors') {
+            parts.push(String(Array.isArray(value) ? value.join(', ') : value));
+          } else if (Array.isArray(value)) {
+            parts.push(`${key}: ${value.join(', ')}`);
+          } else if (typeof value === 'string') {
+            parts.push(value);
+          }
+        }
+        if (parts.length > 0) return parts.join('. ');
+      }
+    }
+  }
+  
   if (error instanceof Error) {
     try {
       const parsed = JSON.parse(error.message);
       if (typeof parsed === 'object' && parsed !== null) {
         const parts: string[] = [];
-        for (const [key, value] of Object.entries(parsed)) {
+        for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
           if (key === 'detail') return String(value);
           if (key === 'non_field_errors') {
             parts.push(String(Array.isArray(value) ? value.join(', ') : value));

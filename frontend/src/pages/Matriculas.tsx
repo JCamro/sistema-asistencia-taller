@@ -4,7 +4,8 @@ import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import TraspasoModal from '../components/ui/TraspasoModal';
 import { ResponsiveTable } from '../components/ui/ResponsiveTable';
-import { getApiBaseUrl } from '../utils/api';
+import api from '../api/axios';
+import { utcToLimaDate, formatLimaDate } from '../utils/timezone';
 
 const HORAS_GRID = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 const DIAS_GRID = [
@@ -110,11 +111,10 @@ const initialFormData: MatriculaFormData = {
   metodo_pago: 'efectivo',
   activo: true,
   concluida: false,
-  fecha_matricula: new Date().toISOString().split('T')[0],
+  fecha_matricula: '',
 };
 
 function MatriculasPage() {
-  const apiBase = getApiBaseUrl();
   const { cicloActual } = useCiclo();
   const { showToast, showApiError } = useToast();
   const [matriculas, setMatriculas] = useState<Matricula[]>([]);
@@ -154,27 +154,26 @@ function MatriculasPage() {
 
   const fetchData = useCallback(async () => {
     if (!cicloActual) return;
-    const token = localStorage.getItem('access_token');
     try {
       const [matriculasRes, alumnosRes, talleresRes, horariosMatriculasRes] = await Promise.all([
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/matriculas/`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/alumnos/`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/api/matriculas-horarios/?matricula__ciclo=${cicloActual.id}`, { headers: { Authorization: `Bearer ${token}` } }),
+        api.get(`/ciclos/${cicloActual.id}/matriculas/`),
+        api.get(`/ciclos/${cicloActual.id}/alumnos/`),
+        api.get(`/ciclos/${cicloActual.id}/talleres/`),
+        api.get(`/matriculas-horarios/?matricula__ciclo=${cicloActual.id}`),
       ]);
-      const [matriculasData, alumnosData, talleresData, horariosMatriculasData] = await Promise.all([
-        matriculasRes.json(),
-        alumnosRes.json(),
-        talleresRes.json(),
-        horariosMatriculasRes.json(),
-      ]);
-      setMatriculas(matriculasData.results || matriculasData);
-      setAlumnos((alumnosData.results || alumnosData).filter((a: Alumno) => a.activo));
-      setTalleres((talleresData.results || talleresData).filter((t: Taller) => t.activo));
+      
+      const matriculasData = matriculasRes.data.results || matriculasRes.data;
+      const alumnosData = alumnosRes.data.results || alumnosRes.data;
+      const talleresData = talleresRes.data.results || talleresRes.data;
+      const horariosMatriculasData = horariosMatriculasRes.data.results || horariosMatriculasRes.data;
+      
+      setMatriculas(Array.isArray(matriculasData) ? matriculasData : []);
+      setAlumnos(Array.isArray(alumnosData) ? alumnosData.filter((a: Alumno) => a.activo) : []);
+      setTalleres(Array.isArray(talleresData) ? talleresData.filter((t: Taller) => t.activo) : []);
       
       // Mapear horarios por matrícula
       const mhMap = new Map<number, { dia_semana: number; hora_inicio: string }[]>();
-      const mhList: any[] = horariosMatriculasData.results || horariosMatriculasData;
+      const mhList: any[] = Array.isArray(horariosMatriculasData) ? horariosMatriculasData : [];
       mhList.forEach((mh: any) => {
         const matriculaId = mh.matricula;
         const horaInfo = {
@@ -187,26 +186,26 @@ function MatriculasPage() {
         mhMap.get(matriculaId)!.push(horaInfo);
       });
       setMatriculasHorarios(mhMap);
-    } catch (err) {
-      console.error('Error:', err);
+    } catch (err: any) {
+      console.error('Error fetching data:', err);
+      if (err.response?.status === 401) {
+        showToast('Sesión expirada. Iniciá sesión de nuevo.', 'error');
+      }
     } finally {
       setLoading(false);
     }
-  }, [cicloActual]);
+  }, [cicloActual, showToast]);
 
   const fetchHorarios = useCallback(async (tallerId: number) => {
     if (!cicloActual) return;
     setHorariosLoading(true);
-    const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/horarios/?taller=${tallerId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      const horariosData = (data.results || data).filter((h: Horario) => h.activo);
+      const res = await api.get(`/ciclos/${cicloActual.id}/horarios/?taller=${tallerId}`);
+      const data = res.data.results || res.data;
+      const horariosData = Array.isArray(data) ? data.filter((h: Horario) => h.activo) : [];
       setHorarios(horariosData);
-    } catch (err) {
-      console.error('Error:', err);
+    } catch (err: any) {
+      console.error('Error fetching horarios:', err);
     } finally {
       setHorariosLoading(false);
     }
@@ -227,13 +226,10 @@ function MatriculasPage() {
     setViewMatricula(matricula);
     setLoadingDetalle(true);
     setAsistenciasDetalle([]);
-    const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/asistencias/?matricula=${matricula.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      const lista = (data.results || data) as AsistenciaDetalle[];
+      const res = await api.get(`/asistencias/?matricula=${matricula.id}`);
+      const data = res.data.results || res.data;
+      const lista = Array.isArray(data) ? data as AsistenciaDetalle[] : [];
       setAsistenciasDetalle(lista.sort((a, b) => {
         if (a.fecha !== b.fecha) return b.fecha.localeCompare(a.fecha);
         return b.hora.localeCompare(a.hora);
@@ -246,13 +242,10 @@ function MatriculasPage() {
   }, []);
 
   const fetchHorariosDetalle = useCallback(async (matriculaId: number) => {
-    const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/matriculas/${matriculaId}/horarios/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setHorariosDetalle((data.results || data) as HorarioDetalle[]);
+      const res = await api.get(`/matriculas/${matriculaId}/horarios/`);
+      const data = res.data.results || res.data;
+      setHorariosDetalle(Array.isArray(data) ? data as HorarioDetalle[] : []);
     } catch (err) {
       console.error('Error:', err);
     }
@@ -284,13 +277,9 @@ function MatriculasPage() {
     let cancelled = false;
     const calcular = async () => {
       setCalculandoPrecio(true);
-      const token = localStorage.getItem('access_token');
       try {
-        const res = await fetch(
-          `${apiBase}/api/matriculas/calcular-precio/?taller_id=${formData.taller}&sesiones=${formData.sesiones_contratadas}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        const data = await res.json();
+        const res = await api.get(`/matriculas/calcular-precio/?taller_id=${formData.taller}&sesiones=${formData.sesiones_contratadas}`);
+        const data = res.data;
         if (!cancelled) {
           setPrecioSugerido(data.precio_total > 0 ? data.precio_total : null);
           if (data.precio_total > 0) {
@@ -458,18 +447,17 @@ function MatriculasPage() {
       return;
     }
     setSaving(true);
-    const token = localStorage.getItem('access_token');
     try {
-      const url = editingId ? `${apiBase}/api/matriculas/${editingId}/` : `${apiBase}/api/ciclos/${cicloActual.id}/matriculas/`;
-      const method = editingId ? 'PATCH' : 'POST';
+      const url = editingId ? `/matriculas/${editingId}/` : `/ciclos/${cicloActual.id}/matriculas/`;
       
+      // Enviar fecha_matricula como string (Django interpreta como midnight Lima timezone)
       const payload: Record<string, unknown> = {
         alumno: formData.alumno,
         taller: formData.taller,
         sesiones_contratadas: formData.sesiones_contratadas,
         precio_total: parseFloat(formData.precio_total),
         metodo_pago: formData.metodo_pago,
-        fecha_matricula: formData.fecha_matricula,
+        fecha_matricula: formData.fecha_matricula || null,
       };
 
       if (editingId) {
@@ -481,56 +469,39 @@ function MatriculasPage() {
         payload.horarios = formData.horarios;
       }
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      });
+      const res = editingId 
+        ? await api.patch(url, payload)
+        : await api.post(url, payload);
       
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(JSON.stringify(errorData));
-      }
-
-      const matriculaData = await res.json();
+      const matriculaData = res.data;
 
       if (!editingId && formData.horarios.length > 0) {
         // Crear nuevos horarios para nueva matrícula
         for (const horarioId of formData.horarios) {
-          const resMH = await fetch(`${apiBase}/api/matriculas-horarios/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({
+          try {
+            await api.post('/matriculas-horarios/', {
               matricula: matriculaData.id,
               horario: horarioId,
-            }),
-          });
-          
-          if (!resMH.ok) {
-            const errorData = await resMH.json();
-            // Si ya existe, no es error crítico - el horario ya está asignado
-            if (!JSON.stringify(errorData).includes('ya está matriculado') && !JSON.stringify(errorData).includes('conjunto único')) {
-              throw new Error(JSON.stringify(errorData));
+            });
+          } catch (err: any) {
+            // Si ya existe (idempotente), no es error
+            if (!err.response || (err.response.status !== 400 && err.response.status !== 200)) {
+              throw err;
             }
           }
         }
       } else if (editingId) {
         // Obtener horarios actuales y actualizarlos
-        const resHorarios = await fetch(`${apiBase}/api/matriculas-horarios/?matricula=${editingId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const dataHorarios = await resHorarios.json();
-        const horariosActuales = (dataHorarios.results || dataHorarios).map((mh: any) => mh.horario);
+        const resHorarios = await api.get(`/matriculas-horarios/?matricula=${editingId}`);
+        const dataHorarios = resHorarios.data.results || resHorarios.data;
+        const horariosActuales: number[] = Array.isArray(dataHorarios) ? dataHorarios.map((mh: any) => mh.horario) : [];
         
         // Eliminar horarios que ya no están seleccionados
         for (const horarioId of horariosActuales) {
           if (!formData.horarios.includes(horarioId)) {
-            const mhToDelete = (dataHorarios.results || dataHorarios).find((mh: any) => mh.horario === horarioId);
+            const mhToDelete = Array.isArray(dataHorarios) ? dataHorarios.find((mh: any) => mh.horario === horarioId) : null;
             if (mhToDelete) {
-              await fetch(`${apiBase}/api/matriculas-horarios/${mhToDelete.id}/`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-              });
+              await api.delete(`/matriculas-horarios/${mhToDelete.id}/`);
             }
           }
         }
@@ -538,20 +509,15 @@ function MatriculasPage() {
         // Agregar nuevos horarios
         for (const horarioId of formData.horarios) {
           if (!horariosActuales.includes(horarioId)) {
-            const resMH = await fetch(`${apiBase}/api/matriculas-horarios/`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({
+            try {
+              await api.post('/matriculas-horarios/', {
                 matricula: editingId,
                 horario: horarioId,
-              }),
-            });
-            
-            if (!resMH.ok) {
-              const errorData = await resMH.json();
-              // Si ya existe, no es error crítico - el horario ya está asignado
-              if (!JSON.stringify(errorData).includes('ya está matriculado') && !JSON.stringify(errorData).includes('conjunto único')) {
-                throw new Error(JSON.stringify(errorData));
+              });
+            } catch (err: any) {
+              // Si ya existe (idempotente), no es error
+              if (!err.response || (err.response.status !== 400 && err.response.status !== 200)) {
+                throw err;
               }
             }
           }
@@ -561,9 +527,10 @@ function MatriculasPage() {
       setShowModal(false);
       setEditingId(null);
       setFormData(initialFormData);
+      showToast(editingId ? 'Matrícula actualizada' : 'Matrícula creada', 'success');
       fetchData();
-    } catch (err) {
-      console.error('Error:', err);
+    } catch (err: any) {
+      console.error('Error saving matricula:', err);
       showApiError(err);
     } finally {
       setSaving(false);
@@ -571,16 +538,12 @@ function MatriculasPage() {
   };
 
   const handleEdit = async (matricula: Matricula) => {
-    const token = localStorage.getItem('access_token');
-    
     // Primero cargamos los horarios existentes
     let horariosExistentes: number[] = [];
     try {
-      const res = await fetch(`${apiBase}/api/matriculas-horarios/?matricula=${matricula.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      horariosExistentes = (data.results || data).map((mh: any) => mh.horario);
+      const res = await api.get(`/matriculas-horarios/?matricula=${matricula.id}`);
+      const data = res.data.results || res.data;
+      horariosExistentes = Array.isArray(data) ? data.map((mh: any) => mh.horario) : [];
     } catch (err) {
       console.error('Error loading horarios:', err);
     }
@@ -596,7 +559,7 @@ function MatriculasPage() {
       metodo_pago: matricula.metodo_pago || 'efectivo',
       activo: matricula.activo,
       concluida: matricula.concluida,
-      fecha_matricula: matricula.fecha_matricula ? matricula.fecha_matricula.split('T')[0] : new Date().toISOString().split('T')[0],
+      fecha_matricula: utcToLimaDate(matricula.fecha_matricula) || new Date().toISOString().split('T')[0],
     });
     setShowModal(true);
   };
@@ -608,9 +571,9 @@ function MatriculasPage() {
 
   const confirmDelete = async () => {
     if (!deletingId) return;
-    const token = localStorage.getItem('access_token');
     try {
-      await fetch(`${apiBase}/api/matriculas/${deletingId}/`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      await api.delete(`/matriculas/${deletingId}/`);
+      showToast('Matrícula eliminada', 'success');
       fetchData();
     } catch (err) {
       console.error('Error:', err);
@@ -634,9 +597,8 @@ function MatriculasPage() {
 
   const handleEliminarAsistencia = async () => {
     if (!eliminandoAsistenciaId || !segundaConfirmacion) return;
-    const token = localStorage.getItem('access_token');
     try {
-      await fetch(`${apiBase}/api/asistencias/${eliminandoAsistenciaId}/`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      await api.delete(`/asistencias/${eliminandoAsistenciaId}/`);
       setAsistenciasDetalle(prev => prev.filter(a => a.id !== eliminandoAsistenciaId));
       showToast('Asistencia eliminada', 'success');
     } catch (err) {
@@ -655,19 +617,11 @@ function MatriculasPage() {
   const handleTraspaso = async (alumnoDestinoId: number) => {
     if (!traspasandoId) return;
     setTraspasandoLoading(true);
-    const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/matriculas/${traspasandoId}/traspasar/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ alumno_destino_id: alumnoDestinoId }),
+      const res = await api.post(`/matriculas/${traspasandoId}/traspasar/`, {
+        alumno_destino_id: alumnoDestinoId,
       });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(JSON.stringify(errorData));
-      }
-      const data = await res.json();
-      showToast(data.detail || 'Traspaso realizado exitosamente', 'success');
+      showToast(res.data.detail || 'Traspaso realizado exitosamente', 'success');
       setTraspasandoId(null);
       setTraspasandoNombre('');
       setTraspasandoTaller('');
@@ -797,16 +751,10 @@ function MatriculasPage() {
               ),
             },
             {
-              key: 'created_at',
-              label: 'Registro',
+              key: 'fecha_matricula',
+              label: 'Fecha Matrícula',
               align: 'center',
-              render: (m: Matricula) => m.created_at ? (() => {
-                const d = new Date(m.created_at);
-                const day = String(d.getDate()).padStart(2, '0');
-                const month = String(d.getMonth() + 1).padStart(2, '0');
-                const year = d.getFullYear();
-                return `${day}/${month}/${year}`;
-              })() : '-',
+              render: (m: Matricula) => formatLimaDate(m.fecha_matricula) || '-',
             },
           ]}
           data={filteredMatriculas}

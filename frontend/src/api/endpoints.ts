@@ -1,5 +1,13 @@
 import api from './axios';
 
+// DRF paginated response wrapper
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 // Tipos
 export interface Ciclo {
   id: number;
@@ -15,8 +23,12 @@ export interface Taller {
   ciclo: number;
   ciclo_nombre?: string;
   nombre: string;
+  tipo: string;
+  tipo_display?: string;
   descripcion: string;
   activo: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Profesor {
@@ -29,8 +41,13 @@ export interface Profesor {
   dni: string;
   telefono: string;
   email: string;
+  fecha_nacimiento?: string;
+  edad?: number;
   activo: boolean;
-  es_gerente: boolean;
+  es_gerente?: boolean;
+  observaciones?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Alumno {
@@ -43,7 +60,11 @@ export interface Alumno {
   dni: string;
   telefono: string;
   email: string;
+  fecha_nacimiento?: string;
+  edad?: number;
   activo: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Horario {
@@ -231,7 +252,7 @@ export const deleteCiclo = (id: number) => api.delete(`/ciclos/${id}/`);
 
 // Talleres (filtrados por ciclo)
 export const getTalleres = (cicloId?: number) => 
-  cicloId ? api.get<Taller[]>(`/ciclos/${cicloId}/talleres/`) : api.get<Taller[]>('/talleres/');
+  cicloId ? api.get<PaginatedResponse<Taller>>(`/ciclos/${cicloId}/talleres/`) : api.get<PaginatedResponse<Taller>>('/talleres/');
 export const getTaller = (id: number) => api.get<Taller>(`/talleres/${id}/`);
 export const createTaller = (data: Partial<Taller>) => api.post('/talleres/', data);
 export const updateTaller = (id: number, data: Partial<Taller>) => api.patch(`/talleres/${id}/`, data);
@@ -239,7 +260,7 @@ export const deleteTaller = (id: number) => api.delete(`/talleres/${id}/`);
 
 // Profesores (filtrados por ciclo)
 export const getProfesores = (cicloId?: number) =>
-  cicloId ? api.get<Profesor[]>(`/ciclos/${cicloId}/profesores/`) : api.get<Profesor[]>('/profesores/');
+  cicloId ? api.get<PaginatedResponse<Profesor>>(`/ciclos/${cicloId}/profesores/`) : api.get<PaginatedResponse<Profesor>>('/profesores/');
 export const getProfesor = (id: number) => api.get<Profesor>(`/profesores/${id}/`);
 export const createProfesor = (data: Partial<Profesor>) => api.post('/profesores/', data);
 export const updateProfesor = (id: number, data: Partial<Profesor>) => api.patch(`/profesores/${id}/`, data);
@@ -247,7 +268,7 @@ export const deleteProfesor = (id: number) => api.delete(`/profesores/${id}/`);
 
 // Alumnos (filtrados por ciclo)
 export const getAlumnos = (cicloId?: number) =>
-  cicloId ? api.get<Alumno[]>(`/ciclos/${cicloId}/alumnos/`) : api.get<Alumno[]>('/alumnos/');
+  cicloId ? api.get<PaginatedResponse<Alumno>>(`/ciclos/${cicloId}/alumnos/`) : api.get<PaginatedResponse<Alumno>>('/alumnos/');
 export const getAlumno = (id: number) => api.get<Alumno>(`/alumnos/${id}/`);
 export const createAlumno = (data: Partial<Alumno>) => api.post('/alumnos/', data);
 export const updateAlumno = (id: number, data: Partial<Alumno>) => api.patch(`/alumnos/${id}/`, data);

@@ -1,13 +1,7 @@
 from rest_framework import serializers
-from django.core.validators import RegexValidator
 from ..models import Profesor
-
-
-# Validator: 1-15 alphanumeric characters
-alphanumeric_validator = RegexValidator(
-    regex=r'^[A-Za-z0-9]{1,15}$',
-    message='El DNI debe contener entre 1 y 15 caracteres alfanuméricos.'
-)
+from ..validators import alphanumeric_validator
+from ..serializer_helpers import get_nombre_completo
 
 
 class ProfesorSerializer(serializers.ModelSerializer):
@@ -39,4 +33,4 @@ class ProfesorListSerializer(serializers.ModelSerializer):
         fields = ['id', 'ciclo', 'ciclo_nombre', 'nombre', 'apellido', 'nombre_completo', 'dni', 'telefono', 'email', 'fecha_nacimiento', 'edad', 'activo', 'es_gerente', 'created_at', 'updated_at']
 
     def get_nombre_completo(self, obj):
-        return f"{obj.apellido}, {obj.nombre}"
+        return get_nombre_completo(obj)

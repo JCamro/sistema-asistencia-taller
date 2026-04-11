@@ -5,7 +5,7 @@ from .profesor_view import ProfesorViewSet
 from .horario_view import HorarioViewSet
 from .matricula_view import MatriculaViewSet
 from .matricula_horario_view import MatriculaHorarioViewSet
-from .asistencia_view import AsistenciaViewSet, asistencia_por_horario
+from .asistencia_view import AsistenciaViewSet
 from .recibo_view import ReciboViewSet
 from .ciclo_view import CicloViewSet
 from .configuracion_view import ConfiguracionView, ConfiguracionViewSet

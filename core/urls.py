@@ -7,7 +7,7 @@ from .views import (
     HorarioViewSet, MatriculaViewSet, MatriculaHorarioViewSet,
     AsistenciaViewSet, ReciboViewSet, PagoProfesorViewSet,
     calcular_pago_profesor, detalle_clase_pago, resumen_ciclo, resumen_mensual_ciclo, ConfiguracionView,
-    asistencia_por_horario, dashboard_kpis, PrecioPaqueteViewSet,
+    dashboard_kpis, PrecioPaqueteViewSet,
     EgresoViewSet
 )
 from .views.usuario_view import CambiarPasswordView
@@ -58,7 +58,8 @@ urlpatterns = [
     path('ciclos/<int:ciclo_id>/horarios/<int:pk>/', HorarioViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='ciclo-horarios-detail'),
     path('ciclos/<int:ciclo_id>/matriculas/', MatriculaViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-matriculas'),
     path('ciclos/<int:ciclo_id>/asistencias/', AsistenciaViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-asistencias'),
-    path('ciclos/<int:ciclo_id>/asistencias/por-horario/', asistencia_por_horario, name='ciclo-asistencias-por-horario'),
+    path('ciclos/<int:ciclo_id>/asistencias/por-horario/', AsistenciaViewSet.as_view({'get': 'por_horario'}), name='ciclo-asistencias-por-horario'),
+    path('ciclos/<int:ciclo_id>/asistencias/recuperables/', AsistenciaViewSet.as_view({'get': 'recuperables'}), name='ciclo-asistencias-recuperables'),
     path('ciclos/<int:ciclo_id>/recibos/', ReciboViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-recibos'),
     path('ciclos/<int:ciclo_id>/precios/', PrecioPaqueteViewSet.as_view({'get': 'list'}), name='ciclo-precios'),
     path('ciclos/<int:ciclo_id>/egresos/', EgresoViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-egresos'),

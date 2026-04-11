@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from ..models import Recibo, ReciboMatricula, Matricula
 from ..services import ReciboService
+from ..serializer_helpers import get_alumnos_nombres
 
 
 class ReciboMatriculaSerializer(serializers.ModelSerializer):
@@ -54,13 +55,7 @@ class ReciboSerializer(serializers.ModelSerializer):
         return "Sin alumno"
 
     def get_alumnos_nombres(self, obj):
-        nombres = []
-        for rm in obj.matriculas.select_related('matricula__alumno'):
-            a = rm.matricula.alumno
-            nombre = f"{a.nombre} {a.apellido}"
-            if nombre not in nombres:
-                nombres.append(nombre)
-        return nombres
+        return get_alumnos_nombres(obj)
 
     def create(self, validated_data):
         matricula_ids = validated_data.pop('matricula_ids', [])
@@ -98,13 +93,7 @@ class ReciboListSerializer(serializers.ModelSerializer):
         return "Sin alumno"
 
     def get_alumnos_nombres(self, obj):
-        nombres = []
-        for rm in obj.matriculas.select_related('matricula__alumno'):
-            a = rm.matricula.alumno
-            nombre = f"{a.nombre} {a.apellido}"
-            if nombre not in nombres:
-                nombres.append(nombre)
-        return nombres
+        return get_alumnos_nombres(obj)
 
     def get_matricula_ids(self, obj):
         return list(obj.matriculas.values_list('matricula_id', flat=True))
