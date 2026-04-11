@@ -512,8 +512,8 @@ function AsistenciasPage() {
       </div>
 
       {/* Vista grouped por taller: muestra todos los alumnos del día cuando se filtra por taller */}
-      {tallerSeleccionado && horariosFiltrados.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {tallerSeleccionado && !horarioSeleccionado && horariosFiltrados.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {loadingTodosAlumnos ? (
             <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>Cargando alumnos...</div>
           ) : (
@@ -521,54 +521,115 @@ function AsistenciasPage() {
               .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio))
               .map((horario) => {
                 const alumnosDelHorario = alumnosPorHorario.get(horario.id) || [];
+                const countAsistio = alumnosDelHorario.filter(a => a.estado === 'asistio').length;
+                const countFalta = alumnosDelHorario.filter(a => a.estado === 'falta' || a.estado === 'falta_grave').length;
+                const countPendiente = alumnosDelHorario.length - countAsistio - countFalta;
+                
                 return (
-                  <div key={horario.id} style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+                  <div key={horario.id} style={{ 
+                    background: 'white', 
+                    borderRadius: '16px', 
+                    border: '1px solid #e5e7eb',
+                    overflow: 'hidden',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                  }}>
                     {/* Header del horario */}
-                    <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <span style={{ fontWeight: '600', color: '#111827' }}>
-                          {horario.hora_inicio?.substring(0, 5)} - {horario.hora_fin?.substring(0, 5)}
-                        </span>
-                        <span style={{ marginLeft: '1rem', fontSize: '0.75rem', color: '#6b7280' }}>
-                          Prof. {horario.profesor_nombre}
-                        </span>
+                    <div style={{ 
+                      padding: '1rem 1.25rem', 
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ 
+                          background: 'rgba(255,255,255,0.2)', 
+                          padding: '0.5rem 1rem', 
+                          borderRadius: '8px',
+                          fontWeight: '700',
+                          color: 'white',
+                          fontSize: '1rem'
+                        }}>
+                          {horario.hora_inicio?.substring(0, 5)}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: '600', color: 'white', fontSize: '0.9rem' }}>
+                            {horario.profesor_nombre}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.8)' }}>
+                            {alumnosDelHorario.length} alumnos
+                          </div>
+                        </div>
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <span style={{ padding: '0.125rem 0.5rem', background: '#d1fae5', color: '#059669', borderRadius: '4px', fontSize: '0.625rem', fontWeight: '600' }}>
-                          {alumnosDelHorario.filter(a => a.estado === 'asistio').length} asist.
-                        </span>
-                        <span style={{ padding: '0.125rem 0.5rem', background: '#fee2e2', color: '#dc2626', borderRadius: '4px', fontSize: '0.625rem', fontWeight: '600' }}>
-                          {alumnosDelHorario.filter(a => a.estado === 'falta' || a.estado === 'falta_grave').length} falt.
-                        </span>
+                        <div style={{ 
+                          background: 'rgba(255,255,255,0.2)',
+                          padding: '0.35rem 0.75rem',
+                          borderRadius: '20px',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          color: 'white'
+                        }}>
+                          <span style={{ color: '#86efac' }}>{countAsistio}</span> asist
+                        </div>
+                        <div style={{ 
+                          background: 'rgba(255,255,255,0.2)',
+                          padding: '0.35rem 0.75rem',
+                          borderRadius: '20px',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          color: 'white'
+                        }}>
+                          <span style={{ color: '#fca5a5' }}>{countFalta}</span> falt
+                        </div>
+                        {countPendiente > 0 && (
+                          <div style={{ 
+                            background: 'rgba(255,255,255,0.2)',
+                            padding: '0.35rem 0.75rem',
+                            borderRadius: '20px',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            color: 'white'
+                          }}>
+                            <span style={{ color: '#fcd34d' }}>{countPendiente}</span> pend
+                          </div>
+                        )}
                       </div>
                     </div>
                     {/* Lista de alumnos - solo lectura */}
                     {alumnosDelHorario.length === 0 ? (
-                      <div style={{ padding: '0.5rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.75rem' }}>
-                        Sin alumnos
+                      <div style={{ padding: '1.5rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
+                        Sin alumnos matriculados
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', padding: '0.5rem' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', padding: '1rem' }}>
                         {alumnosDelHorario.map((alumno) => {
                           const estadoInfo = getEstadoInfo(alumno.estado);
                           return (
                             <div
                               key={alumno.matricula_id}
                               style={{
-                                display: 'flex',
+                                display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '0.5rem',
-                                padding: '0.375rem 0.75rem',
-                                background: '#f9fafb',
-                                borderRadius: '6px',
+                                padding: '0.5rem 0.875rem',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '25px',
                                 fontSize: '0.8rem',
                               }}
                             >
-                              <span style={{ fontWeight: '500', color: '#111827' }}>{alumno.alumno_nombre}</span>
+                              <div style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                background: estadoInfo.color,
+                              }} />
+                              <span style={{ fontWeight: '500', color: '#334155' }}>{alumno.alumno_nombre}</span>
                               <span
                                 style={{
                                   padding: '0.125rem 0.5rem',
-                                  borderRadius: '4px',
+                                  borderRadius: '10px',
                                   fontSize: '0.65rem',
                                   fontWeight: '600',
                                   background: estadoInfo.bg,
