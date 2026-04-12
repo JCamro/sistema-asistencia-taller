@@ -511,11 +511,11 @@ function AsistenciasPage() {
         </div>
       </div>
 
-      {/* Vista grouped por taller: muestra todos los alumnos del día cuando se filtra por taller */}
+      {/* Vista grouped por taller - minimalista y funcional */}
       {tallerSeleccionado && !horarioSeleccionado && horariosFiltrados.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {loadingTodosAlumnos ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>Cargando alumnos...</div>
+            <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Cargando...</div>
           ) : (
             horariosFiltrados
               .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio))
@@ -528,81 +528,52 @@ function AsistenciasPage() {
                 return (
                   <div key={horario.id} style={{ 
                     background: 'white', 
-                    borderRadius: '16px', 
                     border: '1px solid #e5e7eb',
-                    overflow: 'hidden',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                    borderRadius: '8px',
+                    overflow: 'hidden'
                   }}>
-                    {/* Header del horario */}
+                    {/* Header simple */}
                     <div style={{ 
-                      padding: '1rem 1.25rem', 
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      padding: '0.625rem 1rem', 
+                      background: '#f8fafc',
+                      borderBottom: '1px solid #e5e7eb',
                       display: 'flex', 
                       justifyContent: 'space-between', 
                       alignItems: 'center'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ 
-                          background: 'rgba(255,255,255,0.2)', 
-                          padding: '0.5rem 1rem', 
-                          borderRadius: '8px',
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ 
                           fontWeight: '700',
-                          color: 'white',
-                          fontSize: '1rem'
+                          color: '#1e293b',
+                          fontSize: '0.9rem',
+                          fontFamily: 'monospace'
                         }}>
                           {horario.hora_inicio?.substring(0, 5)}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: '600', color: 'white', fontSize: '0.9rem' }}>
-                            {horario.profesor_nombre}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.8)' }}>
-                            {alumnosDelHorario.length} alumnos
-                          </div>
-                        </div>
+                        </span>
+                        <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
+                          {horario.profesor_nombre}
+                        </span>
                       </div>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <div style={{ 
-                          background: 'rgba(255,255,255,0.2)',
-                          padding: '0.35rem 0.75rem',
-                          borderRadius: '20px',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          color: 'white'
-                        }}>
-                          <span style={{ color: '#86efac' }}>{countAsistio}</span> asist
-                        </div>
-                        <div style={{ 
-                          background: 'rgba(255,255,255,0.2)',
-                          padding: '0.35rem 0.75rem',
-                          borderRadius: '20px',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          color: 'white'
-                        }}>
-                          <span style={{ color: '#fca5a5' }}>{countFalta}</span> falt
-                        </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem' }}>
+                        <span style={{ color: '#059669', fontWeight: '600' }}>{countAsistio}✔</span>
+                        <span style={{ color: '#dc2626', fontWeight: '600' }}>{countFalta}✘</span>
                         {countPendiente > 0 && (
-                          <div style={{ 
-                            background: 'rgba(255,255,255,0.2)',
-                            padding: '0.35rem 0.75rem',
-                            borderRadius: '20px',
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            color: 'white'
-                          }}>
-                            <span style={{ color: '#fcd34d' }}>{countPendiente}</span> pend
-                          </div>
+                          <span style={{ color: '#d97706', fontWeight: '600' }}>{countPendiente}○</span>
                         )}
                       </div>
                     </div>
-                    {/* Lista de alumnos - solo lectura */}
+                    {/* Lista de alumnos - chips simples */}
                     {alumnosDelHorario.length === 0 ? (
-                      <div style={{ padding: '1.5rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-                        Sin alumnos matriculados
+                      <div style={{ padding: '0.75rem 1rem', color: '#9ca3af', fontSize: '0.8rem' }}>
+                        Sin alumnos
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', padding: '1rem' }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        flexWrap: 'wrap', 
+                        gap: '0.375rem', 
+                        padding: '0.625rem 1rem'
+                      }}>
                         {alumnosDelHorario.map((alumno) => {
                           const estadoInfo = getEstadoInfo(alumno.estado);
                           return (
@@ -611,32 +582,23 @@ function AsistenciasPage() {
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.5rem 0.875rem',
-                                background: '#f8fafc',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '25px',
-                                fontSize: '0.8rem',
+                                gap: '0.375rem',
+                                padding: '0.25rem 0.625rem',
+                                background: '#f1f5f9',
+                                borderRadius: '4px',
+                                fontSize: '0.75rem',
                               }}
                             >
-                              <div style={{
-                                width: '8px',
-                                height: '8px',
-                                borderRadius: '50%',
-                                background: estadoInfo.color,
-                              }} />
-                              <span style={{ fontWeight: '500', color: '#334155' }}>{alumno.alumno_nombre}</span>
+                              <span style={{ color: '#334155' }}>{alumno.alumno_nombre}</span>
                               <span
                                 style={{
-                                  padding: '0.125rem 0.5rem',
-                                  borderRadius: '10px',
-                                  fontSize: '0.65rem',
                                   fontWeight: '600',
-                                  background: estadoInfo.bg,
                                   color: estadoInfo.color,
                                 }}
                               >
-                                {estadoInfo.label}
+                                {estadoInfo.label === 'Asistió' ? '✓' : 
+                                 estadoInfo.label === 'Falta' ? '✘' : 
+                                 estadoInfo.label === 'Falta Grave' ? '✘✘' : '○'}
                               </span>
                             </div>
                           );
