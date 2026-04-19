@@ -25,7 +25,7 @@ class PortalPagosView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        alumno_id = request.user.id
+        alumno_ids = request.user.alumno_ids
         ciclo_id = request.query_params.get('ciclo_id')
         filtro = request.query_params.get('filtro', 'pendientes')
         
@@ -44,8 +44,9 @@ class PortalPagosView(APIView):
             )
         
         # Get receipt IDs where this student has a matricula
+        # Use alumno_ids to match across all Alumno records with same DNI
         recibo_ids = ReciboMatricula.objects.filter(
-            matricula__alumno_id=alumno_id,
+            matricula__alumno_id__in=alumno_ids,
             matricula__ciclo_id=ciclo_id
         ).values_list('recibo_id', flat=True).distinct()
         

@@ -13,6 +13,21 @@ class DummyUser:
         self.is_authenticated = True
         self.is_active = True
         self.is_anonymous = False
+        self._alumno_ids = None
+
+    @property
+    def alumno_ids(self):
+        """
+        Returns all Alumno IDs with the same DNI.
+        A student can have multiple Alumno records (one per cycle),
+        so we need all of them to query across cycles.
+        """
+        if self._alumno_ids is None and self.dni:
+            from core.models import Alumno
+            self._alumno_ids = list(
+                Alumno.objects.filter(dni__iexact=self.dni).values_list('id', flat=True)
+            )
+        return self._alumno_ids or [self.id]
 
     def __str__(self):
         return f"PortalAlumno(id={self.id})"

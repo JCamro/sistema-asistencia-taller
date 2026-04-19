@@ -18,6 +18,13 @@ export interface Ciclo {
   activo: boolean;
 }
 
+export interface DashboardIngresos {
+  ingresos_hoy: number;
+  cantidad_pagos_hoy: number;
+  ingresos_semana: number;
+  cantidad_pagos_semana: number;
+}
+
 export interface Taller {
   id: number;
   ciclo: number;
@@ -341,6 +348,9 @@ export const getResumenMensual = (id: number) => api.get<ResumenMensual[]>(`/cic
 // Dashboard KPIs
 export const getDashboardKpis = (cicloId: number) => 
   api.get(`/ciclos/${cicloId}/dashboard/`);
+
+export const getDashboardIngresos = (cicloId: number) => 
+  api.get<DashboardIngresos>(`/ciclos/${cicloId}/dashboard/ingresos/`);
 
 // Precios Paquete
 export const getPrecios = (cicloId?: number) =>

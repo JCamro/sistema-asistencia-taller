@@ -2,8 +2,17 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
-from django.db.models import Q, Count, F, OuterRef, Exists
+from django.db.models import Q, Count, F, OuterRef, Exists, Sum
+from datetime import timedelta
 from core.models import Ciclo, Matricula, Asistencia, Recibo, ReciboMatricula
+
+
+def get_lima_date():
+    """
+    Retorna la fecha actual en timezone de Lima (America/Lima, UTC-5).
+    Usa timezone.localtime para convertir correctamente desde UTC.
+    """
+    return timezone.localtime(timezone.now()).date()
 
 
 @api_view(['GET'])
@@ -16,7 +25,7 @@ def dashboard_kpis(request, ciclo_id):
     3. Matrículas sin recibo
     4. Matrículas sin pago completo (recibo pendiente)
     """
-    today = timezone.now().date()
+    today = get_lima_date()
     
     # KPI 1: Alumnos sin asistencia hoy
     # Matrículas that have classes today (match dia_semana) but no asistencia registered
@@ -95,4 +104,45 @@ def dashboard_kpis(request, ciclo_id):
         'matriculas_por_concluir': matriculas_por_concluir,
         'matriculas_sin_recibo': matriculas_sin_recibo,
         'matriculas_sin_pago_completo': matriculas_sin_pago_completo,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard_ingresos(request, ciclo_id):
+    """
+    Returns income summary for the dashboard:
+    - Ingresos de hoy
+    - Ingresos de la semana
+    """
+    from datetime import timedelta
+    
+    today = get_lima_date()
+    start_of_week = today - timedelta(days=today.weekday())  # Monday
+    
+    # Ingresos de hoy (solo recibos pagados)
+    ingresos_hoy = Recibo.objects.filter(
+        ciclo_id=ciclo_id,
+        estado='pagado',
+        fecha_emision=today
+    ).aggregate(
+        total=Sum('monto_pagado'),
+        cantidad=Count('id')
+    )
+    
+    # Ingresos de la semana
+    ingresos_semana = Recibo.objects.filter(
+        ciclo_id=ciclo_id,
+        estado='pagado',
+        fecha_emision__gte=start_of_week
+    ).aggregate(
+        total=Sum('monto_pagado'),
+        cantidad=Count('id')
+    )
+    
+    return Response({
+        'ingresos_hoy': float(ingresos_hoy['total'] or 0),
+        'cantidad_pagos_hoy': ingresos_hoy['cantidad'] or 0,
+        'ingresos_semana': float(ingresos_semana['total'] or 0),
+        'cantidad_pagos_semana': ingresos_semana['cantidad'] or 0,
     })

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCiclo } from '../contexts/CicloContext';
-import { getDashboardKpis } from '../api/endpoints';
+import { getDashboardKpis, getDashboardIngresos } from '../api/endpoints';
+import type { DashboardIngresos } from '../api/endpoints';
 import CalculadoraPrecios from './CalculadoraPrecios';
 
 interface KpiData {
@@ -67,20 +68,26 @@ export default function Dashboard() {
   const { cicloActual } = useCiclo();
   const navigate = useNavigate();
   const [kpis, setKpis] = useState<KpiData | null>(null);
+  const [ingresos, setIngresos] = useState<DashboardIngresos | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showIngresosSemana, setShowIngresosSemana] = useState(false);
 
   useEffect(() => {
     if (cicloActual) {
-      loadKpis();
+      loadDashboard();
     }
   }, [cicloActual]);
 
-  const loadKpis = async () => {
+  const loadDashboard = async () => {
     if (!cicloActual) return;
     setLoading(true);
     try {
-      const response = await getDashboardKpis(cicloActual.id);
-      setKpis(response.data);
+      const [kpisRes, ingresosRes] = await Promise.all([
+        getDashboardKpis(cicloActual.id),
+        getDashboardIngresos(cicloActual.id)
+      ]);
+      setKpis(kpisRes.data);
+      setIngresos(ingresosRes.data);
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {
@@ -176,6 +183,55 @@ export default function Dashboard() {
           color="#22c55e"
           onClick={() => navigate('/recibos')}
         />
+      </div>
+
+      {/* Card de Ingresos - Estilo KPI */}
+      <div
+        onClick={() => setShowIngresosSemana(!showIngresosSemana)}
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: 16,
+          padding: 24,
+          cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          border: `1px solid ${showIngresosSemana ? '#d4af37' : '#d4af37'}30`,
+          transition: 'all 0.25s ease',
+          marginBottom: '1.5rem',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12), 0 0 0 1px #d4af3740';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: '#64748b', fontWeight: 500, letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+              Ingresos {showIngresosSemana ? 'semana' : 'hoy'}
+            </p>
+            <p style={{ margin: '8px 0 0', fontSize: '2.25rem', fontWeight: 700, color: '#d4af37', fontFamily: "'Inter', sans-serif" }}>
+              S/. {(showIngresosSemana ? ingresos?.ingresos_semana : ingresos?.ingresos_hoy)?.toFixed(2) ?? '0.00'}
+            </p>
+            <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+              {showIngresosSemana ? ingresos?.cantidad_pagos_semana : ingresos?.cantidad_pagos_hoy ?? 0} pagos
+            </p>
+          </div>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: 12,
+            background: '#d4af3715',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '1.375rem',
+          }}>
+            💵
+          </div>
+        </div>
       </div>
 
       {/* Calculadora de Precios */}

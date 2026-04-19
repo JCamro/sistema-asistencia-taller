@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useCallback } from 'react';
+import { useState, useEffect, memo, useCallback, useMemo } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import { ResponsiveTable } from '../components/ui/ResponsiveTable';
@@ -102,6 +102,10 @@ function RecibosPage() {
   const [matriculas, setMatriculas] = useState<Matricula[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('todos');
+  const [filtroPreset, setFiltroPreset] = useState('todos');
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<ReciboFormData>(initialFormData);
@@ -157,11 +161,44 @@ function RecibosPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const filteredRecibos = recibos.filter((r) =>
-    r.alumno_nombre.toLowerCase().includes(search.toLowerCase()) ||
-    r.numero.toLowerCase().includes(search.toLowerCase()) ||
-    (r.alumnos_nombres && r.alumnos_nombres.some(n => n.toLowerCase().includes(search.toLowerCase())))
-  );
+  const filteredRecibos = useMemo(() => {
+    let resultado = recibos.filter((r) =>
+      r.alumno_nombre.toLowerCase().includes(search.toLowerCase()) ||
+      r.numero.toLowerCase().includes(search.toLowerCase()) ||
+      (r.alumnos_nombres && r.alumnos_nombres.some(n => n.toLowerCase().includes(search.toLowerCase())))
+    );
+
+    // Filtro por estado
+    if (filtroEstado !== 'todos') {
+      resultado = resultado.filter(r => r.estado === filtroEstado);
+    }
+
+    // Filtro por preset de fecha
+    const hoy = new Date();
+    const hoyStr = hoy.toISOString().split('T')[0];
+    
+    if (filtroPreset === 'hoy') {
+      resultado = resultado.filter(r => r.fecha_emision === hoyStr);
+    } else if (filtroPreset === 'semana') {
+      const inicioSemana = new Date(hoy);
+      inicioSemana.setDate(hoy.getDate() - hoy.getDay());
+      const inicioStr = inicioSemana.toISOString().split('T')[0];
+      resultado = resultado.filter(r => r.fecha_emision >= inicioStr);
+    } else if (filtroPreset === 'mes') {
+      const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      const inicioStr = inicioMes.toISOString().split('T')[0];
+      resultado = resultado.filter(r => r.fecha_emision >= inicioStr);
+    } else if (filtroPreset === 'personalizado' && fechaDesde) {
+      resultado = resultado.filter(r => {
+        if (fechaHasta) {
+          return r.fecha_emision >= fechaDesde && r.fecha_emision <= fechaHasta;
+        }
+        return r.fecha_emision >= fechaDesde;
+      });
+    }
+
+    return resultado;
+  }, [recibos, search, filtroEstado, filtroPreset, fechaDesde, fechaHasta]);
 
   const getAlumnosDisplay = (recibo: Recibo) => {
     if (recibo.alumnos_nombres && recibo.alumnos_nombres.length > 1) {
@@ -433,8 +470,51 @@ function RecibosPage() {
       </div>
 
       <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-        <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
-          <input type="text" placeholder="Buscar por número o alumno..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: '100%', maxWidth: '400px', padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+        <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <input 
+            type="text" 
+            placeholder="Buscar por número o alumno..." 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+            style={{ flex: 1, minWidth: '200px', padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px' }} 
+          />
+          <select 
+            value={filtroEstado} 
+            onChange={(e) => setFiltroEstado(e.target.value)} 
+            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '130px' }}
+          >
+            <option value="todos">Todos los estados</option>
+            <option value="pendiente">Pendientes</option>
+            <option value="pagado">Pagados</option>
+            <option value="anulado">Anulados</option>
+          </select>
+          <select 
+            value={filtroPreset} 
+            onChange={(e) => setFiltroPreset(e.target.value)} 
+            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}
+          >
+            <option value="todos">Todas las fechas</option>
+            <option value="hoy">Del día</option>
+            <option value="semana">De la semana</option>
+            <option value="mes">Del mes</option>
+            <option value="personalizado">Rango personalizado</option>
+          </select>
+          {filtroPreset === 'personalizado' && (
+            <>
+              <input 
+                type="date" 
+                value={fechaDesde} 
+                onChange={(e) => setFechaDesde(e.target.value)}
+                style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
+              />
+              <input 
+                type="date" 
+                value={fechaHasta} 
+                onChange={(e) => setFechaHasta(e.target.value)}
+                style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
+              />
+            </>
+          )}
         </div>
         <ResponsiveTable<Recibo>
           columns={[
