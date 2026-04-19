@@ -73,14 +73,18 @@ class ReciboService:
         instance.save()
 
         if matricula_ids is not None and len(matricula_ids) > 0:
-            # Determinar si todas las matrículas son del mismo tipo
+            # Guardar datos de las matrículas actuales ANTES de borrar
+            # para evitar perder la referencia en la rama de distribución proporcional
             tipos_sesiones = {}
-            for rm in instance.matriculas.all():
+            precios_originales = {}
+            for rm in instance.matriculas.select_related('matricula__taller').all():
                 key = (rm.matricula.taller.tipo, rm.matricula.sesiones_contratadas)
                 if key not in tipos_sesiones:
                     tipos_sesiones[key] = []
                 tipos_sesiones[key].append(rm.matricula_id)
+                precios_originales[rm.matricula_id] = float(rm.matricula.precio_total)
             
+            # Ahora sí borrar y recrear
             instance.matriculas.all().delete()
             
             monto_total_float = float(instance.monto_total)
@@ -108,10 +112,7 @@ class ReciboService:
                         pass
             else:
                 # Diferentes tipos - distribuir proporcionalmente con mejor redondeo
-                precios_originales = {}
-                for rm in instance.matriculas.all():
-                    precios_originales[rm.matricula_id] = float(rm.matricula.precio_total)
-                
+                # Usar precios_originales guardados ANTES del delete
                 total_original = sum(precios_originales.values())
                 montos = []
                 

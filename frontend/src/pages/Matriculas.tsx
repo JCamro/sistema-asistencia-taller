@@ -380,7 +380,8 @@ function MatriculasPage() {
           (filtroEstado === 'activa' && m.estado_calculado === 'activa') ||
           (filtroEstado === 'inactiva' && m.estado_calculado === 'inactiva') ||
           (filtroEstado === 'concluida' && m.estado_calculado === 'concluida') ||
-          (filtroEstado === 'no_procesado' && m.estado_calculado === 'no_procesado');
+          (filtroEstado === 'no_procesado' && m.estado_calculado === 'no_procesado') ||
+          (filtroEstado === 'por_concluir' && m.estado_calculado === 'activa' && m.sesiones_disponibles <= 3);
         
         // Filtro por día y hora usando horarios de la matrícula
         const horariosMh = matriculasHorarios.get(m.id) || [];
@@ -689,6 +690,7 @@ function MatriculasPage() {
           <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}>
             <option value="todas">Todas</option>
             <option value="activa">Activas</option>
+            <option value="por_concluir">Por concluir (≤3 clases)</option>
             <option value="no_procesado">No Procesado</option>
             <option value="inactiva">Inactivas</option>
             <option value="concluida">Concluidas</option>

@@ -7,7 +7,7 @@ from .views import (
     HorarioViewSet, MatriculaViewSet, MatriculaHorarioViewSet,
     AsistenciaViewSet, ReciboViewSet, PagoProfesorViewSet,
     calcular_pago_profesor, detalle_clase_pago, resumen_ciclo, resumen_mensual_ciclo, ConfiguracionView,
-    dashboard_kpis, PrecioPaqueteViewSet,
+    dashboard_kpis, dashboard_ingresos, PrecioPaqueteViewSet,
     EgresoViewSet
 )
 from .views.usuario_view import CambiarPasswordView
@@ -49,6 +49,7 @@ urlpatterns = [
     path('ciclos/<int:pk>/resumen/', resumen_ciclo, name='resumen_ciclo'),
     path('ciclos/<int:pk>/resumen-mensual/', resumen_mensual_ciclo, name='resumen_mensual_ciclo'),
     path('ciclos/<int:ciclo_id>/dashboard/', dashboard_kpis, name='dashboard-kpis'),
+    path('ciclos/<int:ciclo_id>/dashboard/ingresos/', dashboard_ingresos, name='dashboard-ingresos'),
     
     # Endpoints por ciclo
     path('ciclos/<int:ciclo_id>/alumnos/', AlumnoViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-alumnos'),
