@@ -389,6 +389,9 @@ Configurable via `Configuracion` table: `base_pago`, `tope_maximo`, `porcentaje_
 - **Styles**: Inline styles + CSS utility classes — no Tailwind
 - **Performance**: Wrap **every** page component with `memo()`; generic components (`ResponsiveTable`, `DataCard`) are `memo()` wrapped
 - **Responsive**: Use `useWindowWidth()` hook + `ResponsiveTable` for table-to-cards pattern; `grid-template-columns: repeat(auto-fit, minmax(Xpx, 1fr))` for card grids; form grids: `repeat(auto-fit, minmax(200px, 1fr))`
+- **Dashboard**: Card de ingresos con toggle día/semana (usa `get_lima_date()` para timezone correcto)
+- **Matriculas**: Filtro "Por concluir (≤3 clases)" disponible
+- **Recibos**: Filtros por estado, presets de fecha (hoy/semana/mes), rango personalizado
 
 ### TypeScript Config
 - Target: ES2023, strict mode enabled
