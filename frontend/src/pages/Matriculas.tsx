@@ -176,8 +176,8 @@ function MatriculasPage() {
     if (!cicloActual) return;
     try {
       const [alumnosRes, talleresRes, horariosMatriculasRes] = await Promise.all([
-        api.get(`/ciclos/${cicloActual.id}/alumnos/`),
-        api.get(`/ciclos/${cicloActual.id}/talleres/`),
+        api.get(`/ciclos/${cicloActual.id}/alumnos/?page_size=200`),
+        api.get(`/ciclos/${cicloActual.id}/talleres/?page_size=200`),
         api.get(`/matriculas-horarios/?matricula__ciclo=${cicloActual.id}`),
       ]);
       
@@ -235,7 +235,7 @@ function MatriculasPage() {
     if (!cicloActual) return;
     setHorariosLoading(true);
     try {
-      const res = await api.get(`/ciclos/${cicloActual.id}/horarios/?taller=${tallerId}`);
+      const res = await api.get(`/ciclos/${cicloActual.id}/horarios/?taller=${tallerId}&page_size=200`);
       const data = res.data.results || res.data;
       const horariosData = Array.isArray(data) ? data.filter((h: Horario) => h.activo) : [];
       setHorarios(horariosData);
