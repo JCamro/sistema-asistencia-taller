@@ -141,7 +141,7 @@ function RecibosPage() {
       const [recibosRes, alumnosRes, matriculasRes] = await Promise.all([
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/recibos/?ordering=-id`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/alumnos/`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/matriculas/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/matriculas/?estado=no_procesado&page_size=200`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const [recibosData, alumnosData, matriculasData] = await Promise.all([
         recibosRes.json(),
@@ -152,22 +152,8 @@ function RecibosPage() {
       setRecibos(recibosArray);
       setAlumnos((alumnosData.results || alumnosData).filter((a: Alumno) => a.activo));
 
-      // Obtener IDs de matrículas que ya tienen un recibo pagado o pendiente
-      const matriculasConRecibo = new Set<number>();
-      for (const recibo of recibosArray) {
-        if (recibo.estado === 'pagado' || recibo.estado === 'pendiente') {
-          if (recibo.matricula_ids) {
-            for (const mid of recibo.matricula_ids) {
-              matriculasConRecibo.add(mid);
-            }
-          }
-        }
-      }
-
-      // Filtrar matrículas activas que NO tienen recibo pagado/pendiente
-      setMatriculas((matriculasData.results || matriculasData).filter(
-        (m: Matricula) => m.activo && !matriculasConRecibo.has(m.id)
-      ));
+      // Matriculas ya filtradas por el servidor (?estado=no_procesado = activas sin recibo pagado/pendiente)
+      setMatriculas(Array.isArray(matriculasData.results || matriculasData) ? (matriculasData.results || matriculasData) : []);
     } catch (err) {
       console.error('Error:', err);
     } finally {
