@@ -140,7 +140,7 @@ function RecibosPage() {
     try {
       const [recibosRes, alumnosRes, matriculasRes] = await Promise.all([
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/recibos/?ordering=-id`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/alumnos/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/alumnos/?page_size=200`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/matriculas/?estado=no_procesado&page_size=200`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const [recibosData, alumnosData, matriculasData] = await Promise.all([
