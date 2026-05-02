@@ -319,9 +319,10 @@ export const updateHorario = (id: number, data: Partial<Horario>) => api.patch(`
 export const deleteHorario = (id: number) => api.delete(`/horarios/${id}/`);
 
 // Matriculas (paginado)
-export const getMatriculas = (cicloId?: number, page?: number, search?: string) => {
+export const getMatriculas = (cicloId?: number, page?: number, search?: string, estado?: string) => {
   let params = '';
   if (search) params += `search=${encodeURIComponent(search.slice(0, 100))}&`;
+  if (estado && estado !== 'todas') params += `estado=${encodeURIComponent(estado)}&`;
   if (page) params += `page=${page}`;
   const queryString = params ? `?${params.replace(/&$/, '')}` : '';
   return cicloId 

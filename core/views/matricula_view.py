@@ -26,7 +26,8 @@ class MatriculaViewSet(viewsets.ModelViewSet):
         return MatriculaSerializer
 
     def get_queryset(self):
-        from django.db.models import Exists, OuterRef
+        from django.db.models import Exists, OuterRef, Count, Q, IntegerField, F, Value as V
+        from django.db.models.functions import Coalesce
         
         queryset = super().get_queryset()
         ciclo_id = self.kwargs.get('ciclo_id')
@@ -47,6 +48,26 @@ class MatriculaViewSet(viewsets.ModelViewSet):
                 output_field=CharField()
             )
         )
+        
+        # Annotate sesiones_consumidas for por_concluir filter
+        queryset = queryset.annotate(
+            _sesiones_consumidas=Coalesce(
+                Count('asistencias', filter=Q(asistencias__estado='asistio')),
+                V(0, output_field=IntegerField())
+            ),
+            _sesiones_disponibles=F('sesiones_contratadas') - F('_sesiones_consumidas')
+        )
+        
+        # Filter by estado query param
+        estado = self.request.query_params.get('estado', '').strip()
+        if estado and estado != 'todas':
+            if estado == 'por_concluir':
+                queryset = queryset.filter(
+                    estado_calculado='activa',
+                    _sesiones_disponibles__lte=3
+                )
+            else:
+                queryset = queryset.filter(estado_calculado=estado)
         
         return queryset
 

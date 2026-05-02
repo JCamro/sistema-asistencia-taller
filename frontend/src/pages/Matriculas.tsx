@@ -155,10 +155,10 @@ function MatriculasPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  const fetchMatriculas = useCallback(async (page: number = 1, search?: string) => {
+  const fetchMatriculas = useCallback(async (page: number = 1, search?: string, estado?: string) => {
     if (!cicloActual) return;
     try {
-      const res = await getMatriculas(cicloActual.id, page, search);
+      const res = await getMatriculas(cicloActual.id, page, search, estado);
       const matriculasData = res.data.results || res.data;
       setMatriculas(Array.isArray(matriculasData) ? matriculasData : []);
       setTotalPages(Math.ceil((res.data.count || 0) / 20) || 1);
@@ -212,8 +212,13 @@ function MatriculasPage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchMatriculas(1), fetchLookups()]).finally(() => setLoading(false));
+    Promise.all([fetchMatriculas(1, '', 'todas'), fetchLookups()]).finally(() => setLoading(false));
   }, [cicloActual, fetchMatriculas, fetchLookups]);
+
+  // Trigger fetch when estado filter changes (no debounce needed)
+  useEffect(() => {
+    fetchMatriculas(1, debouncedSearch, filtroEstado);
+  }, [filtroEstado]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -223,7 +228,7 @@ function MatriculasPage() {
   }, [searchText]);
 
   useEffect(() => {
-    fetchMatriculas(1, debouncedSearch);
+    fetchMatriculas(1, debouncedSearch, filtroEstado);
   }, [fetchMatriculas, debouncedSearch]);
 
   const fetchHorarios = useCallback(async (tallerId: number) => {
@@ -334,22 +339,8 @@ function MatriculasPage() {
     ).slice(0, 10);
   }, [alumnoSearch, alumnos]);
 
-  const filteredMatriculas = useMemo(() => {
-    // Server-side text search via debouncedSearch
-    // Client-side filtering only handles estado filter
-    
-    return matriculas.filter((m) => {
-      // Filtro por estado
-      const coincideEstado = filtroEstado === 'todas' || 
-        (filtroEstado === 'activa' && m.estado_calculado === 'activa') ||
-        (filtroEstado === 'inactiva' && m.estado_calculado === 'inactiva') ||
-        (filtroEstado === 'concluida' && m.estado_calculado === 'concluida') ||
-        (filtroEstado === 'no_procesado' && m.estado_calculado === 'no_procesado') ||
-        (filtroEstado === 'por_concluir' && m.estado_calculado === 'activa' && m.sesiones_disponibles <= 3);
-      
-      return coincideEstado;
-    });
-  }, [matriculas, filtroEstado]);
+  // Data is already filtered by estado + text on the server side
+  // No client-side filtering needed — use matriculas directly
 
   const toggleHorario = (horarioId: number) => {
     const current = formData.horarios || [];
@@ -685,7 +676,7 @@ function MatriculasPage() {
               render: (m: Matricula) => formatLimaDate(m.fecha_matricula) || '-',
             },
           ]}
-          data={filteredMatriculas}
+          data={matriculas}
           keyField="id"
           actions={(m) => (
             <>

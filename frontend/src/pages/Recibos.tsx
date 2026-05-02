@@ -5,6 +5,22 @@ import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { getApiBaseUrl } from '../utils/api';
 import { useWindowWidth } from '../hooks/useWindowWidth';
 
+/** Fecha de hoy en Lima (YYYY-MM-DD) usando métodos locales del navegador */
+function getLimaToday(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Formatea un DateField string (YYYY-MM-DD) a DD/MM/YYYY sin conversión UTC */
+function formatReciboDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 interface Alumno {
   id: number;
   nombre: string;
@@ -80,7 +96,7 @@ interface ReciboFormData {
 
 const initialFormData: ReciboFormData = {
   numero: '',
-  fecha_emision: new Date().toISOString().split('T')[0],
+  fecha_emision: getLimaToday(),
   monto_bruto: '0',
   monto_total: '0',
   monto_pagado: '0',
@@ -125,7 +141,7 @@ function RecibosPage() {
       const [recibosRes, alumnosRes, matriculasRes] = await Promise.all([
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/recibos/?ordering=-id`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/alumnos/`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/matriculas/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/matriculas/?estado=no_procesado&page_size=200`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const [recibosData, alumnosData, matriculasData] = await Promise.all([
         recibosRes.json(),
@@ -136,22 +152,8 @@ function RecibosPage() {
       setRecibos(recibosArray);
       setAlumnos((alumnosData.results || alumnosData).filter((a: Alumno) => a.activo));
 
-      // Obtener IDs de matrículas que ya tienen un recibo pagado o pendiente
-      const matriculasConRecibo = new Set<number>();
-      for (const recibo of recibosArray) {
-        if (recibo.estado === 'pagado' || recibo.estado === 'pendiente') {
-          if (recibo.matricula_ids) {
-            for (const mid of recibo.matricula_ids) {
-              matriculasConRecibo.add(mid);
-            }
-          }
-        }
-      }
-
-      // Filtrar matrículas activas que NO tienen recibo pagado/pendiente
-      setMatriculas((matriculasData.results || matriculasData).filter(
-        (m: Matricula) => m.activo && !matriculasConRecibo.has(m.id)
-      ));
+      // Matriculas ya filtradas por el servidor (?estado=no_procesado = activas sin recibo pagado/pendiente)
+      setMatriculas(Array.isArray(matriculasData.results || matriculasData) ? (matriculasData.results || matriculasData) : []);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -175,18 +177,18 @@ function RecibosPage() {
 
     // Filtro por preset de fecha
     const hoy = new Date();
-    const hoyStr = hoy.toISOString().split('T')[0];
+    const hoyStr = getLimaToday();
     
     if (filtroPreset === 'hoy') {
       resultado = resultado.filter(r => r.fecha_emision === hoyStr);
     } else if (filtroPreset === 'semana') {
       const inicioSemana = new Date(hoy);
       inicioSemana.setDate(hoy.getDate() - hoy.getDay());
-      const inicioStr = inicioSemana.toISOString().split('T')[0];
+      const inicioStr = `${inicioSemana.getFullYear()}-${String(inicioSemana.getMonth() + 1).padStart(2, '0')}-${String(inicioSemana.getDate()).padStart(2, '0')}`;
       resultado = resultado.filter(r => r.fecha_emision >= inicioStr);
     } else if (filtroPreset === 'mes') {
       const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-      const inicioStr = inicioMes.toISOString().split('T')[0];
+      const inicioStr = `${inicioMes.getFullYear()}-${String(inicioMes.getMonth() + 1).padStart(2, '0')}-${String(inicioMes.getDate()).padStart(2, '0')}`;
       resultado = resultado.filter(r => r.fecha_emision >= inicioStr);
     } else if (filtroPreset === 'personalizado' && fechaDesde) {
       resultado = resultado.filter(r => {
@@ -537,7 +539,7 @@ function RecibosPage() {
             {
               key: 'fecha',
               label: 'Fecha',
-              render: (r: Recibo) => new Date(r.fecha_emision).toLocaleDateString('es-PE'),
+              render: (r: Recibo) => formatReciboDate(r.fecha_emision),
             },
             {
               key: 'paquete',
@@ -899,7 +901,7 @@ function RecibosPage() {
                 <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#111827' }}>Recibo {selectedRecibo.numero}</h2>
-                    <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{new Date(selectedRecibo.fecha_emision).toLocaleDateString('es-PE')}</p>
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{formatReciboDate(selectedRecibo.fecha_emision)}</p>
                   </div>
                   <span style={{ padding: '0.375rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '600', background: getEstadoColor(selectedRecibo.estado).bg, color: getEstadoColor(selectedRecibo.estado).color }}>
                     {selectedRecibo.estado.charAt(0).toUpperCase() + selectedRecibo.estado.slice(1)}
