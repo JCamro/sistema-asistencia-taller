@@ -107,6 +107,10 @@ export interface Matricula {
   sesiones_consumidas: number;
   sesiones_disponibles: number;
   fecha_matricula: string;
+  metodo_pago: string;
+  estado_calculado: 'activa' | 'inactiva' | 'concluida' | 'no_procesado';
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Asistencia {
@@ -258,11 +262,14 @@ export const updateCiclo = (id: number, data: Partial<Ciclo>) => api.patch(`/cic
 export const deleteCiclo = (id: number) => api.delete(`/ciclos/${id}/`);
 
 // Talleres (filtrados por ciclo)
-export const getTalleres = (cicloId?: number, page?: number) => {
-  const params = page ? `?page=${page}` : '';
+export const getTalleres = (cicloId?: number, page?: number, search?: string) => {
+  let params = '';
+  if (search) params += `search=${encodeURIComponent(search.slice(0, 100))}&`;
+  if (page) params += `page=${page}`;
+  const queryString = params ? `?${params.replace(/&$/, '')}` : '';
   return cicloId 
-    ? api.get<PaginatedResponse<Taller>>(`/ciclos/${cicloId}/talleres/${params}`)
-    : api.get<PaginatedResponse<Taller>>(`/talleres/${params}`);
+    ? api.get<PaginatedResponse<Taller>>(`/ciclos/${cicloId}/talleres/${queryString}`)
+    : api.get<PaginatedResponse<Taller>>(`/talleres/${queryString}`);
 };
 export const getTaller = (id: number) => api.get<Taller>(`/talleres/${id}/`);
 export const createTaller = (data: Partial<Taller>) => api.post('/talleres/', data);
@@ -270,11 +277,14 @@ export const updateTaller = (id: number, data: Partial<Taller>) => api.patch(`/t
 export const deleteTaller = (id: number) => api.delete(`/talleres/${id}/`);
 
 // Profesores (filtrados por ciclo)
-export const getProfesores = (cicloId?: number, page?: number) => {
-  const params = page ? `?page=${page}` : '';
+export const getProfesores = (cicloId?: number, page?: number, search?: string) => {
+  let params = '';
+  if (search) params += `search=${encodeURIComponent(search.slice(0, 100))}&`;
+  if (page) params += `page=${page}`;
+  const queryString = params ? `?${params.replace(/&$/, '')}` : '';
   return cicloId 
-    ? api.get<PaginatedResponse<Profesor>>(`/ciclos/${cicloId}/profesores/${params}`)
-    : api.get<PaginatedResponse<Profesor>>(`/profesores/${params}`);
+    ? api.get<PaginatedResponse<Profesor>>(`/ciclos/${cicloId}/profesores/${queryString}`)
+    : api.get<PaginatedResponse<Profesor>>(`/profesores/${queryString}`);
 };
 export const getProfesor = (id: number) => api.get<Profesor>(`/profesores/${id}/`);
 export const createProfesor = (data: Partial<Profesor>) => api.post('/profesores/', data);
@@ -282,11 +292,14 @@ export const updateProfesor = (id: number, data: Partial<Profesor>) => api.patch
 export const deleteProfesor = (id: number) => api.delete(`/profesores/${id}/`);
 
 // Alumnos (filtrados por ciclo)
-export const getAlumnos = (cicloId?: number, page?: number) => {
-  const params = page ? `?page=${page}` : '';
+export const getAlumnos = (cicloId?: number, page?: number, search?: string) => {
+  let params = '';
+  if (search) params += `search=${encodeURIComponent(search.slice(0, 100))}&`;
+  if (page) params += `page=${page}`;
+  const queryString = params ? `?${params.replace(/&$/, '')}` : '';
   return cicloId 
-    ? api.get<PaginatedResponse<Alumno>>(`/ciclos/${cicloId}/alumnos/${params}`)
-    : api.get<PaginatedResponse<Alumno>>(`/alumnos/${params}`);
+    ? api.get<PaginatedResponse<Alumno>>(`/ciclos/${cicloId}/alumnos/${queryString}`)
+    : api.get<PaginatedResponse<Alumno>>(`/alumnos/${queryString}`);
 };
 export const getAlumno = (id: number) => api.get<Alumno>(`/alumnos/${id}/`);
 export const createAlumno = (data: Partial<Alumno>) => api.post('/alumnos/', data);
@@ -306,11 +319,14 @@ export const updateHorario = (id: number, data: Partial<Horario>) => api.patch(`
 export const deleteHorario = (id: number) => api.delete(`/horarios/${id}/`);
 
 // Matriculas (paginado)
-export const getMatriculas = (cicloId?: number, page?: number) => {
-  const params = page ? `?page=${page}` : '';
+export const getMatriculas = (cicloId?: number, page?: number, search?: string) => {
+  let params = '';
+  if (search) params += `search=${encodeURIComponent(search.slice(0, 100))}&`;
+  if (page) params += `page=${page}`;
+  const queryString = params ? `?${params.replace(/&$/, '')}` : '';
   return cicloId 
-    ? api.get<PaginatedResponse<Matricula>>(`/ciclos/${cicloId}/matriculas/${params}`)
-    : api.get<PaginatedResponse<Matricula>>(`/matriculas/${params}`);
+    ? api.get<PaginatedResponse<Matricula>>(`/ciclos/${cicloId}/matriculas/${queryString}`)
+    : api.get<PaginatedResponse<Matricula>>(`/matriculas/${queryString}`);
 };
 export const getMatricula = (id: number) => api.get<Matricula>(`/matriculas/${id}/`);
 export const createMatricula = (data: Partial<Matricula>) => api.post('/matriculas/', data);

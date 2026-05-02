@@ -4,8 +4,10 @@ import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import TraspasoModal from '../components/ui/TraspasoModal';
 import { ResponsiveTable } from '../components/ui/ResponsiveTable';
+import { Pagination } from '../components/ui/Pagination';
 import api from '../api/axios';
 import { utcToLimaDate, formatLimaDate } from '../utils/timezone';
+import { getMatriculas } from '../api/endpoints';
 
 const HORAS_GRID = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 const DIAS_GRID = [
@@ -122,7 +124,8 @@ function MatriculasPage() {
   const [talleres, setTalleres] = useState<Taller[]>([]);
   const [horarios, setHorarios] = useState<Horario[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -148,26 +151,40 @@ function MatriculasPage() {
   const [menuAbierto, setMenuAbierto] = useState<number | null>(null);
   const [precioSugerido, setPrecioSugerido] = useState<number | null>(null);
   const [calculandoPrecio, setCalculandoPrecio] = useState(false);
-  const [matriculasHorarios, setMatriculasHorarios] = useState<Map<number, { dia_semana: number; hora_inicio: string }[]>>(new Map());
-  const [sortBy, setSortBy] = useState<'fecha' | 'nombre'>('fecha');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const fetchData = useCallback(async () => {
+  const fetchMatriculas = useCallback(async (page: number = 1, search?: string) => {
     if (!cicloActual) return;
     try {
-      const [matriculasRes, alumnosRes, talleresRes, horariosMatriculasRes] = await Promise.all([
-        api.get(`/ciclos/${cicloActual.id}/matriculas/`),
+      const res = await getMatriculas(cicloActual.id, page, search);
+      const matriculasData = res.data.results || res.data;
+      setMatriculas(Array.isArray(matriculasData) ? matriculasData : []);
+      setTotalPages(Math.ceil((res.data.count || 0) / 20) || 1);
+      setTotalCount(res.data.count || 0);
+      setCurrentPage(page);
+    } catch (err: any) {
+      console.error('Error fetching matriculas:', err);
+      if (err.response?.status === 401) {
+        showToast('Sesión expirada. Iniciá sesión de nuevo.', 'error');
+      }
+    }
+  }, [cicloActual, showToast]);
+
+  const fetchLookups = useCallback(async () => {
+    if (!cicloActual) return;
+    try {
+      const [alumnosRes, talleresRes, horariosMatriculasRes] = await Promise.all([
         api.get(`/ciclos/${cicloActual.id}/alumnos/`),
         api.get(`/ciclos/${cicloActual.id}/talleres/`),
         api.get(`/matriculas-horarios/?matricula__ciclo=${cicloActual.id}`),
       ]);
       
-      const matriculasData = matriculasRes.data.results || matriculasRes.data;
       const alumnosData = alumnosRes.data.results || alumnosRes.data;
       const talleresData = talleresRes.data.results || talleresRes.data;
       const horariosMatriculasData = horariosMatriculasRes.data.results || horariosMatriculasRes.data;
       
-      setMatriculas(Array.isArray(matriculasData) ? matriculasData : []);
       setAlumnos(Array.isArray(alumnosData) ? alumnosData.filter((a: Alumno) => a.activo) : []);
       setTalleres(Array.isArray(talleresData) ? talleresData.filter((t: Taller) => t.activo) : []);
       
@@ -185,16 +202,29 @@ function MatriculasPage() {
         }
         mhMap.get(matriculaId)!.push(horaInfo);
       });
-      setMatriculasHorarios(mhMap);
     } catch (err: any) {
-      console.error('Error fetching data:', err);
+      console.error('Error fetching lookups:', err);
       if (err.response?.status === 401) {
         showToast('Sesión expirada. Iniciá sesión de nuevo.', 'error');
       }
-    } finally {
-      setLoading(false);
     }
   }, [cicloActual, showToast]);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([fetchMatriculas(1), fetchLookups()]).finally(() => setLoading(false));
+  }, [cicloActual, fetchMatriculas, fetchLookups]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchText);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  useEffect(() => {
+    fetchMatriculas(1, debouncedSearch);
+  }, [fetchMatriculas, debouncedSearch]);
 
   const fetchHorarios = useCallback(async (tallerId: number) => {
     if (!cicloActual) return;
@@ -251,8 +281,6 @@ function MatriculasPage() {
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-
   useEffect(() => {
     const handleClickOutside = () => setMenuAbierto(null);
     if (menuAbierto !== null) {
@@ -306,115 +334,22 @@ function MatriculasPage() {
     ).slice(0, 10);
   }, [alumnoSearch, alumnos]);
 
-  // Mapa de días en español a número
-  const diaAMapa: Record<string, number> = {
-    'lunes': 0, 'lun': 0,
-    'martes': 1, 'mar': 1,
-    'miercoles': 2, 'miércoles': 2, 'mie': 2,
-    'jueves': 3, 'jue': 3,
-    'viernes': 4, 'vie': 4,
-    'sabado': 5, 'sábado': 5, 'sáb': 5, 'sab': 5,
-    'domingo': 6, 'dom': 6,
-  };
-
-  // Función para parsear hora (soporta "5pm", "5pm", "17:00", "17")
-  const parsearHora = (input: string): number | null => {
-    const inputLower = input.toLowerCase().trim();
-    // Caso: "5pm", "5pm", "6pm" etc
-    const pmMatch = inputLower.match(/^(\d{1,2})(pm)$/);
-    if (pmMatch) {
-      let hora = parseInt(pmMatch[1]);
-      if (hora === 12) return 12;
-      return hora + 12; // 5pm = 17, 6pm = 18
-    }
-    // Caso: "5am", "5am", "6am" etc
-    const amMatch = inputLower.match(/^(\d{1,2})(am)$/);
-    if (amMatch) {
-      let hora = parseInt(amMatch[1]);
-      if (hora === 12) return 0;
-      return hora;
-    }
-    // Caso: "17:00", "17:30", "17"
-    const horaMatch = inputLower.match(/^(\d{1,2})(?::(\d{2}))?$/);
-    if (horaMatch) {
-      return parseInt(horaMatch[1]);
-    }
-    return null;
-  };
-
   const filteredMatriculas = useMemo(() => {
-    const searchLower = search.toLowerCase().trim();
+    // Server-side text search via debouncedSearch
+    // Client-side filtering only handles estado filter
     
-    // Parsear búsqueda avanzada: buscar palabras clave de día y hora
-    const palabras = searchLower.split(/\s+/);
-    let filtroDia: number | null = null;
-    let filtroHora: number | null = null;
-    let filtroTexto: string[] = [];
-    
-    palabras.forEach(palabra => {
-      // Buscar día
-      if (diaAMapa[palabra] !== undefined) {
-        filtroDia = diaAMapa[palabra];
-      } else {
-        // Buscar hora
-        const horaParsed = parsearHora(palabra);
-        if (horaParsed !== null) {
-          filtroHora = horaParsed;
-        } else {
-          filtroTexto.push(palabra);
-        }
-      }
+    return matriculas.filter((m) => {
+      // Filtro por estado
+      const coincideEstado = filtroEstado === 'todas' || 
+        (filtroEstado === 'activa' && m.estado_calculado === 'activa') ||
+        (filtroEstado === 'inactiva' && m.estado_calculado === 'inactiva') ||
+        (filtroEstado === 'concluida' && m.estado_calculado === 'concluida') ||
+        (filtroEstado === 'no_procesado' && m.estado_calculado === 'no_procesado') ||
+        (filtroEstado === 'por_concluir' && m.estado_calculado === 'activa' && m.sesiones_disponibles <= 3);
+      
+      return coincideEstado;
     });
-
-    return matriculas
-      .filter((m) => {
-        // Filtro por texto (nombre alumno o taller) - solo si hay texto explícito
-        // Si solo hay día/hora, no filtrar por texto
-        const textoFiltro = filtroTexto.join(' ');
-        const coincideBusqueda = !textoFiltro || 
-          m.alumno_nombre.toLowerCase().includes(textoFiltro) || 
-          m.taller_nombre.toLowerCase().includes(textoFiltro);
-        
-        // Filtro por estado
-        const coincideEstado = filtroEstado === 'todas' || 
-          (filtroEstado === 'activa' && m.estado_calculado === 'activa') ||
-          (filtroEstado === 'inactiva' && m.estado_calculado === 'inactiva') ||
-          (filtroEstado === 'concluida' && m.estado_calculado === 'concluida') ||
-          (filtroEstado === 'no_procesado' && m.estado_calculado === 'no_procesado') ||
-          (filtroEstado === 'por_concluir' && m.estado_calculado === 'activa' && m.sesiones_disponibles <= 3);
-        
-        // Filtro por día y hora usando horarios de la matrícula
-        const horariosMh = matriculasHorarios.get(m.id) || [];
-        let coincideDia = true;
-        let coincideHora = true;
-        
-        if (filtroDia !== null) {
-          coincideDia = horariosMh.some(h => h.dia_semana === filtroDia);
-        }
-        if (filtroHora !== null) {
-          // Coincide si la hora de inicio está en la hora exacta
-          coincideHora = horariosMh.some(h => {
-            const horaInicio = parseInt(h.hora_inicio?.substring(0, 2) || '0');
-            return horaInicio === filtroHora;
-          });
-        }
-        
-        return coincideBusqueda && coincideEstado && coincideDia && coincideHora;
-      })
-      .sort((a, b) => {
-        // Ordenar
-        if (sortBy === 'fecha') {
-          const fechaA = a.created_at || '';
-          const fechaB = b.created_at || '';
-          return sortOrder === 'desc' ? fechaB.localeCompare(fechaA) : fechaA.localeCompare(fechaB);
-        } else {
-          // Por nombre A-Z
-          const nombreA = a.alumno_nombre.toLowerCase();
-          const nombreB = b.alumno_nombre.toLowerCase();
-          return sortOrder === 'desc' ? nombreB.localeCompare(nombreA) : nombreA.localeCompare(nombreB);
-        }
-      });
-  }, [matriculas, search, filtroEstado, matriculasHorarios, sortBy, sortOrder]);
+  }, [matriculas, filtroEstado]);
 
   const toggleHorario = (horarioId: number) => {
     const current = formData.horarios || [];
@@ -436,6 +371,10 @@ function MatriculasPage() {
     if (calcularFrecuencia === 0 || formData.sesiones_contratadas === 0) return 0;
     return Math.ceil(formData.sesiones_contratadas / calcularFrecuencia);
   }, [formData.sesiones_contratadas, calcularFrecuencia]);
+
+  const handlePageChange = (page: number) => {
+    fetchMatriculas(page);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -529,7 +468,7 @@ function MatriculasPage() {
       setEditingId(null);
       setFormData(initialFormData);
       showToast(editingId ? 'Matrícula actualizada' : 'Matrícula creada', 'success');
-      fetchData();
+      fetchMatriculas(currentPage);
     } catch (err: any) {
       console.error('Error saving matricula:', err);
       showApiError(err);
@@ -575,7 +514,9 @@ function MatriculasPage() {
     try {
       await api.delete(`/matriculas/${deletingId}/`);
       showToast('Matrícula eliminada', 'success');
-      fetchData();
+      // If deleting the last item on a page, go to previous page
+      const newPage = matriculas.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
+      fetchMatriculas(newPage);
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -626,7 +567,7 @@ function MatriculasPage() {
       setTraspasandoId(null);
       setTraspasandoNombre('');
       setTraspasandoTaller('');
-      fetchData();
+      fetchMatriculas(currentPage);
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -669,7 +610,7 @@ function MatriculasPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#111827', marginBottom: '0.25rem' }}>Matrículas</h1>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{matriculas.length} matrículas activas</p>
+          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{totalCount} matrículas activas</p>
         </div>
         <button onClick={openCreateModal} disabled={alumnos.length === 0 || talleres.length === 0} style={{ background: alumnos.length === 0 || talleres.length === 0 ? '#e5e7eb' : '#40E0D0', color: '#000000', border: 'none', padding: '0.625rem 1.25rem', borderRadius: '8px', fontWeight: '600', fontSize: '0.875rem', cursor: (alumnos.length === 0 || talleres.length === 0) ? 'not-allowed' : 'pointer' }}>
           <span>+</span> Nueva Matrícula
@@ -682,9 +623,9 @@ function MatriculasPage() {
         <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <input 
             type="text" 
-            placeholder="Buscar por alumno, taller, día (ej: viernes) u hora (ej: 5pm)..." 
-            value={search} 
-            onChange={(e) => setSearch(e.target.value)} 
+            placeholder="Buscar por alumno, taller..." 
+            value={searchText} 
+            onChange={(e) => setSearchText(e.target.value)} 
             style={{ flex: 1, minWidth: '200px', padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }} 
           />
           <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}>
@@ -695,21 +636,6 @@ function MatriculasPage() {
             <option value="inactiva">Inactivas</option>
             <option value="concluida">Concluidas</option>
           </select>
-          <select 
-            value={sortBy} 
-            onChange={(e) => setSortBy(e.target.value as 'fecha' | 'nombre')} 
-            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}
-          >
-            <option value="fecha">Ordenar: Fecha</option>
-            <option value="nombre">Ordenar: Nombre</option>
-          </select>
-          <button 
-            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-            style={{ padding: '0.625rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-            title={sortOrder === 'asc' ? 'Ascendente' : 'Descendente'}
-          >
-            {sortOrder === 'asc' ? '↑' : '↓'}
-          </button>
         </div>
         <ResponsiveTable<Matricula>
           columns={[
@@ -796,6 +722,16 @@ function MatriculasPage() {
           )}
           emptyMessage="No hay matrículas"
         />
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            onPageChange={handlePageChange}
+          />
+        )}
       </div>
 
       {showModal && (
