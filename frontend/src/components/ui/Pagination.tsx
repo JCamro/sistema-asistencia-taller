@@ -1,79 +1,139 @@
 import { memo } from 'react';
+import { useWindowWidth } from '../../hooks/useWindowWidth';
 
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
-  className?: string;
+  totalCount?: number;
+  pageSize?: number;
 }
 
 export const Pagination = memo(function Pagination({
   currentPage,
   totalPages,
   onPageChange,
-  className = '',
+  totalCount,
+  pageSize = 20,
 }: PaginationProps) {
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth <= 768;
+
   if (totalPages <= 1) return null;
 
   const pages = generatePages(currentPage, totalPages);
 
-  return (
-    <div className={`flex items-center justify-center gap-1 mt-6 ${className}`}>
-      {/* Previous button */}
-      <button
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-        className={`p-2 rounded-lg transition-colors ${
-          currentPage === 1
-            ? 'text-gray-300 cursor-not-allowed'
-            : 'hover:bg-gray-100 text-gray-600'
-        }`}
-        aria-label="Página anterior"
-      >
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-      </button>
+  const startItem = totalCount ? (currentPage - 1) * pageSize + 1 : 0;
+  const endItem = totalCount ? Math.min(currentPage * pageSize, totalCount) : 0;
 
-      {/* Page numbers */}
-      {pages.map((page, index) =>
-        page === '...' ? (
-          <span
-            key={`ellipsis-${index}`}
-            className="px-2 py-1 text-gray-400"
-          >
-            …
-          </span>
-        ) : (
-          <button
-            key={page}
-            onClick={() => onPageChange(page as number)}
-            className={`min-w-[40px] h-10 rounded-lg font-medium text-sm transition-colors ${
-              currentPage === page
-                ? 'bg-gold text-white'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            {page}
-          </button>
-        )
+  const btnBaseStyle: React.CSSProperties = {
+    minWidth: '40px',
+    height: '40px',
+    borderRadius: '8px',
+    border: '1px solid #e5e7eb',
+    background: 'white',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    fontFamily: 'inherit',
+    color: '#374151',
+    transition: 'background 0.15s ease',
+    outline: 'none',
+  };
+
+  const btnActiveStyle: React.CSSProperties = {
+    ...btnBaseStyle,
+    background: '#40E0D0',
+    border: '1px solid #40E0D0',
+    color: '#fff',
+    fontWeight: '600',
+    boxShadow: '0 1px 3px rgba(64,224,208,0.3)',
+  };
+
+  const btnDisabledStyle: React.CSSProperties = {
+    ...btnBaseStyle,
+    color: '#d1d5db',
+    cursor: 'not-allowed',
+    border: '1px solid #f3f4f6',
+    background: '#f9fafb',
+  };
+
+  const arrowBtnStyle = (disabled: boolean): React.CSSProperties => ({
+    ...btnBaseStyle,
+    padding: '0 0.5rem',
+    minWidth: '36px',
+    ...(disabled ? btnDisabledStyle : {}),
+  });
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', marginTop: '1.5rem' }}>
+      {/* Summary text */}
+      {totalCount !== undefined && (
+        <div style={{ fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center' }}>
+          {isMobile
+            ? `${startItem}-${endItem}/${totalCount}`
+            : `Mostrando ${startItem}-${endItem} de ${totalCount}`}
+        </div>
       )}
 
-      {/* Next button */}
-      <button
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className={`p-2 rounded-lg transition-colors ${
-          currentPage === totalPages
-            ? 'text-gray-300 cursor-not-allowed'
-            : 'hover:bg-gray-100 text-gray-600'
-        }`}
-        aria-label="Página siguiente"
-      >
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+        {/* Previous button */}
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          style={arrowBtnStyle(currentPage === 1)}
+          aria-label="Página anterior"
+          className="touch-target"
+        >
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        {/* Page numbers */}
+        {!isMobile && pages.map((page, index) =>
+          page === '...' ? (
+            <span
+              key={`ellipsis-${index}`}
+              style={{ padding: '0 0.25rem', color: '#9ca3af', fontSize: '0.875rem' }}
+            >
+              …
+            </span>
+          ) : (
+            <button
+              key={page}
+              onClick={() => onPageChange(page as number)}
+              style={currentPage === page ? btnActiveStyle : btnBaseStyle}
+              className="touch-target"
+            >
+              {page}
+            </button>
+          )
+        )}
+
+        {/* Mobile: compact page indicator */}
+        {isMobile && (
+          <span style={{ padding: '0 0.5rem', fontSize: '0.8125rem', color: '#6b7280', fontWeight: '500' }}>
+            {currentPage} / {totalPages}
+          </span>
+        )}
+
+        {/* Next button */}
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          style={arrowBtnStyle(currentPage === totalPages)}
+          aria-label="Página siguiente"
+          className="touch-target"
+        >
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 });

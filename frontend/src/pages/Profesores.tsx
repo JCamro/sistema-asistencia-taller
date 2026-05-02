@@ -41,7 +41,8 @@ function ProfesoresPage() {
   const isMobile = windowWidth < 768;
   const [profesores, setProfesores] = useState<Profesor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<ProfesorFormData>(initialFormData);
@@ -53,14 +54,16 @@ function ProfesoresPage() {
   const [historialLoading, setHistorialLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const fetchProfesores = useCallback(async (page: number = 1) => {
+  const fetchProfesores = useCallback(async (page: number = 1, search?: string) => {
     if (!cicloActual) return;
     setLoading(true);
     try {
-      const res = await getProfesores(cicloActual.id, page);
+      const res = await getProfesores(cicloActual.id, page, search);
       setProfesores(res.data.results || res.data);
       setTotalPages(Math.ceil((res.data.count || 0) / 20) || 1);
+      setTotalCount(res.data.count || 0);
       setCurrentPage(page);
     } catch (err) {
       console.error('Error:', err);
@@ -70,19 +73,19 @@ function ProfesoresPage() {
   }, [cicloActual]);
 
   useEffect(() => {
-    fetchProfesores(1);
-  }, [fetchProfesores]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchText);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  useEffect(() => {
+    fetchProfesores(1, debouncedSearch);
+  }, [fetchProfesores, debouncedSearch]);
 
   const handlePageChange = (page: number) => {
-    fetchProfesores(page);
+    fetchProfesores(page, debouncedSearch);
   };
-
-  const filteredProfesores = profesores.filter(
-    (p) =>
-      p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-      p.apellido.toLowerCase().includes(search.toLowerCase()) ||
-      p.dni?.includes(search)
-  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,7 +184,7 @@ function ProfesoresPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#111827', marginBottom: '0.25rem' }}>Profesores</h1>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{profesores.length} registrados</p>
+          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{totalCount} registrados</p>
         </div>
         <button
           onClick={openCreateModal}
@@ -209,8 +212,8 @@ function ProfesoresPage() {
           <input
             type="text"
             placeholder="Buscar por nombre, apellido o DNI..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
             style={{
               width: '100%',
               padding: '0.625rem 1rem',
@@ -267,7 +270,7 @@ function ProfesoresPage() {
               })() : '-',
             },
           ]}
-          data={filteredProfesores}
+          data={profesores}
           keyField="id"
           actions={(profesor) => (
             <>
@@ -295,7 +298,7 @@ function ProfesoresPage() {
               </button>
             </>
           )}
-          emptyMessage={search ? 'No se encontraron resultados' : 'No hay profesores registrados'}
+          emptyMessage={debouncedSearch ? 'No se encontraron resultados' : 'No hay profesores registrados'}
         />
 
         {/* Pagination */}
@@ -303,6 +306,7 @@ function ProfesoresPage() {
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
+            totalCount={totalCount}
             onPageChange={handlePageChange}
           />
         )}

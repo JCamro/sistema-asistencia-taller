@@ -32,7 +32,8 @@ function AlumnosPage() {
   const { showToast, showApiError } = useToast();
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<AlumnoFormData>(initialFormData);
@@ -41,16 +42,16 @@ function AlumnosPage() {
   const [deletingName, setDeletingName] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [sortBy, setSortBy] = useState<'nombre' | 'fecha'>('nombre');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [totalCount, setTotalCount] = useState(0);
 
-  const fetchAlumnos = useCallback(async (page: number = 1) => {
+  const fetchAlumnos = useCallback(async (page: number = 1, search?: string) => {
     if (!cicloActual) return;
     setLoading(true);
     try {
-      const res = await getAlumnos(cicloActual.id, page);
+      const res = await getAlumnos(cicloActual.id, page, search);
       setAlumnos(res.data.results || res.data);
       setTotalPages(Math.ceil((res.data.count || 0) / 20) || 1);
+      setTotalCount(res.data.count || 0);
       setCurrentPage(page);
     } catch (err) {
       console.error('Error:', err);
@@ -60,31 +61,19 @@ function AlumnosPage() {
   }, [cicloActual]);
 
   useEffect(() => {
-    fetchAlumnos(1);
-  }, [fetchAlumnos]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchText);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  useEffect(() => {
+    fetchAlumnos(1, debouncedSearch);
+  }, [fetchAlumnos, debouncedSearch]);
 
   const handlePageChange = (page: number) => {
-    fetchAlumnos(page);
+    fetchAlumnos(page, debouncedSearch);
   };
-
-  const filteredAlumnos = alumnos
-    .filter(
-      (a) =>
-        a.nombre.toLowerCase().includes(search.toLowerCase()) ||
-        a.apellido.toLowerCase().includes(search.toLowerCase()) ||
-        a.dni?.includes(search)
-    )
-    .sort((a, b) => {
-      if (sortBy === 'nombre') {
-        const nombreA = `${a.apellido} ${a.nombre}`.toLowerCase();
-        const nombreB = `${b.apellido} ${b.nombre}`.toLowerCase();
-        return sortOrder === 'asc' ? nombreA.localeCompare(nombreB) : nombreB.localeCompare(nombreA);
-      } else {
-        const fechaA = a.created_at || '';
-        const fechaB = b.created_at || '';
-        return sortOrder === 'asc' ? fechaA.localeCompare(fechaB) : fechaB.localeCompare(fechaA);
-      }
-    });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,7 +161,7 @@ function AlumnosPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#111827', marginBottom: '0.25rem' }}>Alumnos</h1>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{alumnos.length} registrados</p>
+          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{totalCount} registrados</p>
         </div>
         <button
           onClick={openCreateModal}
@@ -196,15 +185,14 @@ function AlumnosPage() {
       </div>
 
       <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-        <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
           <input
             type="text"
             placeholder="Buscar por nombre, apellido o DNI..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
             style={{
-              flex: 1,
-              minWidth: '200px',
+              width: '100%',
               padding: '0.625rem 1rem',
               border: '1px solid #d1d5db',
               borderRadius: '8px',
@@ -212,21 +200,6 @@ function AlumnosPage() {
               outline: 'none',
             }}
           />
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'nombre' | 'fecha')}
-            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}
-          >
-            <option value="nombre">Ordenar: Nombre</option>
-            <option value="fecha">Ordenar: Fecha</option>
-          </select>
-          <button
-            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-            style={{ padding: '0.625rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-            title={sortOrder === 'asc' ? 'Ascendente' : 'Descendente'}
-          >
-            {sortOrder === 'asc' ? '↑' : '↓'}
-          </button>
         </div>
 
         <ResponsiveTable<Alumno>
@@ -274,7 +247,7 @@ function AlumnosPage() {
               })() : '-',
             },
           ]}
-          data={filteredAlumnos}
+          data={alumnos}
           keyField="id"
           actions={(alumno) => (
             <>
@@ -295,7 +268,7 @@ function AlumnosPage() {
               </button>
             </>
           )}
-          emptyMessage={search ? 'No se encontraron resultados' : 'No hay alumnos registrados'}
+          emptyMessage={debouncedSearch ? 'No se encontraron resultados' : 'No hay alumnos registrados'}
         />
 
         {/* Pagination */}
@@ -303,12 +276,13 @@ function AlumnosPage() {
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
+            totalCount={totalCount}
             onPageChange={handlePageChange}
           />
         )}
       </div>
 
-      {filteredAlumnos.length === 0 && !search && (
+      {alumnos.length === 0 && !debouncedSearch && (
         <div style={{ padding: '2rem', textAlign: 'center' }}>
           <button
             onClick={() => setShowModal(true)}

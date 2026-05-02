@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ui/ConfirmModal';
+import { Pagination } from '../components/ui/Pagination';
 import { getTalleres, createTaller, updateTaller, deleteTaller } from '../api/endpoints';
 import type { Taller } from '../api/endpoints';
 import { useWindowWidth } from '../hooks/useWindowWidth';
@@ -29,7 +30,8 @@ function TalleresPage() {
   const isMobile = windowWidth < 768;
   const [talleres, setTalleres] = useState<Taller[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterTipo, setFilterTipo] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -37,12 +39,19 @@ function TalleresPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deletingName, setDeletingName] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const fetchTalleres = useCallback(async () => {
+  const fetchTalleres = useCallback(async (page: number = 1, search?: string) => {
     if (!cicloActual) return;
+    setLoading(true);
     try {
-      const res = await getTalleres(cicloActual.id);
+      const res = await getTalleres(cicloActual.id, page, search);
       setTalleres(res.data.results || res.data);
+      setTotalPages(Math.ceil((res.data.count || 0) / 20) || 1);
+      setTotalCount(res.data.count || 0);
+      setCurrentPage(page);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -51,14 +60,24 @@ function TalleresPage() {
   }, [cicloActual]);
 
   useEffect(() => {
-    fetchTalleres();
-  }, [fetchTalleres]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchText);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  useEffect(() => {
+    fetchTalleres(1, debouncedSearch);
+  }, [fetchTalleres, debouncedSearch]);
 
   const filteredTalleres = talleres.filter((t) => {
-    const matchesSearch = t.nombre.toLowerCase().includes(search.toLowerCase());
     const matchesTipo = !filterTipo || t.tipo === filterTipo;
-    return matchesSearch && matchesTipo;
+    return matchesTipo;
   });
+
+  const handlePageChange = (page: number) => {
+    fetchTalleres(page, debouncedSearch);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +93,7 @@ function TalleresPage() {
       setShowModal(false);
       setEditingId(null);
       setFormData(initialFormData);
-      fetchTalleres();
+      fetchTalleres(currentPage);
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -104,7 +123,7 @@ function TalleresPage() {
     setSaving(true);
     try {
       await deleteTaller(deletingId);
-      fetchTalleres();
+      fetchTalleres(currentPage);
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -142,7 +161,7 @@ function TalleresPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#111827', marginBottom: '0.25rem' }}>Talleres</h1>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{talleres.length} talleres disponibles</p>
+          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{totalCount} talleres disponibles</p>
         </div>
         <button
           onClick={openCreateModal}
@@ -169,8 +188,8 @@ function TalleresPage() {
         <input
           type="text"
           placeholder="Buscar talleres..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
           style={{
             flex: 1,
             maxWidth: '400px',
@@ -202,9 +221,9 @@ function TalleresPage() {
       {filteredTalleres.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '4rem', background: 'white', borderRadius: '12px', border: '1px dashed #d1d5db' }}>
           <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
-            {search || filterTipo ? 'No se encontraron talleres' : 'No hay talleres registrados'}
+            {debouncedSearch || filterTipo ? 'No se encontraron talleres' : 'No hay talleres registrados'}
           </p>
-          {!search && !filterTipo && (
+          {!debouncedSearch && !filterTipo && (
             <button onClick={openCreateModal} style={{ padding: '0.625rem 1.25rem', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
               Crear primer taller
             </button>
@@ -313,6 +332,16 @@ function TalleresPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={totalCount}
+          onPageChange={handlePageChange}
+        />
       )}
 
       {showModal && (

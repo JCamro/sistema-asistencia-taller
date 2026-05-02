@@ -52,7 +52,7 @@ sistema-asistencia-taller/
 │   │   ├── egreso_view.py           # select_related (no pagination)
 │   │   ├── dashboard_view.py        # KPIs via DB aggregations (Exists inline)
 │   │   ├── configuracion_view.py   # Singleton config
-│   │   ├── pagination.py            # StandardResultsSetPagination (page_size=20, max=100)
+│   │   ├── pagination.py            # StandardResultsSetPagination (page_size=20, max=200)
 │   │   ├── setup_view.py            # Initial setup endpoint
 │   │   └── portal/                   # Portal API (student-facing)
 │   │       ├── auth_view.py
@@ -194,7 +194,7 @@ core/urls.py — URL structure:
 
 ### Paginated vs Non-Paginated ViewSets
 
-Paginated (page_size=20, max=100): `Alumno, Profesor, Taller, Horario, Matricula, Asistencia, Ciclo, PagoProfesor`
+Paginated (page_size=20, max=200): `Alumno, Profesor, Taller, Horario, Matricula, Asistencia, Ciclo, PagoProfesor`
 
 Non-paginated (frontend expects direct array): `Recibo, PrecioPaquete, Egreso`
 
