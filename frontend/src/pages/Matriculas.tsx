@@ -154,11 +154,20 @@ function MatriculasPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [sortOrder, setSortOrder] = useState<'recent' | 'oldest' | 'alpha'>('recent');
 
-  const fetchMatriculas = useCallback(async (page: number = 1, search?: string, estado?: string) => {
+  const getOrderingParam = (order: string) => {
+    switch (order) {
+      case 'oldest': return 'fecha_matricula';
+      case 'alpha': return 'alumno__apellido';
+      default: return '-fecha_matricula';
+    }
+  };
+
+  const fetchMatriculas = useCallback(async (page: number = 1, search?: string, estado?: string, ordering?: string) => {
     if (!cicloActual) return;
     try {
-      const res = await getMatriculas(cicloActual.id, page, search, estado);
+      const res = await getMatriculas(cicloActual.id, page, search, estado, ordering);
       const matriculasData = res.data.results || res.data;
       setMatriculas(Array.isArray(matriculasData) ? matriculasData : []);
       setTotalPages(Math.ceil((res.data.count || 0) / 20) || 1);
@@ -212,12 +221,12 @@ function MatriculasPage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchMatriculas(1, '', 'todas'), fetchLookups()]).finally(() => setLoading(false));
-  }, [cicloActual, fetchMatriculas, fetchLookups]);
+    Promise.all([fetchMatriculas(1, '', 'todas', getOrderingParam(sortOrder)), fetchLookups()]).finally(() => setLoading(false));
+  }, [cicloActual, fetchMatriculas, fetchLookups, sortOrder]);
 
   // Trigger fetch when estado filter changes (no debounce needed)
   useEffect(() => {
-    fetchMatriculas(1, debouncedSearch, filtroEstado);
+    fetchMatriculas(1, debouncedSearch, filtroEstado, getOrderingParam(sortOrder));
   }, [filtroEstado]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -228,8 +237,8 @@ function MatriculasPage() {
   }, [searchText]);
 
   useEffect(() => {
-    fetchMatriculas(1, debouncedSearch, filtroEstado);
-  }, [fetchMatriculas, debouncedSearch]);
+    fetchMatriculas(1, debouncedSearch, filtroEstado, getOrderingParam(sortOrder));
+  }, [fetchMatriculas, debouncedSearch, sortOrder]);
 
   const fetchHorarios = useCallback(async (tallerId: number) => {
     if (!cicloActual) return;
@@ -364,7 +373,7 @@ function MatriculasPage() {
   }, [formData.sesiones_contratadas, calcularFrecuencia]);
 
   const handlePageChange = (page: number) => {
-    fetchMatriculas(page);
+    fetchMatriculas(page, debouncedSearch, filtroEstado, getOrderingParam(sortOrder));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -459,7 +468,7 @@ function MatriculasPage() {
       setEditingId(null);
       setFormData(initialFormData);
       showToast(editingId ? 'Matrícula actualizada' : 'Matrícula creada', 'success');
-      fetchMatriculas(currentPage);
+      fetchMatriculas(currentPage, debouncedSearch, filtroEstado, getOrderingParam(sortOrder));
     } catch (err: any) {
       console.error('Error saving matricula:', err);
       showApiError(err);
@@ -507,7 +516,7 @@ function MatriculasPage() {
       showToast('Matrícula eliminada', 'success');
       // If deleting the last item on a page, go to previous page
       const newPage = matriculas.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
-      fetchMatriculas(newPage);
+      fetchMatriculas(newPage, debouncedSearch, filtroEstado, getOrderingParam(sortOrder));
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -558,7 +567,7 @@ function MatriculasPage() {
       setTraspasandoId(null);
       setTraspasandoNombre('');
       setTraspasandoTaller('');
-      fetchMatriculas(currentPage);
+      fetchMatriculas(currentPage, debouncedSearch, filtroEstado, getOrderingParam(sortOrder));
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -626,6 +635,15 @@ function MatriculasPage() {
             <option value="no_procesado">No Procesado</option>
             <option value="inactiva">Inactivas</option>
             <option value="concluida">Concluidas</option>
+          </select>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as 'recent' | 'oldest' | 'alpha')}
+            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '160px' }}
+          >
+            <option value="recent">Más recientes</option>
+            <option value="oldest">Más antiguos</option>
+            <option value="alpha">Orden alfabético</option>
           </select>
         </div>
         <ResponsiveTable<Matricula>

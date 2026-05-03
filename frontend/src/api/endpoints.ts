@@ -292,9 +292,10 @@ export const updateProfesor = (id: number, data: Partial<Profesor>) => api.patch
 export const deleteProfesor = (id: number) => api.delete(`/profesores/${id}/`);
 
 // Alumnos (filtrados por ciclo)
-export const getAlumnos = (cicloId?: number, page?: number, search?: string) => {
+export const getAlumnos = (cicloId?: number, page?: number, search?: string, ordering?: string) => {
   let params = '';
   if (search) params += `search=${encodeURIComponent(search.slice(0, 100))}&`;
+  if (ordering) params += `ordering=${encodeURIComponent(ordering)}&`;
   if (page) params += `page=${page}`;
   const queryString = params ? `?${params.replace(/&$/, '')}` : '';
   return cicloId 
@@ -319,10 +320,11 @@ export const updateHorario = (id: number, data: Partial<Horario>) => api.patch(`
 export const deleteHorario = (id: number) => api.delete(`/horarios/${id}/`);
 
 // Matriculas (paginado)
-export const getMatriculas = (cicloId?: number, page?: number, search?: string, estado?: string) => {
+export const getMatriculas = (cicloId?: number, page?: number, search?: string, estado?: string, ordering?: string) => {
   let params = '';
   if (search) params += `search=${encodeURIComponent(search.slice(0, 100))}&`;
   if (estado && estado !== 'todas') params += `estado=${encodeURIComponent(estado)}&`;
+  if (ordering) params += `ordering=${encodeURIComponent(ordering)}&`;
   if (page) params += `page=${page}`;
   const queryString = params ? `?${params.replace(/&$/, '')}` : '';
   return cicloId 
