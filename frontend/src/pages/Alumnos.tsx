@@ -40,15 +40,24 @@ function AlumnosPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deletingName, setDeletingName] = useState<string>('');
+  const [sortOrder, setSortOrder] = useState<'recent' | 'oldest' | 'alpha'>('recent');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  const fetchAlumnos = useCallback(async (page: number = 1, search?: string) => {
+  const getOrderingParam = (order: string) => {
+    switch (order) {
+      case 'oldest': return 'created_at';
+      case 'alpha': return 'apellido,nombre';
+      default: return '-created_at';
+    }
+  };
+
+  const fetchAlumnos = useCallback(async (page: number = 1, search?: string, ordering?: string) => {
     if (!cicloActual) return;
     setLoading(true);
     try {
-      const res = await getAlumnos(cicloActual.id, page, search);
+      const res = await getAlumnos(cicloActual.id, page, search, ordering);
       setAlumnos(res.data.results || res.data);
       setTotalPages(Math.ceil((res.data.count || 0) / 20) || 1);
       setTotalCount(res.data.count || 0);
@@ -68,11 +77,11 @@ function AlumnosPage() {
   }, [searchText]);
 
   useEffect(() => {
-    fetchAlumnos(1, debouncedSearch);
-  }, [fetchAlumnos, debouncedSearch]);
+    fetchAlumnos(1, debouncedSearch, getOrderingParam(sortOrder));
+  }, [fetchAlumnos, debouncedSearch, sortOrder]);
 
   const handlePageChange = (page: number) => {
-    fetchAlumnos(page, debouncedSearch);
+    fetchAlumnos(page, debouncedSearch, getOrderingParam(sortOrder));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,7 +101,7 @@ function AlumnosPage() {
       setShowModal(false);
       setEditingId(null);
       setFormData(initialFormData);
-      fetchAlumnos(currentPage);
+      fetchAlumnos(currentPage, debouncedSearch, getOrderingParam(sortOrder));
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -125,7 +134,7 @@ function AlumnosPage() {
     setSaving(true);
     try {
       await deleteAlumno(deletingId);
-      fetchAlumnos(currentPage);
+      fetchAlumnos(currentPage, debouncedSearch, getOrderingParam(sortOrder));
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -185,14 +194,15 @@ function AlumnosPage() {
       </div>
 
       <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-        <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <input
             type="text"
             placeholder="Buscar por nombre, apellido o DNI..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             style={{
-              width: '100%',
+              flex: 1,
+              minWidth: '200px',
               padding: '0.625rem 1rem',
               border: '1px solid #d1d5db',
               borderRadius: '8px',
@@ -200,6 +210,22 @@ function AlumnosPage() {
               outline: 'none',
             }}
           />
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as 'recent' | 'oldest' | 'alpha')}
+            style={{
+              padding: '0.625rem 1rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '0.875rem',
+              background: 'white',
+              minWidth: '160px',
+            }}
+          >
+            <option value="recent">Más recientes</option>
+            <option value="oldest">Más antiguos</option>
+            <option value="alpha">Orden alfabético</option>
+          </select>
         </div>
 
         <ResponsiveTable<Alumno>

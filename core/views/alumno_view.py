@@ -13,8 +13,8 @@ class AlumnoViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['activo']
     search_fields = ['nombre', 'apellido', 'dni', 'email']
-    ordering_fields = ['apellido', 'nombre', 'fecha_registro']
-    ordering = ['apellido', 'nombre']
+    ordering_fields = ['apellido', 'nombre', 'created_at']
+    ordering = ['-created_at']
     pagination_class = StandardResultsSetPagination
 
     def get_serializer_class(self):
