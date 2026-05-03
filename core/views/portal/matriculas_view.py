@@ -2,8 +2,9 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.db.models import Case, When, Value, CharField, Exists, OuterRef
 
-from core.models import Matricula, MatriculaHorario
+from core.models import Matricula, MatriculaHorario, ReciboMatricula
 from core.serializers.portal.portal_serializers import PortalMatriculaSerializer, PortalMatriculaHistorialSerializer
 from core.authentication import PortalJWTAuthentication
 
@@ -31,13 +32,22 @@ class PortalMatriculasView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Get active enrollments
+        # Get active enrollments (annotate estado_calculado)
         activas = Matricula.objects.filter(
             alumno_id=alumno_id,
             ciclo_id=ciclo_id,
             activo=True,
             concluida=False
-        ).select_related('taller')
+        ).select_related('taller').annotate(
+            estado_calculado=Case(
+                When(Exists(ReciboMatricula.objects.filter(
+                    matricula=OuterRef('pk'),
+                    recibo__estado__in=['pagado', 'pendiente']
+                )), then=Value('activa')),
+                default=Value('no_procesado'),
+                output_field=CharField()
+            )
+        )
         
         # Get concluded enrollments
         concluidas = Matricula.objects.filter(
