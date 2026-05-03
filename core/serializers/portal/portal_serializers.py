@@ -46,12 +46,14 @@ class PortalMatriculaSerializer(serializers.ModelSerializer):
     ciclo_nombre = serializers.CharField(source='ciclo.nombre', read_only=True)
     sesiones_disponibles = serializers.IntegerField(read_only=True)
     sesiones_consumidas = serializers.IntegerField(read_only=True)
+    estado_calculado = serializers.CharField(read_only=True)
 
     class Meta:
         model = Matricula
         fields = [
             'id', 'taller', 'ciclo_nombre', 'sesiones_contratadas', 'sesiones_disponibles',
-            'sesiones_consumidas', 'concluida', 'precio_total', 'fecha_matricula'
+            'sesiones_consumidas', 'concluida', 'precio_total', 'fecha_matricula',
+            'estado_calculado'
         ]
 
 
@@ -80,7 +82,7 @@ class PortalAsistenciaSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Asistencia
-        fields = ['id', 'fecha', 'hora', 'estado', 'taller_nombre', 'horario_dia', 'horario_hora', 'profesor_nombre']
+        fields = ['id', 'fecha', 'hora', 'estado', 'taller_nombre', 'horario_dia', 'horario_hora', 'profesor_nombre', 'matricula']
     
     def get_horario_hora(self, obj):
         return f"{obj.horario.hora_inicio.strftime('%H:%M')}-{obj.horario.hora_fin.strftime('%H:%M')}"
@@ -108,12 +110,14 @@ class PortalReciboSerializer(serializers.ModelSerializer):
     saldo_pendiente = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     porcentaje_descuento = serializers.SerializerMethodField()
     paquetes = serializers.SerializerMethodField()
+    matricula_ids = serializers.SerializerMethodField()
     
     class Meta:
         model = Recibo
         fields = [
             'id', 'numero', 'monto_total', 'monto_pagado', 'saldo_pendiente',
-            'estado', 'fecha_emision', 'porcentaje_descuento', 'paquetes'
+            'estado', 'fecha_emision', 'porcentaje_descuento', 'paquetes',
+            'matricula_ids'
         ]
     
     def get_porcentaje_descuento(self, obj):
@@ -126,6 +130,12 @@ class PortalReciboSerializer(serializers.ModelSerializer):
         from core.models import ReciboMatricula
         recibo_matricula_ids = ReciboMatricula.objects.filter(recibo=obj).values_list('matricula__taller__nombre', flat=True)
         return list(recibo_matricula_ids)
+    
+    def get_matricula_ids(self, obj):
+        """Obtiene lista de IDs de matrícula desde ReciboMatricula."""
+        from core.models import ReciboMatricula
+        ids = ReciboMatricula.objects.filter(recibo=obj).values_list('matricula_id', flat=True)
+        return list(ids)
 
 
 class PortalDashboardSerializer(serializers.Serializer):
