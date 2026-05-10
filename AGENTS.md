@@ -45,7 +45,7 @@ sistema-asistencia-taller/
 │   │   ├── taller_view.py           # Pagination + select_related(ciclo)
 │   │   ├── horario_view.py           # Pagination + prefetch(matricula→alumno) + annotate(ocupacion)
 │   │   ├── matricula_view.py         # OuterRef inline fix + estado_calculado annotation
-│   │   ├── asistencia_view.py        # ViewSet + por_horario action (no standalone function)
+│   │   ├── asistencia_view.py        # ViewSet + por_horario (fecha_matricula validation) + recuperables (date-aware) + create
 │   │   ├── recibo_view.py           # select_related + prefetch (no pagination)
 │   │   ├── pago_profesor_view.py    # Pagination + select_related
 │   │   ├── precio_paquete_view.py   # select_related (no pagination)
@@ -73,7 +73,7 @@ sistema-asistencia-taller/
 │   ├── validators.py                # Shared validators (alphanumeric_validator)
 │   ├── serializer_helpers.py        # Shared serializer helpers (get_nombre_completo, get_alumnos_nombres, etc.)
 │   ├── urls.py                      # API routing (DRF DefaultRouter + manual paths)
-│   └── tests/                       # pytest-django tests (161 passing)
+│   └── tests/                       # pytest-django tests (170 passing)
 │       ├── test_pago_profesor_service.py
 │       ├── test_matricula_service.py
 │       ├── test_recibo_service.py
@@ -161,6 +161,7 @@ core/urls.py — URL structure:
     GET  /api/ciclos/<id>/matriculas/
     GET  /api/ciclos/<id>/asistencias/
     GET  /api/ciclos/<id>/asistencias/por-horario/  — AsistenciaViewSet.por_horario action
+    GET  /api/ciclos/<id>/asistencias/recuperables/ — AsistenciaViewSet.recuperables action
     GET  /api/ciclos/<id>/recibos/
     GET  /api/ciclos/<id>/precios/
     GET  /api/ciclos/<id>/egresos/
@@ -244,7 +245,7 @@ python manage.py migrate               # Apply migrations
 python manage.py shell                 # Django shell
 python manage.py seed_precios          # Seed default prices (idempotent)
 python manage.py createsuperuser       # Create admin user
-pytest                                  # Run all tests (161 passing)
+pytest                                  # Run all tests (170 passing)
 pytest --cov                            # With coverage
 ```
 
@@ -301,10 +302,12 @@ gunicorn config.asgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4
 - **Horario**: `ciclo`, `taller`, `profesor`, `dia_semana`, `hora_inicio/fin`, `cupo_maximo`, `tipo_pago` (tarifa fija/dinámico)
 
 ### Enrollment & Attendance
-- **Matricula**: `alumno`, `taller`, `sesiones_contratadas`, `precio_total`, `precio_por_sesion`, `concluida`, `metodo_pago`
+- **Matricula**: `alumno`, `taller`, `sesiones_contratadas`, `precio_total`, `precio_por_sesion`, `concluida`, `metodo_pago`, `fecha_matricula` (DateTimeField, used for attendance date validation)
 - **MatriculaHorario**: `matricula`, `horario` (junction: which schedule a student attends)
 - **Asistencia**: `matricula`, `horario`, `fecha`, `hora`, `estado` (presente/ausente/tardanza)
   - **Indexes**: `db_index=True` on `fecha` and `estado`; composite index on `(horario, fecha)`
+  - **Date validation**: `por_horario` excludes matrículas with `fecha_matricula > fecha` (can't register attendance before enrollment)
+  - **Recovery**: `recuperables` accepts optional `?fecha=` param — when provided, regulars enrolled after that date remain eligible for recovery
 
 ### Financial
 - **Recibo**: `numero`, `alumno` (nullable), `ciclo`, `monto_bruto`, `monto_total`, `monto_pagado`, `descuento`, `estado`, `paquete_aplicado`
@@ -390,7 +393,7 @@ Configurable via `Configuracion` table: `base_pago`, `tope_maximo`, `porcentaje_
 - **Performance**: Wrap **every** page component with `memo()`; generic components (`ResponsiveTable`, `DataCard`) are `memo()` wrapped
 - **Responsive**: Use `useWindowWidth()` hook + `ResponsiveTable` for table-to-cards pattern; `grid-template-columns: repeat(auto-fit, minmax(Xpx, 1fr))` for card grids; form grids: `repeat(auto-fit, minmax(200px, 1fr))`
 - **Dashboard**: Card de ingresos con toggle día/semana (usa `get_lima_date()` para timezone correcto)
-- **Matriculas**: Filtro "Por concluir (≤3 clases)" disponible
+- **Matriculas**: Filtros server-side: búsqueda por texto (alumno/DNI), dropdowns de taller/día/hora, estado (todas/activas/por-concluir/inactivas/concluidas/no-procesado), y ordenamiento. Filtro "Por concluir (≤3 clases)" disponible. Todos los filtros combinan con AND y resetean a página 1 al cambiar.
 - **Recibos**: Filtros por estado, presets de fecha (hoy/semana/mes), rango personalizado
 
 ### TypeScript Config
@@ -417,6 +420,9 @@ Configurable via `Configuracion` table: `base_pago`, `tope_maximo`, `porcentaje_
 12. **Responsive components**: Use `ResponsiveTable` for all list views with tables. Use `useWindowWidth()` for custom responsive logic.
 13. **Touch targets**: Minimum 44px height via `.touch-target` CSS class for all interactive elements on mobile.
 14. **Shared validators/helpers**: Import `alphanumeric_validator` from `core.validators` and helpers from `core.serializer_helpers`. Never duplicate validators or helper methods in serializers.
+15. **Attendance date validation**: `por_horario` filters out matrículas with `fecha_matricula > fecha_consulta` using `__date__lte`. Same-day enrollment is allowed. Recovery via `recuperables` bypasses this — use it as escape hatch for edge cases.
+16. **Matricula filters**: Server-side filters on `/matriculas` include `?dia=X` (0-6), `?hora=X` (8-21 via `__hour` lookup), `?taller=X` (via `filterset_fields`), `?estado=X`, and `?search=X`. Frontend filter bar: [Search] [Taller ▼] [Día ▼] [Hora ▼] [Estado ▼] [Orden ▼]. All filters reset to page 1 on change.
+17. **Django dev server**: Python code changes require manual server restart. Vite frontend has HMR.
 
 ---
 

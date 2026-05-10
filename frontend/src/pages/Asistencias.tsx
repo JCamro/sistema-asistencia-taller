@@ -294,7 +294,7 @@ function AsistenciasPage() {
     try {
       // Usar el endpoint de recuperables que filtra correctamente
       const res = await fetch(
-        `${apiBase}/api/ciclos/${cicloActual.id}/asistencias/recuperables/?horario_id=${horarioSeleccionado}`,
+        `${apiBase}/api/ciclos/${cicloActual.id}/asistencias/recuperables/?horario_id=${horarioSeleccionado}&fecha=${fecha}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) {

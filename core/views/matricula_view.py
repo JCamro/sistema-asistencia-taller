@@ -69,6 +69,36 @@ class MatriculaViewSet(viewsets.ModelViewSet):
             else:
                 queryset = queryset.filter(estado_calculado=estado)
         
+        # Filter by dia_semana (day of week) via MatriculaHorario junction
+        dia = self.request.query_params.get('dia', '').strip()
+        if dia:
+            try:
+                dia_int = int(dia)
+                if 0 <= dia_int <= 6:
+                    queryset = queryset.filter(
+                        Exists(MatriculaHorario.objects.filter(
+                            matricula=OuterRef('pk'),
+                            horario__dia_semana=dia_int
+                        ))
+                    )
+            except (ValueError, TypeError):
+                pass  # Invalid dia value, ignore filter
+        
+        # Filter by hora_inicio (hour) via MatriculaHorario junction
+        hora = self.request.query_params.get('hora', '').strip()
+        if hora:
+            try:
+                hora_int = int(hora)
+                if 8 <= hora_int <= 21:
+                    queryset = queryset.filter(
+                        Exists(MatriculaHorario.objects.filter(
+                            matricula=OuterRef('pk'),
+                            horario__hora_inicio__hour=hora_int
+                        ))
+                    )
+            except (ValueError, TypeError):
+                pass  # Invalid hora value, ignore filter
+        
         return queryset
 
     def create(self, request, *args, **kwargs):

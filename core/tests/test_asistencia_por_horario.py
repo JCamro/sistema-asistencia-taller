@@ -3,7 +3,7 @@ Tests TDD para core/views/asistencia_view.py - Acción por_horario.
 
 Expone bugs en la lógica de listado de asistencia por horario.
 """
-from datetime import date, time
+from datetime import date, datetime, time, timezone as dt_timezone
 from decimal import Decimal
 
 from django.test import TestCase
@@ -46,7 +46,8 @@ class TestAsistenciaPorHorario(TestCase):
         self.matricula = Matricula.objects.create(
             ciclo=self.ciclo, alumno=self.alumno, taller=self.taller,
             sesiones_contratadas=10, precio_total=Decimal('200.00'),
-            precio_por_sesion=Decimal('20.00'), metodo_pago='efectivo', activo=True
+            precio_por_sesion=Decimal('20.00'), metodo_pago='efectivo', activo=True,
+            fecha_matricula=datetime(2024, 1, 1, tzinfo=dt_timezone.utc)
         )
         MatriculaHorario.objects.create(matricula=self.matricula, horario=self.horario)
 
@@ -184,3 +185,85 @@ class TestAsistenciaPorHorario(TestCase):
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]['alumno_id'], self.alumno.id)
         self.assertTrue(data[0]['es_recuperacion'])
+
+    def test_matricula_despues_de_fecha_no_aparece(self):
+        """Matrícula con fecha_matricula > fecha de consulta no debe aparecer."""
+        self.matricula.fecha_matricula = datetime(2024, 6, 1, tzinfo=dt_timezone.utc)
+        self.matricula.save(update_fields=['fecha_matricula'])
+        url = f'/api/ciclos/{self.ciclo.id}/asistencias/por-horario/?horario_id={self.horario.id}&fecha=2024-03-01'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ids = [item['alumno_id'] for item in response.data]
+        self.assertNotIn(self.alumno.id, ids,
+                         "Matrícula con fecha_matricula posterior no debe aparecer")
+
+    def test_matricula_mismo_dia_aparece(self):
+        """Matrícula con fecha_matricula igual a la fecha de consulta DEBE aparecer."""
+        self.matricula.fecha_matricula = datetime(2024, 3, 1, 10, 0, tzinfo=dt_timezone.utc)
+        self.matricula.save(update_fields=['fecha_matricula'])
+        url = f'/api/ciclos/{self.ciclo.id}/asistencias/por-horario/?horario_id={self.horario.id}&fecha=2024-03-01'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ids = [item['alumno_id'] for item in response.data]
+        self.assertIn(self.alumno.id, ids,
+                      "Matrícula con fecha_matricula igual a la fecha de consulta DEBE aparecer")
+
+    def test_fecha_invalida_retorna_400(self):
+        """Fecha con formato inválido retorna 400."""
+        url = f'/api/ciclos/{self.ciclo.id}/asistencias/por-horario/?horario_id={self.horario.id}&fecha=abc'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+
+    # --- Tests para recuperables con filtro por fecha_matricula ---
+
+    def test_recuperables_incluye_regulares_posteriores_a_fecha(self):
+        """Un regular con fecha_matricula > fecha de consulta debe ser elegible."""
+        alumno_tarde = Alumno.objects.create(
+            nombre='Tarde', apellido='Recuperable', ciclo=self.ciclo, activo=True
+        )
+        matricula_tarde = Matricula.objects.create(
+            alumno=alumno_tarde, ciclo=self.ciclo, taller=self.taller,
+            sesiones_contratadas=8, precio_total=Decimal('100.00'), precio_por_sesion=Decimal('12.50'),
+            fecha_matricula=datetime(2024, 3, 15, tzinfo=dt_timezone.utc)  # Después de 2024-03-01
+        )
+        MatriculaHorario.objects.create(matricula=matricula_tarde, horario=self.horario)
+
+        url = f'/api/ciclos/{self.ciclo.id}/asistencias/recuperables/?horario_id={self.horario.id}&fecha=2024-03-01'
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        nombres = [a['alumno_nombre'] for a in response.data]
+        self.assertIn('Recuperable, Tarde', nombres,
+                      "Regular inscrito DESPUÉS de la fecha debe ser elegible para recuperación")
+
+    def test_recuperables_excluye_regulares_anteriores_a_fecha(self):
+        """Un regular con fecha_matricula <= fecha de consulta NO debe ser elegible."""
+        alumno_viejo = Alumno.objects.create(
+            nombre='Viejo', apellido='Regular', ciclo=self.ciclo, activo=True
+        )
+        matricula_vieja = Matricula.objects.create(
+            alumno=alumno_viejo, ciclo=self.ciclo, taller=self.taller,
+            sesiones_contratadas=8, precio_total=Decimal('100.00'), precio_por_sesion=Decimal('12.50'),
+            fecha_matricula=datetime(2024, 1, 15, tzinfo=dt_timezone.utc)  # Antes de 2024-03-01
+        )
+        MatriculaHorario.objects.create(matricula=matricula_vieja, horario=self.horario)
+
+        url = f'/api/ciclos/{self.ciclo.id}/asistencias/recuperables/?horario_id={self.horario.id}&fecha=2024-03-01'
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        nombres = [a['alumno_nombre'] for a in response.data]
+        self.assertNotIn('Regular, Viejo', nombres,
+                         "Regular inscrito ANTES de la fecha NO debe ser elegible para recuperación")
+
+    def test_recuperables_sin_fecha_backward_compat(self):
+        """Sin parámetro fecha, todos los regulares son excluidos (backward compat)."""
+        url = f'/api/ciclos/{self.ciclo.id}/asistencias/recuperables/?horario_id={self.horario.id}'
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        nombres = [a['alumno_nombre'] for a in response.data]
+        # El alumno regular creado en setUp (Pérez, Juan) debe estar excluido
+        self.assertNotIn('Pérez, Juan', nombres,
+                         "Sin fecha, los regulares deben ser excluidos (backward compat)")

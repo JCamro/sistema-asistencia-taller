@@ -1,3 +1,5 @@
+from datetime import date
+
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -48,6 +50,11 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Faltan parámetros: ciclo_id, horario_id, fecha'}, status=400)
         
         try:
+            fecha_obj = date.fromisoformat(fecha)
+        except (ValueError, TypeError):
+            return Response({'error': 'Fecha inválida. Use formato YYYY-MM-DD.'}, status=400)
+        
+        try:
             horario = Horario.objects.get(id=horario_id)
         except Horario.DoesNotExist:
             return Response({'error': 'Horario no encontrado'}, status=404)
@@ -56,15 +63,17 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
             return Response({'error': 'El horario no pertenece a este ciclo'}, status=400)
         
         matriculas_horario = MatriculaHorario.objects.filter(
-            horario_id=horario_id
+            horario_id=horario_id,
+            matricula__activo=True,
+            matricula__concluida=False,
+            matricula__fecha_matricula__isnull=False,
+            matricula__fecha_matricula__date__lte=fecha_obj,
         ).select_related('matricula__alumno', 'matricula__taller')
         
         resultados = []
         alumnos_regulares_ids = set()
         
         for mh in matriculas_horario:
-            if not mh.matricula.activo or mh.matricula.concluida:
-                continue
             asistencia = Asistencia.objects.filter(
                 matricula=mh.matricula,
                 horario_id=horario_id,
@@ -132,9 +141,22 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
             return Response({'error': 'El horario no pertenece a este ciclo'}, status=400)
 
         # Alumnos ya registrados regularmente en este horario
-        matriculas_horario = MatriculaHorario.objects.filter(
-            horario_id=horario_id
-        ).select_related('matricula__alumno', 'matricula__taller')
+        # Si se proporciona fecha, solo excluir regulares inscritos en o antes de esa fecha.
+        # Los inscritos después son elegibles para recuperación (no existían en esa fecha).
+        if fecha:
+            try:
+                fecha_obj = date.fromisoformat(fecha)
+            except (ValueError, TypeError):
+                return Response({'error': 'Fecha inválida. Use formato YYYY-MM-DD.'}, status=400)
+            matriculas_horario = MatriculaHorario.objects.filter(
+                horario_id=horario_id,
+                matricula__fecha_matricula__isnull=False,
+                matricula__fecha_matricula__date__lte=fecha_obj,
+            ).select_related('matricula__alumno', 'matricula__taller')
+        else:
+            matriculas_horario = MatriculaHorario.objects.filter(
+                horario_id=horario_id
+            ).select_related('matricula__alumno', 'matricula__taller')
 
         alumnos_regulares_ids = set(mh.matricula.alumno_id for mh in matriculas_horario)
 

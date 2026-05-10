@@ -155,6 +155,9 @@ function MatriculasPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [sortOrder, setSortOrder] = useState<'recent' | 'oldest' | 'alpha'>('recent');
+  const [filtroTaller, setFiltroTaller] = useState<number | ''>('');
+  const [filtroDia, setFiltroDia] = useState<number | ''>('');
+  const [filtroHora, setFiltroHora] = useState<number | ''>('');
 
   const getOrderingParam = (order: string) => {
     switch (order) {
@@ -164,10 +167,10 @@ function MatriculasPage() {
     }
   };
 
-  const fetchMatriculas = useCallback(async (page: number = 1, search?: string, estado?: string, ordering?: string) => {
+  const fetchMatriculas = useCallback(async (page: number = 1, search?: string, estado?: string, ordering?: string, taller?: number | string, dia?: number | string, hora?: number | string) => {
     if (!cicloActual) return;
     try {
-      const res = await getMatriculas(cicloActual.id, page, search, estado, ordering);
+      const res = await getMatriculas(cicloActual.id, page, search, estado, ordering, taller, dia, hora);
       const matriculasData = res.data.results || res.data;
       setMatriculas(Array.isArray(matriculasData) ? matriculasData : []);
       setTotalPages(Math.ceil((res.data.count || 0) / 20) || 1);
@@ -221,13 +224,18 @@ function MatriculasPage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchMatriculas(1, '', 'todas', getOrderingParam(sortOrder)), fetchLookups()]).finally(() => setLoading(false));
+    Promise.all([fetchMatriculas(1, '', 'todas', getOrderingParam(sortOrder), filtroTaller, filtroDia, filtroHora), fetchLookups()]).finally(() => setLoading(false));
   }, [cicloActual, fetchMatriculas, fetchLookups, sortOrder]);
 
   // Trigger fetch when estado filter changes (no debounce needed)
   useEffect(() => {
-    fetchMatriculas(1, debouncedSearch, filtroEstado, getOrderingParam(sortOrder));
+    fetchMatriculas(1, debouncedSearch, filtroEstado, getOrderingParam(sortOrder), filtroTaller, filtroDia, filtroHora);
   }, [filtroEstado]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Trigger fetch when new filters change (reset to page 1)
+  useEffect(() => {
+    fetchMatriculas(1, debouncedSearch, filtroEstado, getOrderingParam(sortOrder), filtroTaller, filtroDia, filtroHora);
+  }, [filtroTaller, filtroDia, filtroHora]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -237,8 +245,8 @@ function MatriculasPage() {
   }, [searchText]);
 
   useEffect(() => {
-    fetchMatriculas(1, debouncedSearch, filtroEstado, getOrderingParam(sortOrder));
-  }, [fetchMatriculas, debouncedSearch, sortOrder]);
+    fetchMatriculas(1, debouncedSearch, filtroEstado, getOrderingParam(sortOrder), filtroTaller, filtroDia, filtroHora);
+  }, [fetchMatriculas, debouncedSearch, sortOrder, filtroTaller, filtroDia, filtroHora]);
 
   const fetchHorarios = useCallback(async (tallerId: number) => {
     if (!cicloActual) return;
@@ -373,7 +381,7 @@ function MatriculasPage() {
   }, [formData.sesiones_contratadas, calcularFrecuencia]);
 
   const handlePageChange = (page: number) => {
-    fetchMatriculas(page, debouncedSearch, filtroEstado, getOrderingParam(sortOrder));
+    fetchMatriculas(page, debouncedSearch, filtroEstado, getOrderingParam(sortOrder), filtroTaller, filtroDia, filtroHora);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -468,7 +476,7 @@ function MatriculasPage() {
       setEditingId(null);
       setFormData(initialFormData);
       showToast(editingId ? 'Matrícula actualizada' : 'Matrícula creada', 'success');
-      fetchMatriculas(currentPage, debouncedSearch, filtroEstado, getOrderingParam(sortOrder));
+      fetchMatriculas(editingId ? currentPage : 1, debouncedSearch, filtroEstado, getOrderingParam(sortOrder), filtroTaller, filtroDia, filtroHora);
     } catch (err: any) {
       console.error('Error saving matricula:', err);
       showApiError(err);
@@ -516,7 +524,7 @@ function MatriculasPage() {
       showToast('Matrícula eliminada', 'success');
       // If deleting the last item on a page, go to previous page
       const newPage = matriculas.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
-      fetchMatriculas(newPage, debouncedSearch, filtroEstado, getOrderingParam(sortOrder));
+      fetchMatriculas(newPage, debouncedSearch, filtroEstado, getOrderingParam(sortOrder), filtroTaller, filtroDia, filtroHora);
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -567,7 +575,7 @@ function MatriculasPage() {
       setTraspasandoId(null);
       setTraspasandoNombre('');
       setTraspasandoTaller('');
-      fetchMatriculas(currentPage, debouncedSearch, filtroEstado, getOrderingParam(sortOrder));
+      fetchMatriculas(currentPage, debouncedSearch, filtroEstado, getOrderingParam(sortOrder), filtroTaller, filtroDia, filtroHora);
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -628,6 +636,36 @@ function MatriculasPage() {
             onChange={(e) => setSearchText(e.target.value)} 
             style={{ flex: 1, minWidth: '200px', padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }} 
           />
+          <select 
+            value={filtroTaller} 
+            onChange={(e) => setFiltroTaller(e.target.value ? Number(e.target.value) : '')} 
+            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}
+          >
+            <option value="">Todos los talleres</option>
+            {talleres.map(t => (
+              <option key={t.id} value={t.id}>{t.nombre}</option>
+            ))}
+          </select>
+          <select 
+            value={filtroDia} 
+            onChange={(e) => setFiltroDia(e.target.value !== '' ? Number(e.target.value) : '')} 
+            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '120px' }}
+          >
+            <option value="">Todos los días</option>
+            {DIAS_GRID.map(d => (
+              <option key={d.value} value={d.value}>{d.label}</option>
+            ))}
+          </select>
+          <select 
+            value={filtroHora} 
+            onChange={(e) => setFiltroHora(e.target.value !== '' ? Number(e.target.value) : '')} 
+            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '120px' }}
+          >
+            <option value="">Todas las horas</option>
+            {HORAS_GRID.map(h => (
+              <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+            ))}
+          </select>
           <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}>
             <option value="todas">Todas</option>
             <option value="activa">Activas</option>
