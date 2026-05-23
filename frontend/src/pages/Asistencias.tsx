@@ -117,7 +117,7 @@ function AsistenciasPage() {
     }).then(r => r.json()).then(data => {
       setAsistencias(data.results || data);
     });
-  }, [cicloActual]);
+  }, [cicloActual, fecha]);
 
   const diaSemana = useMemo(() => {
     const jsDay = new Date(fecha + 'T00:00:00').getDay();
@@ -347,6 +347,12 @@ function AsistenciasPage() {
       setBusquedaRecuperacion('');
       setResultadosBusqueda([]);
       await fetchAlumnosHorario();
+      await fetchTodosAlumnos();
+      const resList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await resList.json();
+      setAsistencias((data.results || data).filter((a: Asistencia) => a.activo !== false));
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
