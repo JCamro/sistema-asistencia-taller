@@ -207,11 +207,17 @@ class HoraTrabajadaService:
         if tipo == 'hora_extra' and data.get('horario'):
             raise ValueError("Hora extra no debe tener horario asociado.")
 
-        profesor_id = data.get('profesor')
-        try:
-            profesor = Profesor.objects.get(id=profesor_id, activo=True)
-        except Profesor.DoesNotExist:
-            raise ValueError("Profesor no encontrado o inactivo.")
+        profesor_value = data.get('profesor')
+        # DRF validated_data pasa la instancia del FK, no el ID
+        if isinstance(profesor_value, Profesor):
+            profesor = profesor_value
+            if not profesor.activo:
+                raise ValueError("Profesor no encontrado o inactivo.")
+        else:
+            try:
+                profesor = Profesor.objects.get(id=profesor_value, activo=True)
+            except Profesor.DoesNotExist:
+                raise ValueError("Profesor no encontrado o inactivo.")
 
         fecha = data.get('fecha')
         if fecha and fecha > date.today():

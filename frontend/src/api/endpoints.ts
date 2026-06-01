@@ -383,6 +383,67 @@ export const createPrecio = (data: Partial<PrecioPaquete>) => api.post('/precios
 export const updatePrecio = (id: number, data: Partial<PrecioPaquete>) => api.patch(`/precios/${id}/`, data);
 export const deletePrecio = (id: number) => api.delete(`/precios/${id}/`);
 
+// HoraTrabajada
+export interface HoraTrabajada {
+  id: number;
+  profesor: number;
+  profesor_nombre: string;
+  ciclo: number;
+  ciclo_nombre: string;
+  horario: number | null;
+  fecha: string;
+  tipo: string;
+  tipo_display: string;
+  horas_trabajadas: number;
+  estado: string;
+  estado_display: string;
+  created_from: string;
+  created_from_display: string;
+  num_alumnos: number;
+  valor_generado: number | string;
+  monto_profesor: number | string;
+}
+
+export interface HoraTrabajadaDetail extends HoraTrabajada {
+  horario_info: string | null;
+  monto_base: number | string;
+  monto_adicional: number | string;
+  ganancia_taller: number | string;
+  config_snapshot: Record<string, unknown> | null;
+  observacion: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const getHorasTrabajadas = (cicloId?: number, params?: string) => {
+  const query = params ? `?${params}` : '';
+  return cicloId
+    ? api.get<PaginatedResponse<HoraTrabajada>>(`/ciclos/${cicloId}/horas-trabajadas/${query}`)
+    : api.get<PaginatedResponse<HoraTrabajada>>(`/horas-trabajadas/${query}`);
+};
+
+export const getHoraTrabajada = (id: number) =>
+  api.get<HoraTrabajadaDetail>(`/horas-trabajadas/${id}/`);
+
+export const createHoraTrabajada = (data: Partial<HoraTrabajadaDetail>) =>
+  api.post<HoraTrabajadaDetail>('/horas-trabajadas/', data);
+
+export const aprobarHoraTrabajada = (id: number) =>
+  api.patch(`/horas-trabajadas/${id}/aprobar/`);
+
+export const rechazarHoraTrabajada = (id: number) =>
+  api.patch(`/horas-trabajadas/${id}/rechazar/`);
+
+export const deleteHoraTrabajada = (id: number) =>
+  api.delete(`/horas-trabajadas/${id}/`);
+
+export const generarHorasTrabajadas = (cicloId: number, fechaInicio: string, fechaFin: string) =>
+  api.post('/horas-trabajadas/generar/', {
+    ciclo_id: cicloId,
+    fecha_inicio: fechaInicio,
+    fecha_fin: fechaFin,
+  });
+
 // Egresos
 export const getEgresos = (cicloId?: number) =>
   cicloId ? api.get<Egreso[]>(`/ciclos/${cicloId}/egresos/`) : api.get<Egreso[]>('/egresos/');
