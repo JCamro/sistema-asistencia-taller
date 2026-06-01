@@ -83,3 +83,13 @@ class PagoProfesorAdmin(admin.ModelAdmin):
 @admin.register(Configuracion)
 class ConfiguracionAdmin(admin.ModelAdmin):
     list_display = ['id', 'ciclo_activo', 'updated_at']
+
+
+from .models import HoraTrabajada
+
+
+@admin.register(HoraTrabajada)
+class HoraTrabajadaAdmin(admin.ModelAdmin):
+    list_display = ['profesor', 'ciclo', 'fecha', 'tipo', 'horas_trabajadas', 'estado', 'created_from']
+    list_filter = ['tipo', 'estado', 'fecha']
+    readonly_fields = ['config_snapshot', 'created_at']

@@ -13,3 +13,4 @@ from .pago_profesor_view import PagoProfesorViewSet, calcular_pago_profesor, det
 from .dashboard_view import dashboard_kpis, dashboard_ingresos
 from .precio_paquete_view import PrecioPaqueteViewSet
 from .egreso_view import EgresoViewSet
+from .hora_trabajada_view import HoraTrabajadaViewSet
