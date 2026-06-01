@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from django.db import transaction
 
-from ..models import Asistencia, PagoProfesor, PagoProfesorDetalle, Profesor, Configuracion
+from ..models import Asistencia, HoraTrabajada, PagoProfesor, PagoProfesorDetalle, Profesor, Configuracion
 from ..constants import BASE_PAGO, TOPE_MAXIMO, PORCENTAJE_ADICIONAL
 
 
@@ -35,20 +35,28 @@ class PagoProfesorService:
 
     @classmethod
     @transaction.atomic
-    def calcular_periodo(cls, ciclo, fecha_inicio: date, fecha_fin: date) -> dict:
+    def calcular_periodo(cls, ciclo, fecha_inicio: date, fecha_fin: date, regenerar_horas: bool = True) -> dict:
         """
         Calcula los pagos a todos los profesores para un período determinado.
         
-        Limpia los datos anteriores del período y recalcula desde cero.
+        Lee desde HoraTrabajada (aprobadas) en lugar de Asistencia directamente.
+        Primero genera/actualiza las HoraTrabajada desde las asistencias,
+        luego agrega los registros aprobados para calcular los pagos.
         
         Args:
             ciclo: Instancia del Ciclo
             fecha_inicio: Fecha de inicio del período
             fecha_fin: Fecha de fin del período
+            regenerar_horas: Si True (default), regenera HoraTrabajada desde asistencias
             
         Returns:
             dict: Resultados con información del cálculo por profesor
         """
+        # Auto-generar/actualizar HoraTrabajada desde asistencias
+        if regenerar_horas:
+            from ..services.hora_trabajada_service import HoraTrabajadaService
+            HoraTrabajadaService.generar_horas_trabajadas(ciclo, fecha_inicio, fecha_fin)
+
         # Limpiar datos anteriores del período
         PagoProfesorDetalle.objects.filter(
             pago_profesor__ciclo=ciclo,
@@ -66,16 +74,17 @@ class PagoProfesorService:
 
         resultados = []
         for profesor in profesores:
-            # Get unique (horario_id, fecha) combinations for this professor
-            # Convert to native tuples + dict dedup for maximum reliability
+            # Obtener combinaciones únicas (horario_id, fecha) desde HoraTrabajada aprobadas
             clases_raw = list(dict.fromkeys(
-                (int(r[0]), r[1]) for r in Asistencia.objects.filter(
-                    horario__ciclo=ciclo,
+                (int(r.horario_id), r.fecha) for r in HoraTrabajada.objects.filter(
+                    ciclo=ciclo,
                     profesor=profesor,
-                    estado='asistio',
+                    estado='aprobada',
+                    tipo='clase_regular',
                     fecha__gte=fecha_inicio,
-                    fecha__lte=fecha_fin
-                ).values_list('horario_id', 'fecha')
+                    fecha__lte=fecha_fin,
+                    horario__isnull=False,
+                ).only('horario_id', 'fecha')
             ))
             
             total_clases = len(clases_raw)
@@ -101,41 +110,27 @@ class PagoProfesorService:
             )
 
             for horario_id, fecha in clases_raw:
-                # Cargar el horario para conocer el tipo de pago
-                from ..models import Horario
-                try:
-                    horario = Horario.objects.get(id=horario_id)
-                except Horario.DoesNotExist:
-                    continue
-                
-                asistentes = Asistencia.objects.filter(
+                # Leer valores precalculados desde HoraTrabajada (ya tiene montos
+                # calculados con el config_snapshot del momento de generación)
+                ht = HoraTrabajada.objects.filter(
+                    profesor=profesor,
                     horario_id=horario_id,
                     fecha=fecha,
-                    profesor=profesor,
-                    estado='asistio'
-                ).select_related('matricula', 'horario')
+                    estado='aprobada',
+                    tipo='clase_regular',
+                ).first()
+                
+                if not ht:
+                    continue
 
-                num_alumnos = asistentes.count()
+                num_alumnos = ht.num_alumnos
                 total_alumnos += num_alumnos
 
-                # Calcular pago por clase (pasar el horario para tipo de pago)
-                resultado_clase = cls._calcular_pago_clase(asistentes, num_alumnos, horario)
-                monto_profesor = resultado_clase['monto_profesor']
-                monto_adicional = resultado_clase['monto_adicional']
-                
-                # Para monto_base: 0 en pago fijo, base_pago en dinámico
-                es_pago_fijo = horario and getattr(horario, 'tipo_pago', 'dinamico') == 'fijo'
-                if es_pago_fijo:
-                    monto_base = Decimal('0.00')
-                else:
-                    base_pago, _ = cls._get_configuracion_pago()
-                    monto_base = base_pago if num_alumnos > 0 else Decimal('0.00')
-
-                valor_generado = sum(
-                    (a.matricula.precio_por_sesion or Decimal('0.00'))
-                    for a in asistentes
-                )
-                ganancia_taller = valor_generado - monto_profesor
+                monto_profesor = ht.monto_profesor
+                monto_base = ht.monto_base
+                monto_adicional = ht.monto_adicional
+                valor_generado = ht.valor_generado
+                ganancia_taller = ht.ganancia_taller
 
                 PagoProfesorDetalle.objects.update_or_create(
                     pago_profesor=pago,
@@ -143,7 +138,7 @@ class PagoProfesorService:
                     fecha=fecha,
                     defaults={
                         'num_alumnos': num_alumnos,
-                        'valor_generado': float(valor_generado),
+                        'valor_generado': valor_generado,
                         'monto_base': monto_base,
                         'monto_adicional': monto_adicional,
                         'monto_profesor': monto_profesor,

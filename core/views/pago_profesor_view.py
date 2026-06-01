@@ -44,6 +44,7 @@ def calcular_pago_profesor(request):
     ciclo_id = request.data.get('ciclo_id')
     fecha_inicio = request.data.get('fecha_inicio')
     fecha_fin = request.data.get('fecha_fin')
+    regenerar_horas = request.data.get('regenerar_horas', 'true').lower() == 'true'
 
     if not ciclo_id:
         return Response(
@@ -72,8 +73,11 @@ def calcular_pago_profesor(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # Delegar al servicio
-    resultados = PagoProfesorService.calcular_periodo(ciclo, fecha_inicio, fecha_fin)
+    # Delegar al servicio (regenerar_horas controla si se regeneran las horas trabajadas)
+    resultados = PagoProfesorService.calcular_periodo(
+        ciclo, fecha_inicio, fecha_fin,
+        regenerar_horas=regenerar_horas
+    )
     return Response(resultados)
 
 
