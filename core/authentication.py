@@ -60,3 +60,39 @@ class PortalJWTAuthentication(JWTAuthentication):
             return DummyUser(alumno_id, dni)
         except KeyError:
             raise InvalidToken('Token contained no recognizable user identification')
+
+
+class ProfesorDummyUser:
+    """
+    Dummy user representing a portal docente (not a Django User).
+    Used to satisfy DRF's authentication system for portal-docente endpoints.
+    """
+    def __init__(self, profesor_id, dni=None):
+        self.id = profesor_id
+        self.dni = dni
+        self.is_authenticated = True
+        self.is_active = True
+        self.is_anonymous = False
+        self._profesor_ids = None
+
+    def __str__(self):
+        return f"PortalDocente(id={self.id})"
+
+
+class ProfesorJWTAuthentication(JWTAuthentication):
+    """
+    Custom JWT authentication for portal docente (teachers).
+    Extracts profesor identity from JWT token claims (profesor_id, dni).
+    
+    Returns None if the token doesn't contain portal-docente claims,
+    allowing DRF to try the next authenticator (for admin tokens).
+    """
+    def get_user(self, validated_token):
+        try:
+            profesor_id = validated_token.get('profesor_id')
+            if not profesor_id:
+                return None
+            dni = validated_token.get('dni')
+            return ProfesorDummyUser(profesor_id, dni)
+        except KeyError:
+            raise InvalidToken('Token contained no recognizable user identification')

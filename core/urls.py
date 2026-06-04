@@ -35,6 +35,9 @@ urlpatterns = [
     
     # Portal endpoints (student-facing API)
     path('portal/', include('core.views.portal.urls')),
+
+    # Portal Docente endpoints (teacher-facing API)
+    path('portal-docente/', include('core.views.portal_docente.urls')),
     
     # Usuarios
     path('usuarios/cambiar-password/', CambiarPasswordView.as_view(), name='cambiar-password'),

@@ -93,3 +93,13 @@ class HoraTrabajadaAdmin(admin.ModelAdmin):
     list_display = ['profesor', 'ciclo', 'fecha', 'tipo', 'horas_trabajadas', 'estado', 'created_from']
     list_filter = ['tipo', 'estado', 'fecha']
     readonly_fields = ['config_snapshot', 'created_at']
+
+
+from .models import NotaClase
+
+
+@admin.register(NotaClase)
+class NotaClaseAdmin(admin.ModelAdmin):
+    list_display = ['profesor', 'horario', 'fecha', 'created_at']
+    list_filter = ['fecha', 'ciclo']
+    search_fields = ['profesor__nombre', 'contenido']

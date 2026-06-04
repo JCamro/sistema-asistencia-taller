@@ -27,3 +27,30 @@ class PortalLoginRateThrottle(UserRateThrottle):
             'scope': self.scope,
             'ident': dni
         }
+
+
+class PortalDocenteLoginRateThrottle(UserRateThrottle):
+    """
+    Rate limiting for portal docente login attempts.
+    Limits to 20 login attempts per hour per DNI.
+    Mirrors PortalLoginRateThrottle but for profesor login.
+    """
+    scope = 'docente_login'
+
+    def get_cache_key(self, request, view):
+        if request.method != 'POST':
+            return None
+
+        # Get DNI from request data - strip whitespace before throttling
+        dni = request.data.get('dni', '').strip()
+        if not dni:
+            return self.cache_format % {
+                'scope': self.scope,
+                'ident': self.get_ident(request)
+            }
+
+        # Throttle by DNI to prevent credential stuffing
+        return self.cache_format % {
+            'scope': self.scope,
+            'ident': dni
+        }
