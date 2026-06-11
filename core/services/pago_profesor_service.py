@@ -199,8 +199,15 @@ class PagoProfesorService:
         es_pago_fijo = horario and getattr(horario, 'tipo_pago', 'dinamico') == 'fijo'
         
         if num_alumnos == 0:
+            if es_pago_fijo:
+                return {
+                    'monto_profesor': Decimal('0.00'),
+                    'monto_adicional': Decimal('0.00')
+                }
+            # Pago dinámico: incluso sin alumnos, el profesor cobra al menos la base
+            base_pago, _ = cls._get_configuracion_pago()
             return {
-                'monto_profesor': Decimal('0.00'),
+                'monto_profesor': base_pago,
                 'monto_adicional': Decimal('0.00')
             }
         
@@ -284,11 +291,19 @@ class PagoProfesorService:
         
         # Calcular usando la fórmula según tipo de pago
         if num_alumnos == 0:
-            monto_profesor = Decimal('0.00')
-            monto_base = Decimal('0.00')
-            monto_adicional = Decimal('0.00')
-            valor_generado = Decimal('0.00')
-            aportes_por_alumno = []
+            if es_pago_fijo:
+                monto_profesor = Decimal('0.00')
+                monto_base = Decimal('0.00')
+                monto_adicional = Decimal('0.00')
+                valor_generado = Decimal('0.00')
+                aportes_por_alumno = []
+            else:
+                # Pago dinámico: incluso sin alumnos, el profesor cobra la base
+                valor_generado = Decimal('0.00')
+                monto_profesor = base_pago
+                monto_base = base_pago
+                monto_adicional = Decimal('0.00')
+                aportes_por_alumno = []
         elif es_pago_fijo:
             # Pago fijo: monto_base=0, monto_adicional=0 (pago flat)
             monto_fijo = getattr(horario, 'monto_fijo', None)

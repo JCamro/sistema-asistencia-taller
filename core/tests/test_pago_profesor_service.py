@@ -31,13 +31,13 @@ class TestCalcularPagoClase(TestCase):
         return mock_asistencia
 
     def test_cero_alumnos(self):
-        """0 alumnos → payment=0.00, profit=0.00"""
+        """0 alumnos -> payment=BASE_PAGO (17.00), adicional=0.00"""
         asistentes = []
         num_alumnos = 0
         
         resultado = PagoProfesorService._calcular_pago_clase(asistentes, num_alumnos)
         
-        self.assertEqual(resultado['monto_profesor'], Decimal('0.00'))
+        self.assertEqual(resultado['monto_profesor'], Decimal('17.00'))
         self.assertEqual(resultado['monto_adicional'], Decimal('0.00'))
 
     def test_un_alumno_valor_normal(self):
@@ -258,8 +258,10 @@ class TestPagoProfesorServiceIntegration(TestCase):
         )
         
         self.assertEqual(resultado['resumen']['num_alumnos'], 0)
-        self.assertEqual(resultado['resumen']['monto_profesor'], 0)
-        self.assertEqual(resultado['resumen']['ganancia_taller'], 0)
+        # Pago dinámico: 0 alumnos -> el profesor cobra la base
+        self.assertEqual(resultado['resumen']['monto_profesor'], 17.0)
+        # Ganancia: 0 (valor_generado) - 17.0 (monto_profesor) = -17.0
+        self.assertEqual(resultado['resumen']['ganancia_taller'], -17.0)
 
     def test_detalle_clase_con_una_asistencia(self):
         """detalle_clase con 1 asistencia retorna 17.00 para el profesor."""

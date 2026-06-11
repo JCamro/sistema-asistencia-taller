@@ -63,11 +63,6 @@ class HoraTrabajadaCreateUpdateSerializer(serializers.ModelSerializer):
         ]
 
     def validate_tipo(self, value):
-        if value == 'clase_regular':
-            raise serializers.ValidationError(
-                "No se puede crear manualmente una clase regular. "
-                "Use la generación automática."
-            )
         return value
 
     def validate(self, data):

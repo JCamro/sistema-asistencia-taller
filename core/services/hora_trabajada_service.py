@@ -7,10 +7,10 @@ y la máquina de estados para aprobación/rechazo.
 from datetime import date
 from decimal import Decimal
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 
-from ..models import HoraTrabajada, Asistencia, Profesor, Configuracion
+from ..models import HoraTrabajada, Asistencia, Horario, Profesor, Configuracion
 from ..constants import BASE_PAGO, TOPE_MAXIMO, PORCENTAJE_ADICIONAL
 
 
@@ -148,11 +148,19 @@ class HoraTrabajadaService:
         es_pago_fijo = horario_meta.get('tipo_pago') == 'fijo'
 
         if num_alumnos == 0:
+            if es_pago_fijo:
+                return {
+                    'valor_generado': Decimal('0.00'),
+                    'monto_base': Decimal('0.00'),
+                    'monto_adicional': Decimal('0.00'),
+                    'monto_profesor': Decimal('0.00'),
+                }
+            base_pago = Decimal(str(config_snapshot['base_pago']))
             return {
                 'valor_generado': Decimal('0.00'),
-                'monto_base': Decimal('0.00'),
+                'monto_base': base_pago,
                 'monto_adicional': Decimal('0.00'),
-                'monto_profesor': Decimal('0.00'),
+                'monto_profesor': base_pago,
             }
 
         if es_pago_fijo and horario_meta.get('monto_fijo'):
@@ -246,6 +254,19 @@ class HoraTrabajadaService:
         grupo_list = list(asistencias_agrupadas)
         horario_ids = set(g['horario_id'] for g in grupo_list)
 
+        # Filtrar registros que ya fueron creados manualmente como clase_regular
+        manual_combos = set(
+            HoraTrabajada.objects.filter(
+                ciclo=ciclo, created_from='admin_manual', tipo='clase_regular',
+                fecha__gte=fecha_inicio, fecha__lte=fecha_fin,
+            ).values_list('profesor_id', 'horario_id', 'fecha')
+        )
+        if manual_combos:
+            grupo_list = [
+                g for g in grupo_list
+                if (g['profesor_id'], g['horario_id'], g['fecha']) not in manual_combos
+            ]
+
         horarios_qs = Horario.objects.filter(id__in=horario_ids).select_related('taller')
         horario_map = {}
         for h in horarios_qs:
@@ -311,26 +332,48 @@ class HoraTrabajadaService:
                 observacion += ' (mixto)'
 
             # 6. Upsert del registro consolidado
-            ht, created = HoraTrabajada.objects.update_or_create(
-                profesor_id=profesor_id,
-                horario_id=rep_id,
-                fecha=fecha,
-                tipo='clase_regular',
-                defaults={
-                    'ciclo': ciclo,
-                    'horas_trabajadas': Decimal('1.00'),
-                    'estado': 'aprobada',
-                    'num_alumnos': num_alumnos,
-                    'valor_generado': montos['valor_generado'],
-                    'monto_base': montos['monto_base'],
-                    'monto_adicional': montos['monto_adicional'],
-                    'monto_profesor': montos['monto_profesor'],
-                    'ganancia_taller': ganancia_taller,
-                    'config_snapshot': config_snapshot,
-                    'created_from': 'asistencia_auto',
-                    'observacion': observacion,
-                }
-            )
+            try:
+                ht, created = HoraTrabajada.objects.update_or_create(
+                    profesor_id=profesor_id,
+                    horario_id=rep_id,
+                    fecha=fecha,
+                    tipo='clase_regular',
+                    defaults={
+                        'ciclo': ciclo,
+                        'horas_trabajadas': Decimal('1.00'),
+                        'estado': 'aprobada',
+                        'num_alumnos': num_alumnos,
+                        'valor_generado': montos['valor_generado'],
+                        'monto_base': montos['monto_base'],
+                        'monto_adicional': montos['monto_adicional'],
+                        'monto_profesor': montos['monto_profesor'],
+                        'ganancia_taller': ganancia_taller,
+                        'config_snapshot': config_snapshot,
+                        'created_from': 'asistencia_auto',
+                        'observacion': observacion,
+                    }
+                )
+            except IntegrityError:
+                ht, created = HoraTrabajada.objects.update_or_create(
+                    profesor_id=profesor_id,
+                    horario_id=rep_id,
+                    fecha=fecha,
+                    tipo='clase_regular',
+                    defaults={
+                        'ciclo': ciclo,
+                        'horas_trabajadas': Decimal('1.00'),
+                        'estado': 'aprobada',
+                        'num_alumnos': num_alumnos,
+                        'valor_generado': montos['valor_generado'],
+                        'monto_base': montos['monto_base'],
+                        'monto_adicional': montos['monto_adicional'],
+                        'monto_profesor': montos['monto_profesor'],
+                        'ganancia_taller': ganancia_taller,
+                        'config_snapshot': config_snapshot,
+                        'created_from': 'asistencia_auto',
+                        'observacion': observacion,
+                    }
+                )
 
             if created:
                 creados += 1
@@ -382,25 +425,46 @@ class HoraTrabajadaService:
             ganancia_taller = montos['valor_generado'] - montos['monto_profesor']
 
             # Upsert idempotente
-            ht, created = HoraTrabajada.objects.update_or_create(
-                profesor_id=profesor_id,
-                horario_id=horario_id,
-                fecha=fecha,
-                tipo='clase_regular',
-                defaults={
-                    'ciclo': ciclo,
-                    'horas_trabajadas': Decimal('1.00'),
-                    'estado': 'aprobada',
-                    'num_alumnos': num_alumnos,
-                    'valor_generado': montos['valor_generado'],
-                    'monto_base': montos['monto_base'],
-                    'monto_adicional': montos['monto_adicional'],
-                    'monto_profesor': montos['monto_profesor'],
-                    'ganancia_taller': ganancia_taller,
-                    'config_snapshot': config_snapshot,
-                    'created_from': 'asistencia_auto',
-                }
-            )
+            try:
+                ht, created = HoraTrabajada.objects.update_or_create(
+                    profesor_id=profesor_id,
+                    horario_id=horario_id,
+                    fecha=fecha,
+                    tipo='clase_regular',
+                    defaults={
+                        'ciclo': ciclo,
+                        'horas_trabajadas': Decimal('1.00'),
+                        'estado': 'aprobada',
+                        'num_alumnos': num_alumnos,
+                        'valor_generado': montos['valor_generado'],
+                        'monto_base': montos['monto_base'],
+                        'monto_adicional': montos['monto_adicional'],
+                        'monto_profesor': montos['monto_profesor'],
+                        'ganancia_taller': ganancia_taller,
+                        'config_snapshot': config_snapshot,
+                        'created_from': 'asistencia_auto',
+                    }
+                )
+            except IntegrityError:
+                ht, created = HoraTrabajada.objects.update_or_create(
+                    profesor_id=profesor_id,
+                    horario_id=horario_id,
+                    fecha=fecha,
+                    tipo='clase_regular',
+                    defaults={
+                        'ciclo': ciclo,
+                        'horas_trabajadas': Decimal('1.00'),
+                        'estado': 'aprobada',
+                        'num_alumnos': num_alumnos,
+                        'valor_generado': montos['valor_generado'],
+                        'monto_base': montos['monto_base'],
+                        'monto_adicional': montos['monto_adicional'],
+                        'monto_profesor': montos['monto_profesor'],
+                        'ganancia_taller': ganancia_taller,
+                        'config_snapshot': config_snapshot,
+                        'created_from': 'asistencia_auto',
+                    }
+                )
 
             if created:
                 creados += 1
@@ -524,9 +588,6 @@ class HoraTrabajadaService:
         """
         tipo = data.get('tipo')
 
-        if tipo == 'clase_regular':
-            raise ValueError("No se puede crear manualmente una clase regular. Use la generación automática.")
-
         if tipo != 'hora_extra' and not data.get('horario'):
             raise ValueError("El horario es obligatorio para este tipo de registro.")
 
@@ -555,24 +616,52 @@ class HoraTrabajadaService:
 
         config_snapshot = cls._get_config_snapshot()
 
-        ht = HoraTrabajada.objects.create(
-            profesor=profesor,
-            ciclo=data.get('ciclo'),
-            horario=data.get('horario', None),
-            fecha=fecha,
-            tipo=tipo,
-            horas_trabajadas=horas_trabajadas,
-            estado='pendiente',
-            num_alumnos=data.get('num_alumnos', 0),
-            valor_generado=data.get('valor_generado', Decimal('0.00')),
-            monto_base=data.get('monto_base', Decimal('0.00')),
-            monto_adicional=data.get('monto_adicional', Decimal('0.00')),
-            monto_profesor=data.get('monto_profesor', Decimal('0.00')),
-            ganancia_taller=data.get('ganancia_taller', Decimal('0.00')),
-            config_snapshot=config_snapshot,
-            observacion=data.get('observacion', ''),
-            created_from='admin_manual',
-        )
+        # Auto-calcular montos para clase_regular si se proporcionan horario y num_alumnos
+        if tipo == 'clase_regular':
+            horario_obj = data.get('horario')
+            num_alumnos = data.get('num_alumnos', 0)
+            if horario_obj and num_alumnos is not None and num_alumnos > 0:
+                if isinstance(horario_obj, Horario):
+                    horario_meta = {
+                        'tipo_pago': horario_obj.tipo_pago,
+                        'monto_fijo': horario_obj.monto_fijo,
+                    }
+                    montos = cls._calcular_montos_para_clase(
+                        num_alumnos, [], horario_meta, config_snapshot
+                    )
+                    data['valor_generado'] = data.get('valor_generado', montos['valor_generado'])
+                    data['monto_base'] = data.get('monto_base', montos['monto_base'])
+                    data['monto_adicional'] = data.get('monto_adicional', montos['monto_adicional'])
+                    data['monto_profesor'] = data.get('monto_profesor', montos['monto_profesor'])
+                    data['ganancia_taller'] = data.get(
+                        'ganancia_taller',
+                        montos['valor_generado'] - montos['monto_profesor']
+                    )
+
+        try:
+            ht = HoraTrabajada.objects.create(
+                profesor=profesor,
+                ciclo=data.get('ciclo'),
+                horario=data.get('horario', None),
+                fecha=fecha,
+                tipo=tipo,
+                horas_trabajadas=horas_trabajadas,
+                estado='pendiente',
+                num_alumnos=data.get('num_alumnos', 0),
+                valor_generado=data.get('valor_generado', Decimal('0.00')),
+                monto_base=data.get('monto_base', Decimal('0.00')),
+                monto_adicional=data.get('monto_adicional', Decimal('0.00')),
+                monto_profesor=data.get('monto_profesor', Decimal('0.00')),
+                ganancia_taller=data.get('ganancia_taller', Decimal('0.00')),
+                config_snapshot=config_snapshot,
+                observacion=data.get('observacion', ''),
+                created_from='admin_manual',
+            )
+        except IntegrityError:
+            raise ValueError(
+                "Ya existe un registro para este profesor, horario, fecha y tipo. "
+                "Si desea modificarlo, edite el registro existente."
+            )
 
         return ht
 

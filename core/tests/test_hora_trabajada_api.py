@@ -163,17 +163,44 @@ class TestHoraTrabajadaAPI(TestCase):
         self.assertEqual(ht.estado, 'pendiente')
         self.assertEqual(ht.created_from, 'admin_manual')
 
-    def test_create_manual_clase_regular_rejected(self):
-        """POST con tipo 'clase_regular' → 400."""
+    def test_create_manual_clase_regular_success(self):
+        """POST con tipo 'clase_regular' + horario + num_alumnos → 201 con auto-cálculo."""
+        from core.models import Taller, Horario
+
+        taller = Taller.objects.create(
+            ciclo=self.ciclo,
+            nombre='Bateria',
+            tipo='instrumento',
+            descripcion='Taller de bateria',
+            activo=True
+        )
+        horario = Horario.objects.create(
+            ciclo=self.ciclo,
+            taller=taller,
+            profesor=self.profesor,
+            dia_semana=1,
+            hora_inicio='14:00',
+            hora_fin='15:00',
+            cupo_maximo=10
+        )
+
         data = {
             'profesor': self.profesor.id,
             'ciclo': self.ciclo.id,
+            'horario': horario.id,
             'fecha': '2026-03-20',
             'tipo': 'clase_regular',
             'horas_trabajadas': '1.00',
+            'num_alumnos': 2,
         }
         response = self.client.post('/api/horas-trabajadas/', data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        ht = HoraTrabajada.objects.get(fecha=date(2026, 3, 20))
+        self.assertEqual(ht.tipo, 'clase_regular')
+        self.assertEqual(ht.estado, 'pendiente')
+        self.assertEqual(ht.created_from, 'admin_manual')
+        # Auto-cálculo: 2 alumnos dinámico → BASE_PAGO (sin session values)
+        self.assertEqual(ht.monto_profesor, Decimal('17.00'))
 
     def test_aprobar_endpoint(self):
         """PATCH /horas-trabajadas/{id}/aprobar/ → cambia a aprobada."""

@@ -295,6 +295,50 @@ class TestGenerarHorasTrabajadas(TestCase):
 
         self.assertEqual(resultado['creados'], 0)
 
+    def test_generar_skips_admin_manual_records(self):
+        """Generator omite combos que ya tienen un registro admin_manual."""
+        from core.models import Asistencia
+
+        # Crear asistencia (para que el generator intente crear un registro)
+        Asistencia.objects.create(
+            matricula=self.matricula,
+            horario=self.horario,
+            profesor=self.profesor,
+            fecha='2026-03-15',
+            hora='10:00',
+            estado='asistio'
+        )
+
+        # Crear manualmente un registro admin_manual para el mismo combo
+        HoraTrabajada.objects.create(
+            profesor=self.profesor,
+            ciclo=self.ciclo,
+            horario=self.horario,
+            fecha=date(2026, 3, 15),
+            tipo='clase_regular',
+            horas_trabajadas=Decimal('1.00'),
+            estado='pendiente',
+            num_alumnos=2,
+            created_from='admin_manual',
+        )
+
+        # Ejecutar generación automática
+        resultado = HoraTrabajadaService.generar_horas_trabajadas(
+            self.ciclo,
+            date(2026, 3, 1),
+            date(2026, 3, 31)
+        )
+
+        # No debe crear ni actualizar — el combo existe como admin_manual
+        self.assertEqual(resultado['creados'], 0)
+        self.assertEqual(resultado['actualizados'], 0)
+
+        # El registro admin_manual debe seguir intacto (sin sobrescribir estado/valores)
+        ht = HoraTrabajada.objects.get(profesor=self.profesor, fecha=date(2026, 3, 15))
+        self.assertEqual(ht.created_from, 'admin_manual')
+        self.assertEqual(ht.estado, 'pendiente')
+        self.assertEqual(ht.num_alumnos, 2)
+
 
 class TestCrearManual(TestCase):
     """Tests para crear_manual()."""
@@ -360,17 +404,26 @@ class TestCrearManual(TestCase):
         self.assertEqual(ht.horas_trabajadas, Decimal('2.00'))
         self.assertIsNotNone(ht.config_snapshot)
 
-    def test_crear_manual_clase_regular_raises(self):
-        """Crear manual con tipo 'clase_regular' → ValueError."""
-        with self.assertRaises(ValueError) as ctx:
-            HoraTrabajadaService.crear_manual({
-                'profesor': self.profesor.id,
-                'ciclo': self.ciclo,
-                'fecha': date(2026, 3, 15),
-                'tipo': 'clase_regular',
-                'horas_trabajadas': Decimal('1.00'),
-            })
-        self.assertIn('No se puede crear manualmente', str(ctx.exception))
+    def test_crear_manual_clase_regular_success(self):
+        """Crear manual con tipo 'clase_regular' + horario + num_alumnos → éxito con auto-cálculo de montos."""
+        ht = HoraTrabajadaService.crear_manual({
+            'profesor': self.profesor.id,
+            'ciclo': self.ciclo,
+            'horario': self.horario,
+            'fecha': date(2026, 3, 15),
+            'tipo': 'clase_regular',
+            'horas_trabajadas': Decimal('1.00'),
+            'num_alumnos': 1,
+        })
+
+        self.assertEqual(ht.tipo, 'clase_regular')
+        self.assertEqual(ht.estado, 'pendiente')
+        self.assertEqual(ht.created_from, 'admin_manual')
+        # Auto-cálculo: 1 alumno dinámico → BASE_PAGO
+        self.assertEqual(ht.monto_profesor, Decimal('17.00'))
+        self.assertEqual(ht.monto_base, Decimal('17.00'))
+        self.assertEqual(ht.monto_adicional, Decimal('0.00'))
+        self.assertIsNotNone(ht.config_snapshot)
 
     def test_crear_manual_hora_extra_with_horario_raises(self):
         """Hora extra con horario → ValueError."""
@@ -454,6 +507,81 @@ class TestCrearManual(TestCase):
                 'horas_trabajadas': Decimal('1.00'),
             })
         self.assertIn('Profesor no encontrado o inactivo', str(ctx.exception))
+
+    def test_crear_manual_clase_regular_explicit_montos(self):
+        """Clase_regular con montos explícitos (con horario) preserva valores proporcionados."""
+        ht = HoraTrabajadaService.crear_manual({
+            'profesor': self.profesor.id,
+            'ciclo': self.ciclo,
+            'horario': self.horario,
+            'fecha': date(2026, 3, 16),
+            'tipo': 'clase_regular',
+            'horas_trabajadas': Decimal('2.00'),
+            'num_alumnos': 3,
+            'valor_generado': Decimal('60.00'),
+            'monto_base': Decimal('20.00'),
+            'monto_adicional': Decimal('10.00'),
+            'monto_profesor': Decimal('30.00'),
+            'ganancia_taller': Decimal('30.00'),
+            'observacion': 'Clase extra manual',
+        })
+
+        self.assertEqual(ht.tipo, 'clase_regular')
+        # Los valores explícitos deben preservarse (el auto-cálculo solo llena lo faltante)
+        self.assertEqual(ht.monto_profesor, Decimal('30.00'))
+        self.assertEqual(ht.monto_base, Decimal('20.00'))
+        self.assertEqual(ht.observacion, 'Clase extra manual')
+
+    def test_crear_manual_clase_regular_duplicate_raises(self):
+        """Crear dos veces mismo profesor+horario+fecha+tipo → IntegrityError."""
+        HoraTrabajadaService.crear_manual({
+            'profesor': self.profesor.id,
+            'ciclo': self.ciclo,
+            'horario': self.horario,
+            'fecha': date(2026, 3, 17),
+            'tipo': 'clase_regular',
+            'horas_trabajadas': Decimal('1.00'),
+            'num_alumnos': 1,
+        })
+
+        with self.assertRaises(ValueError) as ctx:
+            HoraTrabajadaService.crear_manual({
+                'profesor': self.profesor.id,
+                'ciclo': self.ciclo,
+                'horario': self.horario,
+                'fecha': date(2026, 3, 17),
+                'tipo': 'clase_regular',
+                'horas_trabajadas': Decimal('1.00'),
+                'num_alumnos': 2,
+            })
+        self.assertIn('Ya existe un registro', str(ctx.exception))
+
+    def test_crear_manual_pago_fijo_cero_alumnos(self):
+        """Clase_regular con pago fijo y 0 alumnos → monto_profesor=0."""
+        from core.models import Horario
+        horario_fijo = Horario.objects.create(
+            ciclo=self.ciclo,
+            taller=self.taller,
+            profesor=self.profesor,
+            dia_semana=0,
+            hora_inicio='14:00',
+            hora_fin='15:00',
+            tipo_pago='fijo',
+            monto_fijo=Decimal('25.00'),
+            cupo_maximo=10
+        )
+        ht = HoraTrabajadaService.crear_manual({
+            'profesor': self.profesor.id,
+            'ciclo': self.ciclo,
+            'horario': horario_fijo,
+            'fecha': date(2026, 3, 18),
+            'tipo': 'clase_regular',
+            'horas_trabajadas': Decimal('1.00'),
+            'num_alumnos': 0,
+        })
+
+        self.assertEqual(ht.monto_profesor, Decimal('0.00'))
+        self.assertEqual(ht.monto_base, Decimal('0.00'))
 
 
 class TestStateMachine(TestCase):
