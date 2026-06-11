@@ -60,11 +60,13 @@ class ProfesorAsistenciasView(APIView):
             )
 
         # Get attendance records for this horario and date
+        # Note: We DON'T filter by matricula__concluida because concluded matrículas
+        # still have valid past attendance records that must be shown.
+        # We only verify the matrícula existed on that date.
         asistencias = Asistencia.objects.filter(
             horario_id=horario_id,
             fecha=fecha,
             matricula__activo=True,
-            matricula__concluida=False,
             matricula__fecha_matricula__date__lte=fecha,
         ).select_related(
             'matricula__alumno',

@@ -7,8 +7,8 @@ import {
   updateHoraTrabajada, deleteHoraTrabajada,
   aprobarHoraTrabajada, rechazarHoraTrabajada,
   generarHorasTrabajadas, getProfesores, getHorarios,
-  HoraTrabajada, HoraTrabajadaDetail,
 } from '../api/endpoints';
+import type { HoraTrabajada, HoraTrabajadaDetail } from '../api/endpoints';
 import { formatMonto } from '../utils/formatters';
 import { useWindowWidth } from '../hooks/useWindowWidth';
 

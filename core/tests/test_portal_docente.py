@@ -700,6 +700,48 @@ class TestProfesorAsistencias:
         )
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
+    def test_asistencias_shows_concluded_matricula(
+        self, authenticated_client, ciclo, horario, profesor, alumno
+    ):
+        """Attendance records for concluded matrículas MUST be shown.
+
+        Regression test: A student who completed their sessions (matrícula.concluida=True)
+        still has valid past attendance that must be visible in the portal.
+        """
+        from datetime import timezone
+        # Create a concluded matrícula
+        mat_concluida = Matricula.objects.create(
+            alumno=alumno,
+            ciclo=ciclo,
+            taller=horario.taller,
+            sesiones_contratadas=4,
+            precio_total=Decimal('80.00'),
+            precio_por_sesion=Decimal('20.00'),
+            fecha_matricula=datetime(2026, 3, 1, tzinfo=timezone.utc),
+            activo=True,
+            concluida=True  # <-- Concluded!
+        )
+        MatriculaHorario.objects.create(matricula=mat_concluida, horario=horario)
+
+        # Create attendance for this concluded matrícula
+        Asistencia.objects.create(
+            matricula=mat_concluida,
+            horario=horario,
+            profesor=profesor,
+            fecha=date(2026, 3, 15),
+            hora=time(10, 15),
+            estado='asistio'
+        )
+
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/asistencias/',
+            {'horario_id': horario.id, 'fecha': '2026-03-15'}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) >= 1, "Attendance for concluded matrícula must be shown"
+        assert response.data[0]['estado'] == 'asistio'
+
 
 # ===========================================================================
 # Tests: Horas Trabajadas
