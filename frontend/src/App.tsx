@@ -17,6 +17,7 @@ import EgresosPage from './pages/Egresos';
 import FinanzasPage from './pages/Finanzas';
 import ConfiguracionPreciosPage from './pages/ConfiguracionPrecios';
 import CalculadoraPreciosPage from './pages/CalculadoraPrecios';
+import HorasTrabajadasPage from './pages/HorasTrabajadas';
 
 const Loading = memo(function Loading() {
   return (
@@ -80,6 +81,7 @@ function Sidebar({ cicloNombre, abierto, onToggle }: { cicloNombre: string, abie
     { to: '/matriculas', label: 'Matrículas', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' },
     { to: '/asistencias', label: 'Asistencias', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
     { to: '/recibos', label: 'Recibos', icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z' },
+    { to: '/horas-trabajadas', label: 'Horas Trabajadas', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
     { to: '/egresos', label: 'Egresos', icon: 'M3 3h18v18H3V3zm3 9h12v6H6v-6zm3-6v4h12V6H6z' },
     { to: '/finanzas', label: 'Finanzas', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
     { to: '/pagos-profesores', label: 'Pagos Profesores', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
@@ -88,7 +90,7 @@ function Sidebar({ cicloNombre, abierto, onToggle }: { cicloNombre: string, abie
   const secciones = [
     { titulo: 'Gestión', items: navItems.slice(0, 4) },
     { titulo: 'Operaciones', items: navItems.slice(4, 7) },
-    { titulo: 'Finanzas', items: navItems.slice(7, 11) },
+    { titulo: 'Finanzas', items: navItems.slice(7, 12) },
   ];
 
   return (
@@ -860,6 +862,7 @@ export default function App() {
           <Route path="/matriculas" element={<ProtectedRoute><DashboardLayoutMemo><MatriculasPage /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/asistencias" element={<ProtectedRoute><DashboardLayoutMemo><AsistenciasPage /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/recibos" element={<ProtectedRoute><DashboardLayoutMemo><RecibosPage /></DashboardLayoutMemo></ProtectedRoute>} />
+          <Route path="/horas-trabajadas" element={<ProtectedRoute><DashboardLayoutMemo><HorasTrabajadasPage /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/egresos" element={<ProtectedRoute><DashboardLayoutMemo><EgresosPage /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/finanzas" element={<ProtectedRoute><DashboardLayoutMemo><FinanzasPage /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/pagos-profesores" element={<ProtectedRoute><DashboardLayoutMemo><PagosProfesoresPage /></DashboardLayoutMemo></ProtectedRoute>} />

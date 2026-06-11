@@ -437,6 +437,9 @@ export const rechazarHoraTrabajada = (id: number) =>
 export const deleteHoraTrabajada = (id: number) =>
   api.delete(`/horas-trabajadas/${id}/`);
 
+export const updateHoraTrabajada = (id: number, data: Partial<HoraTrabajadaDetail>) =>
+  api.patch<HoraTrabajadaDetail>(`/horas-trabajadas/${id}/`, data);
+
 export const generarHorasTrabajadas = (cicloId: number, fechaInicio: string, fechaFin: string) =>
   api.post('/horas-trabajadas/generar/', {
     ciclo_id: cicloId,
