@@ -13,6 +13,7 @@ from rest_framework import status
 from core.models import (
     Alumno, Ciclo, Taller, Horario, Profesor,
     Matricula, MatriculaHorario, Asistencia, NotaClase,
+    PagoProfesor, PagoProfesorDetalle,
 )
 from core.models.hora_trabajada import HoraTrabajada
 from core.authentication import ProfesorDummyUser, ProfesorJWTAuthentication
@@ -250,6 +251,55 @@ def hora_trabajada(db, profesor, ciclo, horario):
         tipo='clase_regular',
         horas_trabajadas=Decimal('1.00'),
         estado='pendiente',
+        num_alumnos=2,
+        valor_generado=Decimal('40.00'),
+        monto_base=Decimal('17.00'),
+        monto_adicional=Decimal('8.50'),
+        monto_profesor=Decimal('25.50'),
+        ganancia_taller=Decimal('14.50'),
+    )
+
+
+@pytest.fixture
+def pago_profesor(db, profesor, ciclo):
+    """Create a test PagoProfesor (calculado)."""
+    return PagoProfesor.objects.create(
+        profesor=profesor,
+        ciclo=ciclo,
+        horas_calculadas=Decimal('24.00'),
+        monto_final=Decimal('350.00'),
+        fecha_inicio=date(2026, 4, 1),
+        fecha_fin=date(2026, 4, 30),
+        total_alumnos_asistencias=15,
+        ganancia_taller=Decimal('100.00'),
+        estado='calculado',
+    )
+
+
+@pytest.fixture
+def pago_profesor_pagado(db, profesor, ciclo):
+    """Create a test PagoProfesor with estado='pagado'."""
+    return PagoProfesor.objects.create(
+        profesor=profesor,
+        ciclo=ciclo,
+        horas_calculadas=Decimal('20.00'),
+        monto_final=Decimal('300.00'),
+        fecha_inicio=date(2026, 3, 1),
+        fecha_fin=date(2026, 3, 31),
+        total_alumnos_asistencias=12,
+        ganancia_taller=Decimal('80.00'),
+        estado='pagado',
+        fecha_pago=date(2026, 4, 5),
+    )
+
+
+@pytest.fixture
+def pago_profesor_detalle(db, pago_profesor, horario):
+    """Create a test PagoProfesorDetalle."""
+    return PagoProfesorDetalle.objects.create(
+        pago_profesor=pago_profesor,
+        horario=horario,
+        fecha=date(2026, 4, 1),
         num_alumnos=2,
         valor_generado=Decimal('40.00'),
         monto_base=Decimal('17.00'),
@@ -823,6 +873,247 @@ class TestProfesorDashboard:
         assert response.data['total_alumnos'] >= 1
         assert float(response.data['horas_mes']) >= 0
         assert float(response.data['monto_acumulado']) >= 0
+
+    def test_dashboard_horas_mes_is_float(self, authenticated_client, ciclo, horario, profesor):
+        """horas_mes must be a float (not Decimal string) in the response."""
+        # Create a HoraTrabajada for today so it falls in the current month query
+        today = date.today()
+        HoraTrabajada.objects.create(
+            profesor=profesor,
+            ciclo=ciclo,
+            horario=horario,
+            fecha=today,
+            tipo='clase_regular',
+            horas_trabajadas=Decimal('1.50'),
+            estado='pendiente',
+            num_alumnos=2,
+            valor_generado=Decimal('40.00'),
+            monto_base=Decimal('17.00'),
+            monto_adicional=Decimal('8.50'),
+            monto_profesor=Decimal('25.50'),
+            ganancia_taller=Decimal('14.50'),
+        )
+
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/dashboard/'
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert 'horas_mes' in response.data
+        # Must be a float, not a string
+        assert isinstance(response.data['horas_mes'], float), \
+            f"Expected float, got {type(response.data['horas_mes'])}: {response.data['horas_mes']}"
+        # Must be positive since we created hora_trabajada for today
+        assert response.data['horas_mes'] > 0
+
+    def test_dashboard_monto_acumulado_is_float(self, authenticated_client, ciclo, hora_trabajada):
+        """monto_acumulado must be a float (not Decimal string) in the response."""
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/dashboard/'
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert 'monto_acumulado' in response.data
+        assert isinstance(response.data['monto_acumulado'], float), \
+            f"Expected float, got {type(response.data['monto_acumulado'])}: {response.data['monto_acumulado']}"
+        assert response.data['monto_acumulado'] > 0
+
+    def test_dashboard_tiene_pagos_true(self, authenticated_client, ciclo, hora_trabajada, pago_profesor):
+        """tiene_pagos must be true when PagoProfesor exists for this profesor+ciclo."""
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/dashboard/'
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert 'tiene_pagos' in response.data
+        assert response.data['tiene_pagos'] is True
+
+    def test_dashboard_tiene_pagos_false(self, authenticated_client, ciclo, hora_trabajada):
+        """tiene_pagos must be false when no PagoProfesor exists for this profesor+ciclo."""
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/dashboard/'
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert 'tiene_pagos' in response.data
+        assert response.data['tiene_pagos'] is False
+
+    def test_dashboard_tiene_pagos_other_profesor_excluded(
+        self, authenticated_client, ciclo, hora_trabajada, otro_profesor
+    ):
+        """tiene_pagos must be false when PagoProfesor exists only for another profesor."""
+        # Create PagoProfesor for otro_profesor
+        PagoProfesor.objects.create(
+            profesor=otro_profesor,
+            ciclo=ciclo,
+            horas_calculadas=Decimal('10.00'),
+            monto_final=Decimal('150.00'),
+            fecha_inicio=date(2026, 4, 1),
+            fecha_fin=date(2026, 4, 30),
+            estado='calculado',
+        )
+
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/dashboard/'
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['tiene_pagos'] is False
+
+
+# ===========================================================================
+# Tests: Pagos (Payment History)
+# ===========================================================================
+
+class TestProfesorPagos:
+    """Tests for GET /api/portal-docente/ciclos/{id}/pagos/"""
+
+    def test_pagos_success(self, authenticated_client, ciclo, pago_profesor):
+        """Returns list of PagoProfesor records for the authenticated profesor."""
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/pagos/'
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert isinstance(response.data, list)
+        assert len(response.data) >= 1
+
+        record = response.data[0]
+        assert record['id'] == pago_profesor.id
+        assert 'fecha_inicio' in record
+        assert 'fecha_fin' in record
+        assert 'monto_final' in record
+        assert 'estado' in record
+        assert 'estado_display' in record
+
+    def test_pagos_filter_by_estado(self, authenticated_client, ciclo, pago_profesor, pago_profesor_pagado):
+        """Can filter pagos by estado query param."""
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/pagos/',
+            {'estado': 'calculado'}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) >= 1
+        for r in response.data:
+            assert r['estado'] == 'calculado'
+
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/pagos/',
+            {'estado': 'pagado'}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) >= 1
+        for r in response.data:
+            assert r['estado'] == 'pagado'
+
+    def test_pagos_filter_by_estado_no_match(self, authenticated_client, ciclo, pago_profesor):
+        """Filter by estado that doesn't match returns empty list."""
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/pagos/',
+            {'estado': 'anulado'}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 0
+
+    def test_pagos_unauthenticated(self, api_client, ciclo):
+        """Unauthenticated request returns 401."""
+        response = api_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/pagos/'
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_pagos_empty_no_payments(self, authenticated_client, ciclo):
+        """Returns empty list when no pagos exist for this profesor."""
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/pagos/'
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert isinstance(response.data, list)
+        assert len(response.data) == 0
+
+    def test_pagos_excludes_other_profesor(self, authenticated_client, ciclo, otro_profesor, pago_profesor):
+        """Other profesor's pagos are excluded from the response."""
+        # Create a pago for otro_profesor
+        PagoProfesor.objects.create(
+            profesor=otro_profesor,
+            ciclo=ciclo,
+            horas_calculadas=Decimal('10.00'),
+            monto_final=Decimal('150.00'),
+            fecha_inicio=date(2026, 4, 1),
+            fecha_fin=date(2026, 4, 30),
+            estado='calculado',
+        )
+
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/pagos/'
+        )
+        assert response.status_code == status.HTTP_200_OK
+        # Should only include pagos for our profesor
+        for r in response.data:
+            assert r['id'] == pago_profesor.id
+
+    def test_pagos_response_includes_detalles(
+        self, authenticated_client, ciclo, pago_profesor, pago_profesor_detalle
+    ):
+        """Pagos response includes nested detalles array."""
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/pagos/'
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) >= 1
+
+        record = response.data[0]
+        assert 'detalles' in record
+        assert isinstance(record['detalles'], list)
+        assert len(record['detalles']) >= 1
+
+        detalle = record['detalles'][0]
+        assert detalle['id'] == pago_profesor_detalle.id
+        assert 'fecha' in detalle
+        assert 'taller_nombre' in detalle
+        assert 'num_alumnos' in detalle
+        assert 'monto_profesor' in detalle
+        assert 'ganancia_taller' in detalle
+
+    def test_pagos_decimal_fields_are_float(self, authenticated_client, ciclo, pago_profesor):
+        """Decimal fields (monto_final, etc.) are serialized as float, not string."""
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/pagos/'
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) >= 1
+
+        record = response.data[0]
+        assert isinstance(record['monto_final'], float), \
+            f"Expected float for monto_final, got {type(record['monto_final'])}: {record['monto_final']}"
+
+    def test_pagos_detalle_decimal_fields_are_float(
+        self, authenticated_client, ciclo, pago_profesor, pago_profesor_detalle
+    ):
+        """PagoProfesorDetalle Decimal fields are serialized as float."""
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/pagos/'
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) >= 1
+
+        detalle = response.data[0]['detalles'][0]
+        assert isinstance(detalle['monto_profesor'], float), \
+            f"Expected float for monto_profesor in detalle, got {type(detalle['monto_profesor'])}: {detalle['monto_profesor']}"
+        assert isinstance(detalle['ganancia_taller'], float), \
+            f"Expected float for ganancia_taller in detalle, got {type(detalle['ganancia_taller'])}: {detalle['ganancia_taller']}"
+
+    def test_pagos_estado_display_matches_estado(self, authenticated_client, ciclo, pago_profesor):
+        """estado_display should be the human-readable version of estado."""
+        response = authenticated_client.get(
+            f'/api/portal-docente/ciclos/{ciclo.id}/pagos/'
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) >= 1
+
+        record = response.data[0]
+        # For estado='calculado', estado_display should be 'Calculado'
+        assert record['estado_display'] == 'Calculado'
 
 
 # ===========================================================================
