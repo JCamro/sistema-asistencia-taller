@@ -10,7 +10,7 @@ from decimal import Decimal
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 
-from ..models import HoraTrabajada, Asistencia, Horario, Profesor, Configuracion
+from ..models import HoraTrabajada, Asistencia, Horario, Profesor, Configuracion, Ciclo
 from ..constants import BASE_PAGO, TOPE_MAXIMO, PORCENTAJE_ADICIONAL
 
 
@@ -606,6 +606,28 @@ class HoraTrabajadaService:
             except Profesor.DoesNotExist:
                 raise ValueError("Profesor no encontrado o inactivo.")
 
+        # Convertir ciclo de ID a instancia si es necesario
+        ciclo_value = data.get('ciclo')
+        if isinstance(ciclo_value, Ciclo):
+            ciclo = ciclo_value
+        else:
+            try:
+                ciclo = Ciclo.objects.get(id=ciclo_value)
+            except Ciclo.DoesNotExist:
+                raise ValueError("Ciclo no encontrado.")
+
+        # Convertir horario de ID a instancia si es necesario
+        horario_value = data.get('horario')
+        if horario_value is None:
+            horario = None
+        elif isinstance(horario_value, Horario):
+            horario = horario_value
+        else:
+            try:
+                horario = Horario.objects.get(id=horario_value)
+            except Horario.DoesNotExist:
+                raise ValueError("Horario no encontrado.")
+
         fecha = data.get('fecha')
         if fecha and fecha > date.today():
             raise ValueError("La fecha no puede ser futura.")
@@ -617,32 +639,29 @@ class HoraTrabajadaService:
         config_snapshot = cls._get_config_snapshot()
 
         # Auto-calcular montos para clase_regular si se proporcionan horario y num_alumnos
-        if tipo == 'clase_regular':
-            horario_obj = data.get('horario')
+        if tipo == 'clase_regular' and horario:
             num_alumnos = data.get('num_alumnos', 0)
-            if horario_obj and num_alumnos is not None and num_alumnos > 0:
-                if isinstance(horario_obj, Horario):
-                    horario_meta = {
-                        'tipo_pago': horario_obj.tipo_pago,
-                        'monto_fijo': horario_obj.monto_fijo,
-                    }
-                    montos = cls._calcular_montos_para_clase(
-                        num_alumnos, [], horario_meta, config_snapshot
-                    )
-                    data['valor_generado'] = data.get('valor_generado', montos['valor_generado'])
-                    data['monto_base'] = data.get('monto_base', montos['monto_base'])
-                    data['monto_adicional'] = data.get('monto_adicional', montos['monto_adicional'])
-                    data['monto_profesor'] = data.get('monto_profesor', montos['monto_profesor'])
-                    data['ganancia_taller'] = data.get(
-                        'ganancia_taller',
-                        montos['valor_generado'] - montos['monto_profesor']
-                    )
+            horario_meta = {
+                'tipo_pago': horario.tipo_pago,
+                'monto_fijo': horario.monto_fijo or Decimal('0.00'),
+            }
+            montos = cls._calcular_montos_para_clase(
+                num_alumnos, [], horario_meta, config_snapshot
+            )
+            data['valor_generado'] = data.get('valor_generado', montos['valor_generado'])
+            data['monto_base'] = data.get('monto_base', montos['monto_base'])
+            data['monto_adicional'] = data.get('monto_adicional', montos['monto_adicional'])
+            data['monto_profesor'] = data.get('monto_profesor', montos['monto_profesor'])
+            data['ganancia_taller'] = data.get(
+                'ganancia_taller',
+                montos['valor_generado'] - montos['monto_profesor']
+            )
 
         try:
             ht = HoraTrabajada.objects.create(
                 profesor=profesor,
-                ciclo=data.get('ciclo'),
-                horario=data.get('horario', None),
+                ciclo=ciclo,
+                horario=horario,
                 fecha=fecha,
                 tipo=tipo,
                 horas_trabajadas=horas_trabajadas,
