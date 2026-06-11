@@ -46,15 +46,16 @@ class HoraTrabajadaViewSet(viewsets.ModelViewSet):
         instance = HoraTrabajadaService.crear_manual(data)
         return instance
 
-    def perform_update(self, serializer):
+    def update(self, request, *args, **kwargs):
         # Solo permitir actualizar registros pendientes
         instance = self.get_object()
         if instance.estado != 'pendiente':
-            raise ValueError(
-                f"No se puede modificar un registro en estado "
-                f"'{instance.get_estado_display()}'."
+            return Response(
+                {'error': f"No se puede modificar un registro en estado "
+                          f"'{instance.get_estado_display()}'."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        serializer.save()
+        return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()

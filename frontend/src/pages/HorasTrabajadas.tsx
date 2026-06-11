@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import { ResponsiveTable } from '../components/ui/ResponsiveTable';
@@ -12,7 +12,7 @@ import {
 import { formatMonto } from '../utils/formatters';
 import { useWindowWidth } from '../hooks/useWindowWidth';
 
-const HorasTrabajadasPage = () => {
+const HorasTrabajadasPage = memo(() => {
   const { cicloActual } = useCiclo();
   const toast = useToast();
   const windowWidth = useWindowWidth();
@@ -46,34 +46,6 @@ const HorasTrabajadasPage = () => {
   const [genFechaInicio, setGenFechaInicio] = useState('');
   const [genFechaFin, setGenFechaFin] = useState('');
   const [generando, setGenerando] = useState(false);
-
-  const loadData = async () => {
-    if (!cicloActual) return;
-    setLoading(true);
-    try {
-      const [horasRes, profesoresRes, horariosRes] = await Promise.all([
-        getHorasTrabajadas(cicloActual.id, `page=${page}`),
-        getProfesores(cicloActual.id),
-        getHorarios(cicloActual.id),
-      ]);
-      setHoras(horasRes.data.results);
-      setTotalCount(horasRes.data.count);
-      const profesData = profesoresRes.data as any;
-      setProfesores(profesData.results || profesData || []);
-      const horariosData = horariosRes.data as any;
-      setHorarios(horariosData.results || horariosData || []);
-    } catch (error) {
-      console.error('Error:', error);
-      toast.showToast('Error al cargar horas trabajadas', 'error');
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    if (cicloActual) {
-      loadData();
-    }
-  }, [cicloActual, page]);
 
   // Reset page on filter changes
   useEffect(() => {
@@ -577,6 +549,6 @@ const HorasTrabajadasPage = () => {
       )}
     </div>
   );
-};
+});
 
 export default HorasTrabajadasPage;
