@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from core.models import Ciclo, Horario, Asistencia, Matricula, Alumno, NotaClase
+from core.models import Ciclo, Horario, Asistencia, Matricula, Alumno, NotaClase, PagoProfesor
 from core.models.hora_trabajada import HoraTrabajada
 
 
@@ -110,5 +110,29 @@ class ProfesorDashboardSerializer(serializers.Serializer):
     """Dashboard KPIs for portal docente."""
     clases_hoy = serializers.IntegerField()
     total_alumnos = serializers.IntegerField()
-    horas_mes = serializers.DecimalField(max_digits=10, decimal_places=2)
-    monto_acumulado = serializers.DecimalField(max_digits=10, decimal_places=2)
+    horas_mes = serializers.FloatField()
+    monto_acumulado = serializers.FloatField()
+    tiene_pagos = serializers.BooleanField()
+
+
+class PagoProfesorDetallePortalSerializer(serializers.Serializer):
+    """Per-class payment detail for PagoProfesor in portal docente."""
+    id = serializers.IntegerField()
+    fecha = serializers.DateField()
+    taller_nombre = serializers.CharField(source='horario.taller.nombre', allow_null=True)
+    num_alumnos = serializers.IntegerField()
+    monto_profesor = serializers.FloatField()
+    ganancia_taller = serializers.FloatField()
+
+
+class PagoProfesorPortalSerializer(serializers.Serializer):
+    """Payment summary for PagoProfesor in portal docente, with nested detalles."""
+    id = serializers.IntegerField()
+    fecha_inicio = serializers.DateField()
+    fecha_fin = serializers.DateField()
+    horas_calculadas = serializers.IntegerField()
+    monto_final = serializers.FloatField()
+    estado = serializers.CharField()
+    estado_display = serializers.CharField(source='get_estado_display')
+    fecha_pago = serializers.DateField(allow_null=True)
+    detalles = PagoProfesorDetallePortalSerializer(many=True, read_only=True)

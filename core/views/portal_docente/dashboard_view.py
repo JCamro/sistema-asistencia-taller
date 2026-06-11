@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.models import Horario, Alumno, Matricula
+from core.models import Horario, Alumno, Matricula, PagoProfesor
 from core.models.hora_trabajada import HoraTrabajada
 from core.authentication import ProfesorJWTAuthentication
 
@@ -68,9 +68,16 @@ class ProfesorDashboardView(APIView):
 
         monto_acumulado = monto_result['total'] or Decimal('0')
 
+        # tiene_pagos: whether any PagoProfesor record exists for this profesor + ciclo
+        tiene_pagos = PagoProfesor.objects.filter(
+            profesor_id=profesor_id,
+            ciclo_id=ciclo_id,
+        ).exists()
+
         return Response({
             'clases_hoy': clases_hoy,
             'total_alumnos': total_alumnos,
-            'horas_mes': horas_mes,
-            'monto_acumulado': monto_acumulado,
+            'horas_mes': float(horas_mes),
+            'monto_acumulado': float(monto_acumulado),
+            'tiene_pagos': tiene_pagos,
         })

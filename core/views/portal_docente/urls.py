@@ -7,6 +7,7 @@ from .asistencia_view import ProfesorAsistenciasView
 from .horas_trabajadas_view import ProfesorHorasTrabajadasView
 from .dashboard_view import ProfesorDashboardView
 from .notas_view import ProfesorNotasView, ProfesorNotaDetailView
+from .pagos_view import ProfesorPagosView
 
 urlpatterns = [
     # Auth
@@ -28,4 +29,5 @@ urlpatterns = [
     path('ciclos/<int:ciclo_id>/dashboard/', ProfesorDashboardView.as_view(), name='portal-docente-dashboard'),
     path('ciclos/<int:ciclo_id>/notas/', ProfesorNotasView.as_view(), name='portal-docente-notas'),
     path('ciclos/<int:ciclo_id>/notas/<int:nota_id>/', ProfesorNotaDetailView.as_view(), name='portal-docente-nota-detalle'),
+    path('ciclos/<int:ciclo_id>/pagos/', ProfesorPagosView.as_view(), name='portal-docente-pagos'),
 ]
