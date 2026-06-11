@@ -125,6 +125,27 @@ class PagoProfesorDetallePortalSerializer(serializers.Serializer):
     ganancia_taller = serializers.FloatField()
 
 
+class HorarioBadgeSerializer(serializers.Serializer):
+    """Minimal horario data for nested badges inside AlumnoCartilla."""
+    id = serializers.IntegerField()
+    taller_nombre = serializers.CharField()
+    taller_tipo = serializers.CharField()
+    dia_semana = serializers.IntegerField()
+    hora_inicio = serializers.TimeField()
+    hora_fin = serializers.TimeField()
+
+
+class AlumnoCartillaSerializer(serializers.Serializer):
+    """Professor's roll-book entry with nested horario badges."""
+    id = serializers.IntegerField()
+    nombre = serializers.CharField()
+    apellido = serializers.CharField()
+    dni = serializers.CharField()
+    telefono = serializers.CharField(allow_blank=True, default='')
+    email = serializers.EmailField(allow_blank=True, default='')
+    horarios = HorarioBadgeSerializer(many=True, read_only=True)
+
+
 class PagoProfesorPortalSerializer(serializers.Serializer):
     """Payment summary for PagoProfesor in portal docente, with nested detalles."""
     id = serializers.IntegerField()
