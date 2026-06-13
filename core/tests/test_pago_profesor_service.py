@@ -936,6 +936,80 @@ class TestDetalleClasePagoFijo(TestCase):
         self.assertEqual(resultado['resumen']['ganancia_taller'], -5.00)
 
 
+class TestHoraTrabajadaServicePagoFijo(TestCase):
+    """Tests para HoraTrabajadaService._calcular_montos_para_clase con pago fijo.
+
+    Verifica que cuando un horario tiene tipo_pago='fijo' pero monto_fijo=None
+    o monto_fijo=0.00, el cálculo usa la fórmula fija (monto_base=0, monto_adicional=0)
+    y NO cae en la fórmula dinámica.
+    """
+
+    def _crear_mock_asistencia(self, precio_sesion: float):
+        """Crea un mock de Asistencia con precio por sesión."""
+        from unittest.mock import MagicMock
+        mock_matricula = MagicMock()
+        mock_matricula.precio_por_sesion = Decimal(str(precio_sesion))
+
+        mock_asistencia = MagicMock()
+        mock_asistencia.matricula = mock_matricula
+        return mock_asistencia
+
+    def test_hora_trabajada_service_pago_fijo_con_monto_none(self):
+        """Pago fijo con monto_fijo=None → usa fórmula fija con monto=0, NO la dinámica."""
+        from core.services.hora_trabajada_service import HoraTrabajadaService
+
+        horario_meta = {
+            'tipo_pago': 'fijo',
+            'monto_fijo': None,
+        }
+        config_snapshot = {
+            'base_pago': 17.0,
+            'tope_maximo': 35.0,
+            'porcentaje_adicional': 0.5,
+        }
+        mock_asistencia = self._crear_mock_asistencia(20.00)
+        asistentes = [mock_asistencia]
+        num_alumnos = 1
+
+        resultado = HoraTrabajadaService._calcular_montos_para_clase(
+            num_alumnos, asistentes, horario_meta, config_snapshot
+        )
+
+        # Debe usar fórmula fija: monto_base=0, monto_adicional=0, monto_profesor=0
+        self.assertEqual(resultado['monto_base'], Decimal('0.00'))
+        self.assertEqual(resultado['monto_adicional'], Decimal('0.00'))
+        self.assertEqual(resultado['monto_profesor'], Decimal('0.00'))
+        # valor_generado debe calcularse desde asistentes
+        self.assertEqual(resultado['valor_generado'], Decimal('20.00'))
+
+    def test_hora_trabajada_service_pago_fijo_con_monto_cero(self):
+        """Pago fijo con monto_fijo=Decimal('0.00') → usa fórmula fija, NO la dinámica."""
+        from core.services.hora_trabajada_service import HoraTrabajadaService
+
+        horario_meta = {
+            'tipo_pago': 'fijo',
+            'monto_fijo': Decimal('0.00'),
+        }
+        config_snapshot = {
+            'base_pago': 17.0,
+            'tope_maximo': 35.0,
+            'porcentaje_adicional': 0.5,
+        }
+        mock_asistencia = self._crear_mock_asistencia(20.00)
+        asistentes = [mock_asistencia]
+        num_alumnos = 1
+
+        resultado = HoraTrabajadaService._calcular_montos_para_clase(
+            num_alumnos, asistentes, horario_meta, config_snapshot
+        )
+
+        # Debe usar fórmula fija: monto_base=0, monto_adicional=0, monto_profesor=0
+        self.assertEqual(resultado['monto_base'], Decimal('0.00'))
+        self.assertEqual(resultado['monto_adicional'], Decimal('0.00'))
+        self.assertEqual(resultado['monto_profesor'], Decimal('0.00'))
+        self.assertEqual(resultado['valor_generado'], Decimal('20.00'))
+
+
 class TestHoraTrabajadaIntegration(TestCase):
     """Tests de integración entre HoraTrabajada y PagoProfesorService.
 

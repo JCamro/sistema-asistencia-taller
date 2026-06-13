@@ -163,8 +163,9 @@ class HoraTrabajadaService:
                 'monto_profesor': base_pago,
             }
 
-        if es_pago_fijo and horario_meta.get('monto_fijo'):
-            monto_profesor = Decimal(str(horario_meta['monto_fijo']))
+        if es_pago_fijo:
+            monto_fijo = horario_meta.get('monto_fijo')
+            monto_profesor = Decimal(str(monto_fijo)) if monto_fijo is not None else Decimal('0.00')
             valor_generado = sum(
                 (a.matricula.precio_por_sesion or Decimal('0.00'))
                 for a in asistentes
