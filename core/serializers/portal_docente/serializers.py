@@ -128,6 +128,7 @@ class PagoProfesorDetallePortalSerializer(serializers.Serializer):
 class HorarioBadgeSerializer(serializers.Serializer):
     """Minimal horario data for nested badges inside AlumnoCartilla."""
     id = serializers.IntegerField()
+    taller_id = serializers.IntegerField()
     taller_nombre = serializers.CharField()
     taller_tipo = serializers.CharField()
     dia_semana = serializers.IntegerField()

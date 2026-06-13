@@ -4,9 +4,8 @@ from rest_framework.response import Response
 
 from django.db.models import Q, Prefetch
 
-from core.models import Alumno, Horario
+from core.models import Alumno, MatriculaHorario
 from core.authentication import ProfesorJWTAuthentication
-from core.serializers.portal_docente.serializers import AlumnoCartillaSerializer
 
 
 class ProfesorAlumnosCartillaView(APIView):
@@ -38,16 +37,16 @@ class ProfesorAlumnosCartillaView(APIView):
             matriculas__horarios__horario__activo=True,
         ).distinct()
 
-        # Prefetch only the professor's active horarios for this cycle
+        # Prefetch MatriculaHorario instances with nested Horario+Taller
         qs = qs.prefetch_related(
             Prefetch(
-                'matriculas__horarios__horario',
-                queryset=Horario.objects.filter(
-                    profesor_id=profesor_id,
-                    ciclo_id=ciclo_id,
-                    activo=True,
-                ).select_related('taller'),
-                to_attr='alumno_horarios',
+                'matriculas__horarios',
+                queryset=MatriculaHorario.objects.filter(
+                    horario__profesor_id=profesor_id,
+                    horario__ciclo_id=ciclo_id,
+                    horario__activo=True,
+                ).select_related('horario__taller'),
+                to_attr='alumno_mh_list',
             )
         )
 
@@ -69,17 +68,18 @@ class ProfesorAlumnosCartillaView(APIView):
             horarios = []
             seen = set()
             for matricula in alumno.matriculas.all():
-                for horario in getattr(matricula, 'horarios', None) or []:
-                    h = horario.horario
+                for mh in getattr(matricula, 'alumno_mh_list', None) or []:
+                    h = mh.horario
                     if h.id not in seen:
                         seen.add(h.id)
                         horarios.append({
                             'id': h.id,
+                            'taller_id': h.taller_id,
                             'taller_nombre': h.taller.nombre,
                             'taller_tipo': h.taller.tipo,
                             'dia_semana': h.dia_semana,
-                            'hora_inicio': h.hora_inicio,
-                            'hora_fin': h.hora_fin,
+                            'hora_inicio': h.hora_inicio.strftime('%H:%M:%S'),
+                            'hora_fin': h.hora_fin.strftime('%H:%M:%S'),
                         })
             alumnos_data.append({
                 'id': alumno.id,

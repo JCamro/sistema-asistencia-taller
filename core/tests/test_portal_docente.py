@@ -1342,3 +1342,231 @@ class TestCrossNamespaceIsolation:
 
         response = client.get('/api/portal-docente/me/')
         assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
+
+
+# ===========================================================================
+# Tests: ProfesorAlumnosCartillaView (Alumnos Cartilla)
+# ===========================================================================
+
+class TestProfesorAlumnosCartilla:
+    """Tests for GET /api/portal-docente/ciclos/{id}/alumnos/"""
+
+    ENDPOINT = '/api/portal-docente/ciclos/{}/alumnos/'
+
+    def test_single_student_with_known_horarios(self, authenticated_client, ciclo, alumno,
+                                                horario, matricula):
+        """Returns a single student with the correct horario badge fields."""
+        response = authenticated_client.get(self.ENDPOINT.format(ciclo.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert isinstance(response.data, list)
+        assert len(response.data) == 1
+
+        entry = response.data[0]
+        assert entry['nombre'] == 'Test'
+        assert entry['apellido'] == 'Student'
+        assert entry['dni'] == '12345678'
+        assert entry['telefono'] == '999999999'
+        assert entry['email'] == 'test@test.com'
+        assert 'horarios' in entry
+        assert len(entry['horarios']) == 1
+
+        badge = entry['horarios'][0]
+        assert badge['taller_nombre'] == 'Guitarra'
+        assert badge['taller_tipo'] == 'instrumento'
+        assert badge['dia_semana'] == 0
+        assert badge['hora_inicio'] == '10:00:00'
+        assert badge['hora_fin'] == '11:00:00'
+        assert 'taller_id' in badge
+
+    def test_deduplication(self, authenticated_client, ciclo, alumno, horario,
+                           otro_horario, matricula, db):
+        """Student enrolled in 2 horarios appears once with both badges."""
+        from datetime import timezone, datetime
+        from core.models import MatriculaHorario
+
+        # Enroll the same alumno in another_horario too
+        MatriculaHorario.objects.create(matricula=matricula, horario=otro_horario)
+
+        response = authenticated_client.get(self.ENDPOINT.format(ciclo.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 1, 'Student must appear exactly once'
+        assert len(response.data[0]['horarios']) == 2, '2 horario badges expected'
+
+        taller_names = {b['taller_nombre'] for b in response.data[0]['horarios']}
+        assert 'Guitarra' in taller_names
+        assert 'Piano' in taller_names
+
+    def test_search_by_nombre(self, authenticated_client, ciclo, matricula, otra_matricula,
+                              alumno, otro_alumno):
+        """?search=X filters by nombre (case-insensitive)."""
+        response = authenticated_client.get(
+            self.ENDPOINT.format(ciclo.id),
+            {'search': 'test'}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        ids = [e['id'] for e in response.data]
+        assert alumno.id in ids
+        assert otro_alumno.id not in ids  # 'Another' doesn't match 'test'
+
+    def test_search_by_apellido(self, authenticated_client, ciclo, matricula, otra_matricula,
+                                alumno, otro_alumno):
+        """?search=X filters by apellido (case-insensitive)."""
+        response = authenticated_client.get(
+            self.ENDPOINT.format(ciclo.id),
+            {'search': 'student'}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        ids = [e['id'] for e in response.data]
+        assert alumno.id in ids
+        assert otro_alumno.id in ids  # Both have apellido 'Student'
+
+    def test_search_by_dni(self, authenticated_client, ciclo, matricula, otra_matricula,
+                           alumno, otro_alumno):
+        """?search=X filters by DNI."""
+        response = authenticated_client.get(
+            self.ENDPOINT.format(ciclo.id),
+            {'search': '87654321'}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        ids = [e['id'] for e in response.data]
+        assert otro_alumno.id in ids
+        assert alumno.id not in ids
+
+    def test_taller_filter(self, authenticated_client, ciclo, alumno, otro_alumno,
+                           horario, otro_horario, otro_taller, matricula, db):
+        """?taller_id=X returns only students in that taller."""
+        from datetime import timezone, datetime
+        from core.models import MatriculaHorario, Matricula
+
+        # Enroll alumno in Guitarra (horario, already done via matricula fixture)
+        # Enroll otro_alumno in Piano (otro_horario)
+        mat2 = Matricula.objects.create(
+            alumno=otro_alumno,
+            ciclo=ciclo,
+            taller=otro_taller,
+            sesiones_contratadas=12,
+            precio_total=240,
+            precio_por_sesion=20,
+            fecha_matricula=datetime(2026, 1, 15, tzinfo=timezone.utc),
+            activo=True,
+            concluida=False,
+        )
+        MatriculaHorario.objects.create(matricula=mat2, horario=otro_horario)
+
+        # Filter by Guitarra (taller=horario.taller)
+        response = authenticated_client.get(
+            self.ENDPOINT.format(ciclo.id),
+            {'taller_id': horario.taller_id}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        ids = [e['id'] for e in response.data]
+        assert alumno.id in ids
+        assert otro_alumno.id not in ids  # Only in Piano
+
+        # Filter by Piano (taller=otro_horario.taller)
+        response = authenticated_client.get(
+            self.ENDPOINT.format(ciclo.id),
+            {'taller_id': otro_horario.taller_id}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        ids = [e['id'] for e in response.data]
+        assert otro_alumno.id in ids
+        assert alumno.id not in ids
+
+    def test_inactive_matricula_excluded(self, authenticated_client, ciclo, alumno, horario,
+                                         matricula):
+        """Students with activo=False matricula are excluded."""
+        matricula.activo = False
+        matricula.save()
+
+        response = authenticated_client.get(self.ENDPOINT.format(ciclo.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 0
+
+    def test_concluded_matricula_excluded(self, authenticated_client, ciclo, alumno, horario,
+                                          matricula):
+        """Students with concluida=True matricula are excluded."""
+        matricula.concluida = True
+        matricula.save()
+
+        response = authenticated_client.get(self.ENDPOINT.format(ciclo.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 0
+
+    def test_empty_response(self, authenticated_client, ciclo):
+        """Returns empty array when there are no active students."""
+        response = authenticated_client.get(self.ENDPOINT.format(ciclo.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert isinstance(response.data, list)
+        assert len(response.data) == 0
+
+    def test_other_profesor_students_not_visible(self, authenticated_client, api_client, ciclo,
+                                                 otro_profesor, alumno, db):
+        """Students enrolled only under otro_profesor are not visible."""
+        from datetime import timezone, datetime
+        from core.models import Horario, Matricula, MatriculaHorario, Taller
+
+        # Create a horario for otro_profesor
+        taller = Taller.objects.create(ciclo=ciclo, nombre='Bajo', tipo='instrumento', activo=True)
+        h = Horario.objects.create(
+            ciclo=ciclo, taller=taller, profesor=otro_profesor,
+            dia_semana=1, hora_inicio='12:00', hora_fin='13:00', activo=True,
+        )
+        mat = Matricula.objects.create(
+            alumno=alumno, ciclo=ciclo, taller=taller,
+            sesiones_contratadas=12, precio_total=240, precio_por_sesion=20,
+            fecha_matricula=datetime(2026, 1, 15, tzinfo=timezone.utc),
+            activo=True, concluida=False,
+        )
+        MatriculaHorario.objects.create(matricula=mat, horario=h)
+
+        response = authenticated_client.get(self.ENDPOINT.format(ciclo.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 0
+
+    def test_combined_search_and_taller_filter(self, authenticated_client, ciclo, alumno,
+                                               otro_alumno, horario, db):
+        """Combined ?search + ?taller_id narrows results."""
+        from datetime import timezone, datetime
+        from core.models import Matricula, MatriculaHorario
+
+        # Both students in the same horario
+        mat2 = Matricula.objects.create(
+            alumno=otro_alumno, ciclo=ciclo, taller=horario.taller,
+            sesiones_contratadas=12, precio_total=240, precio_por_sesion=20,
+            fecha_matricula=datetime(2026, 1, 15, tzinfo=timezone.utc),
+            activo=True, concluida=False,
+        )
+        MatriculaHorario.objects.create(matricula=mat2, horario=horario)
+
+        # Search for "Another" within Guitarra (taller_id=horario.taller_id)
+        response = authenticated_client.get(
+            self.ENDPOINT.format(ciclo.id),
+            {'search': 'Another', 'taller_id': str(horario.taller_id)}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 1
+        assert response.data[0]['id'] == otro_alumno.id
+
+    def test_inactive_horario_excluded(self, authenticated_client, ciclo, alumno, horario,
+                                       matricula):
+        """Students in inactivo horarios are excluded."""
+        horario.activo = False
+        horario.save()
+
+        response = authenticated_client.get(self.ENDPOINT.format(ciclo.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 0
+
+    def test_student_portal_token_rejected(self, api_client, portal_token, ciclo):
+        """Student portal token (type='portal') is rejected with 401."""
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION=f'Bearer {portal_token}')
+
+        response = client.get(self.ENDPOINT.format(ciclo.id))
+        assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
+
+    def test_unauthenticated_request(self, api_client, ciclo):
+        """Request without token returns 401."""
+        response = api_client.get(self.ENDPOINT.format(ciclo.id))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
