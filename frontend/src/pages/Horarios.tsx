@@ -1,8 +1,9 @@
-import { useState, useEffect, memo, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, memo, useCallback, useMemo } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import { getApiBaseUrl } from '../utils/api';
 import { useWindowWidth } from '../hooks/useWindowWidth';
+import { CeldaCalendario } from '../components/horarios';
 
 interface Taller {
   id: number;
@@ -44,7 +45,7 @@ const DIAS = [
   { value: 6, label: 'Domingo', abrev: 'DOM' },
 ];
 
-const HORAS = Array.from({ length: 14 }, (_, i) => i + 8);
+const HORAS = Array.from({ length: 13 }, (_, i) => i + 9);
 
 function formatHora(hora: number): string {
   return `${hora.toString().padStart(2, '0')}:00`;
@@ -58,76 +59,6 @@ function normalizarHora(hora: string): string {
 function horaAIndice(hora: string): number {
   const h = parseInt(hora.split(':')[0], 10);
   return HORAS.indexOf(h);
-}
-
-/* ── Tooltip ── */
-function Tooltip({
-  horario, children,
-}: {
-  horario: Horario;
-  children: React.ReactNode;
-}) {
-  const [visible, setVisible] = useState(false);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const triggerRef = useRef<HTMLDivElement>(null);
-
-  const show = useCallback(() => {
-    if (!triggerRef.current || !horario.alumnos?.length) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    setPos({ x: rect.left + rect.width / 2, y: rect.top });
-    setVisible(true);
-  }, [horario.alumnos]);
-
-  const hide = useCallback(() => setVisible(false), []);
-
-  return (
-    <>
-      <div
-        ref={triggerRef}
-        onMouseEnter={show}
-        onMouseLeave={hide}
-        style={{ height: '100%' }}
-      >
-        {children}
-      </div>
-      {visible && (
-        <div
-          style={{
-            position: 'fixed',
-            left: pos.x,
-            top: pos.y - 8,
-            transform: 'translate(-50%, -100%)',
-            zIndex: 100,
-            background: '#1e1b4b',
-            color: 'white',
-            borderRadius: '10px',
-            padding: '0.625rem 0.75rem',
-            fontSize: '0.75rem',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-            maxWidth: '260px',
-            maxHeight: '280px',
-            overflowY: 'auto',
-            pointerEvents: 'none',
-          }}
-        >
-          <div style={{
-            fontSize: '0.65rem', fontWeight: '700', color: '#a5b4fc',
-            marginBottom: '0.375rem', textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-          }}>
-            Alumnos ({horario.alumnos.length})
-          </div>
-          {horario.alumnos.map((a) => (
-            <div key={a.id} style={{
-              padding: '0.2rem 0', borderBottom: '1px solid rgba(255,255,255,0.08)',
-            }}>
-              {a.apellido}, {a.nombre} {a.edad !== null ? `(${a.edad} años)` : ''}
-            </div>
-          ))}
-        </div>
-      )}
-    </>
-  );
 }
 
 /* ── Panel lateral ── */
@@ -333,96 +264,6 @@ const [guardandoCupo, setGuardandoCupo] = useState(false);
         )}
       </div>
     </div>
-  );
-}
-
-/* ── Celda compacta ── */
-function CeldaCalendario({
-  horario,
-  estaLleno,
-  isSelected,
-  onClick,
-}: {
-  horario: Horario;
-  estaLleno: boolean;
-  isSelected: boolean;
-  onClick: () => void;
-}) {
-  const bg = estaLleno
-    ? 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)'
-    : 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)';
-  const border = estaLleno ? '#fecaca' : '#bbf7d0';
-  const textColor = estaLleno ? '#991b1b' : '#166534';
-  const subColor = estaLleno ? '#b91c1c' : '#15803d';
-
-  return (
-    <Tooltip horario={horario}>
-      <div
-        onClick={onClick}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter') onClick(); }}
-        style={{
-          height: '100%',
-          borderRadius: '8px',
-          padding: '0.4rem 0.5rem',
-          background: bg,
-          border: `1.5px solid ${isSelected ? '#6366f1' : border}`,
-          cursor: 'pointer',
-          display: 'flex', flexDirection: 'column',
-          justifyContent: 'center',
-          transition: 'border-color 0.15s, box-shadow 0.15s',
-          boxShadow: isSelected ? '0 0 0 2px rgba(99,102,241,0.2)' : 'none',
-        }}
-      >
-        {/* Profesor */}
-        <div style={{
-          fontSize: '0.7rem', fontWeight: '600',
-          color: textColor,
-          whiteSpace: 'nowrap', overflow: 'hidden',
-          textOverflow: 'ellipsis',
-        }}>
-          {horario.profesor_nombre}
-        </div>
-
-        {/* Horario */}
-        <div style={{
-          fontSize: '0.6rem', color: subColor,
-          marginTop: '2px',
-        }}>
-          {normalizarHora(horario.hora_inicio)} – {normalizarHora(horario.hora_fin)}
-        </div>
-
-        {/* Cupo compacto */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginTop: '6px',
-          paddingTop: '4px',
-          borderTop: `1px solid ${border}`,
-        }}>
-          <span style={{
-            fontSize: '0.6rem', fontWeight: '700',
-            display: 'flex', alignItems: 'center', gap: '3px',
-            color: estaLleno ? '#dc2626' : '#059669',
-          }}>
-            {horario.alumnos.length > 0 && (
-              <span style={{ fontSize: '0.65rem' }}>👤</span>
-            )}
-            {horario.ocupacion ?? 0}/{horario.cupo_maximo}
-          </span>
-          {estaLleno && (
-            <span style={{
-              fontSize: '0.5rem', fontWeight: '700',
-              background: '#dc2626', color: 'white',
-              padding: '1px 4px', borderRadius: '3px',
-              letterSpacing: '0.03em',
-            }}>
-              LLENO
-            </span>
-          )}
-        </div>
-      </div>
-    </Tooltip>
   );
 }
 
@@ -645,9 +486,9 @@ function HorariosPage() {
                   {/* Cabecera días */}
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: '72px repeat(7, 1fr)',
+                    gridTemplateColumns: '80px repeat(7, 1fr)',
                     background: '#f9fafb', borderBottom: '1px solid #e5e7eb',
-                    minWidth: isMobile ? '500px' : '700px',
+                    minWidth: isMobile ? '600px' : '750px',
                   }}>
                     <div style={{
                       padding: '0.75rem 0.5rem', fontSize: '0.7rem', fontWeight: '600',
@@ -670,9 +511,9 @@ function HorariosPage() {
                   {HORAS.map((hora) => (
                     <div key={hora} style={{
                       display: 'grid',
-                      gridTemplateColumns: '72px repeat(7, 1fr)',
+                      gridTemplateColumns: '80px repeat(7, 1fr)',
                       borderBottom: '1px solid #f3f4f6',
-                      minWidth: isMobile ? '500px' : '700px',
+                      minWidth: isMobile ? '600px' : '750px',
                     }}>
                       <div style={{
                         padding: '0.625rem 0.25rem', fontSize: '0.75rem',
@@ -692,7 +533,7 @@ function HorariosPage() {
                           <div
                             key={`${dia.value}-${hora}`}
                             style={{
-                              minHeight: '72px',
+                              minHeight: '100px',
                               borderLeft: '1px solid #f3f4f6',
                               padding: '3px',
                             }}
