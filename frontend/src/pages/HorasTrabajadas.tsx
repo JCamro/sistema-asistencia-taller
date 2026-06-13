@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import { ResponsiveTable } from '../components/ui/ResponsiveTable';
@@ -8,6 +8,7 @@ import {
   aprobarHoraTrabajada, rechazarHoraTrabajada,
   generarHorasTrabajadas, getProfesores, getHorarios,
 } from '../api/endpoints';
+import type { HoraTrabajada, HoraTrabajadaDetail } from '../api/endpoints';
 import { formatMonto } from '../utils/formatters';
 import { useWindowWidth } from '../hooks/useWindowWidth';
 
