@@ -1,9 +1,15 @@
 import api from './axios';
 import type { AlumnoCartilla } from '../types';
+import type { ProfesorUser } from '../stores/authStore';
 
 export interface GetAlumnosCartillaParams {
   search?: string;
   taller_id?: number;
+}
+
+export interface CicloBasic {
+  id: number;
+  nombre: string;
 }
 
 /**
@@ -25,4 +31,30 @@ export async function getAlumnosCartilla(
   const url = `/ciclos/${cicloId}/alumnos/${qs ? `?${qs}` : ''}`;
   const { data } = await api.get(url);
   return data;
+}
+
+/**
+ * Fetch the logged-in professor's profile.
+ * GET /api/portal-docente/me/
+ */
+export async function getMe(): Promise<ProfesorUser> {
+  const { data } = await api.get('/me/');
+  return data;
+}
+
+/**
+ * Fetch cycles available for the logged-in professor.
+ * GET /api/portal-docente/ciclos/
+ */
+export async function getCiclos(): Promise<CicloBasic[]> {
+  const { data } = await api.get('/ciclos/');
+  return data;
+}
+
+/**
+ * Logout from the server — blacklists the refresh token.
+ * POST /api/portal-docente/auth/logout/
+ */
+export async function logoutApi(refreshToken: string): Promise<void> {
+  await api.post('/auth/logout/', { refresh: refreshToken });
 }

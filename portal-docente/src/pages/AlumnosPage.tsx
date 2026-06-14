@@ -154,7 +154,7 @@ const AlumnosPage = memo(function AlumnosPage() {
 
   /* ---- Debounced search (300 ms) ---- */
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);

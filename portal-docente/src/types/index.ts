@@ -19,3 +19,9 @@ export interface AlumnoCartilla {
   email: string;
   horarios: HorarioBadge[];
 }
+
+/** Basic cycle info returned by GET /ciclos/. */
+export interface CicloBasic {
+  id: number;
+  nombre: string;
+}
