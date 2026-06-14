@@ -1,3 +1,7 @@
+from datetime import date
+
+from django.db.models import IntegerField, ExpressionWrapper, Value
+from django.db.models.functions import ExtractYear
 from rest_framework import serializers
 
 from core.models import Ciclo, Horario, Asistencia, Matricula, Alumno, NotaClase, PagoProfesor
@@ -49,12 +53,18 @@ class HorarioConAlumnosSerializer(serializers.ModelSerializer):
         ).distinct().count()
 
     def get_alumnos(self, obj):
+        current_year = date.today().year
         alumnos = Alumno.objects.filter(
             matriculas__horarios__horario=obj,
             matriculas__activo=True,
             matriculas__concluida=False,
-        ).distinct().values('id', 'nombre', 'apellido', 'dni', 'telefono')
-        return list(alumnos)
+        ).distinct().annotate(
+            edad=ExpressionWrapper(
+                Value(current_year) - ExtractYear('fecha_nacimiento'),
+                output_field=IntegerField()
+            )
+        ).values('id', 'nombre', 'apellido', 'edad')
+        return sorted(list(alumnos), key=lambda a: a['apellido'])
 
 
 class AsistenciaPorHorarioSerializer(serializers.Serializer):

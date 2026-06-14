@@ -1,5 +1,5 @@
 import api from './axios';
-import type { AlumnoCartilla } from '../types';
+import type { AlumnoCartilla, HorarioCalendario } from '../types';
 import type { ProfesorUser } from '../stores/authStore';
 
 export interface GetAlumnosCartillaParams {
@@ -57,4 +57,13 @@ export async function getCiclos(): Promise<CicloBasic[]> {
  */
 export async function logoutApi(refreshToken: string): Promise<void> {
   await api.post('/auth/logout/', { refresh: refreshToken });
+}
+
+/**
+ * Fetch horarios (schedules) with enrolled students for the weekly calendar.
+ * GET /api/portal-docente/ciclos/{cicloId}/horarios/
+ */
+export async function getHorarios(cicloId: number): Promise<HorarioCalendario[]> {
+  const { data } = await api.get(`/ciclos/${cicloId}/horarios/`);
+  return data;
 }

@@ -25,3 +25,23 @@ export interface CicloBasic {
   id: number;
   nombre: string;
 }
+
+/** Student data in a calendar cell. */
+export interface AlumnoCalendario {
+  id: number;
+  nombre: string;
+  apellido: string;
+  edad: number | null;
+}
+
+/** Horario data for the weekly calendar. */
+export interface HorarioCalendario {
+  id: number;
+  dia_semana: number;       // 0=Lun..6=Dom
+  hora_inicio: string;      // "HH:MM:SS"
+  hora_fin: string;
+  taller_nombre: string;
+  profesor_nombre: string;
+  alumnos_count: number;
+  alumnos: AlumnoCalendario[];
+}
