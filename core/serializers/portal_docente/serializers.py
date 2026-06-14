@@ -4,7 +4,7 @@ from django.db.models import IntegerField, ExpressionWrapper, Value
 from django.db.models.functions import ExtractYear
 from rest_framework import serializers
 
-from core.models import Ciclo, Horario, Asistencia, Matricula, Alumno, NotaClase, PagoProfesor
+from core.models import Ciclo, Horario, Asistencia, Matricula, Alumno, NotaClase, NotaDia, PagoProfesor
 from core.models.hora_trabajada import HoraTrabajada
 
 
@@ -28,6 +28,7 @@ class CicloBasicSerializer(serializers.ModelSerializer):
 
 class HorarioConAlumnosSerializer(serializers.ModelSerializer):
     """Horario detail with enrolled student list."""
+    taller_id = serializers.IntegerField(source='taller.id', read_only=True)
     taller_nombre = serializers.CharField(source='taller.nombre', read_only=True)
     taller_tipo = serializers.CharField(source='taller.tipo', read_only=True)
     profesor_nombre = serializers.SerializerMethodField()
@@ -38,7 +39,8 @@ class HorarioConAlumnosSerializer(serializers.ModelSerializer):
         model = Horario
         fields = [
             'id', 'dia_semana', 'hora_inicio', 'hora_fin',
-            'taller_nombre', 'taller_tipo', 'profesor_nombre',
+            'taller_id', 'taller_nombre', 'taller_tipo',
+            'profesor_nombre',
             'alumnos_count', 'alumnos',
         ]
 
@@ -114,6 +116,15 @@ class NotaClaseSerializer(serializers.ModelSerializer):
             if not value.activo:
                 raise serializers.ValidationError('El horario no está activo.')
         return value
+
+
+class NotaDiaSerializer(serializers.ModelSerializer):
+    """NotaDia serializer for list/create/update."""
+
+    class Meta:
+        model = NotaDia
+        fields = ['id', 'fecha', 'contenido', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class ProfesorDashboardSerializer(serializers.Serializer):
