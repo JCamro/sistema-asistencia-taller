@@ -8,6 +8,7 @@ from .horas_trabajadas_view import ProfesorHorasTrabajadasView
 from .dashboard_view import ProfesorDashboardView
 from .notas_view import ProfesorNotasView, ProfesorNotaDetailView
 from .notas_dia_view import ProfesorNotasDiaView, ProfesorNotaDiaDetailView
+from .notas_alumno_view import ProfesorNotasAlumnoView, ProfesorNotaAlumnoDetailView
 from .pagos_view import ProfesorPagosView
 from .alumnos_view import ProfesorAlumnosCartillaView
 
@@ -37,4 +38,8 @@ urlpatterns = [
     # Day notes
     path('ciclos/<int:ciclo_id>/notas-dia/', ProfesorNotasDiaView.as_view(), name='portal-docente-notas-dia'),
     path('ciclos/<int:ciclo_id>/notas-dia/<int:nota_id>/', ProfesorNotaDiaDetailView.as_view(), name='portal-docente-nota-dia-detalle'),
+
+    # Student notes
+    path('ciclos/<int:ciclo_id>/notas-alumno/', ProfesorNotasAlumnoView.as_view(), name='portal-docente-notas-alumno'),
+    path('ciclos/<int:ciclo_id>/notas-alumno/<int:nota_id>/', ProfesorNotaAlumnoDetailView.as_view(), name='portal-docente-nota-alumno-detalle'),
 ]

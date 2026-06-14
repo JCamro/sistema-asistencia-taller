@@ -4,7 +4,7 @@ from django.db.models import IntegerField, ExpressionWrapper, Value
 from django.db.models.functions import ExtractYear
 from rest_framework import serializers
 
-from core.models import Ciclo, Horario, Asistencia, Matricula, Alumno, NotaClase, NotaDia, PagoProfesor
+from core.models import Ciclo, Horario, Asistencia, Matricula, Alumno, NotaClase, NotaDia, NotaAlumno, PagoProfesor
 from core.models.hora_trabajada import HoraTrabajada
 
 
@@ -125,6 +125,19 @@ class NotaDiaSerializer(serializers.ModelSerializer):
         model = NotaDia
         fields = ['id', 'fecha', 'contenido', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class NotaAlumnoSerializer(serializers.ModelSerializer):
+    """NotaAlumno serializer for list/create/update."""
+    alumno_nombre = serializers.SerializerMethodField()
+
+    class Meta:
+        model = NotaAlumno
+        fields = ['id', 'horario', 'alumno', 'alumno_nombre', 'fecha', 'contenido', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_alumno_nombre(self, obj):
+        return f"{obj.alumno.apellido}, {obj.alumno.nombre}"
 
 
 class ProfesorDashboardSerializer(serializers.Serializer):
