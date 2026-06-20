@@ -69,16 +69,41 @@ class HorarioConAlumnosSerializer(serializers.ModelSerializer):
         return sorted(list(alumnos), key=lambda a: a['apellido'])
 
 
-class AsistenciaPorHorarioSerializer(serializers.Serializer):
-    """Attendance record for a single student."""
-    alumno_id = serializers.IntegerField(source='matricula.alumno.id')
-    alumno_nombre = serializers.SerializerMethodField()
+class AsistenciaRegistroSerializer(serializers.Serializer):
+    """Single attendance record for a student."""
+    alumno = serializers.SerializerMethodField()
     estado = serializers.CharField()
-    fecha = serializers.DateField()
-    hora = serializers.TimeField()
 
-    def get_alumno_nombre(self, obj):
-        return f"{obj.matricula.alumno.apellido}, {obj.matricula.alumno.nombre}"
+    def get_alumno(self, obj):
+        a = obj.matricula.alumno
+        return {
+            'id': a.id,
+            'nombre': a.nombre,
+            'apellido': a.apellido,
+            'dni': a.dni,
+            'telefono': a.telefono or '',
+        }
+
+
+class AsistenciaPorHorarioSerializer(serializers.Serializer):
+    """Grouped attendance response: horario info + student records."""
+    horario = serializers.SerializerMethodField()
+    registros = serializers.SerializerMethodField()
+
+    def get_horario(self, obj):
+        h = obj['horario']
+        return {
+            'id': h.id,
+            'dia_semana': h.dia_semana,
+            'hora_inicio': str(h.hora_inicio),
+            'hora_fin': str(h.hora_fin),
+            'taller_id': h.taller_id,
+            'taller_nombre': h.taller.nombre,
+            'taller_tipo': h.taller.tipo,
+        }
+
+    def get_registros(self, obj):
+        return AsistenciaRegistroSerializer(obj['asistencias'], many=True).data
 
 
 class HoraTrabajadaSerializer(serializers.ModelSerializer):

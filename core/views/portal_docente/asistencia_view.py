@@ -76,11 +76,19 @@ class ProfesorAsistenciasView(APIView):
             matricula__fecha_matricula__date__lte=fecha,
         ).select_related(
             'matricula__alumno',
-            'horario',
+            'horario__taller',
         ).order_by('matricula__alumno__apellido')
 
+        # Group by horario (there's only one, but serializer expects the structure)
+        horario = asistencias.first().horario if asistencias.exists() else Horario.objects.get(id=horario_id)
+        
+        result = [{
+            'horario': horario,
+            'asistencias': asistencias,
+        }]
+
         return Response(
-            AsistenciaPorHorarioSerializer(asistencias, many=True).data
+            AsistenciaPorHorarioSerializer(result, many=True).data
         )
 
     def post(self, request, *args, **kwargs):
