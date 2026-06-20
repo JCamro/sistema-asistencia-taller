@@ -1,3 +1,4 @@
+from django.http import Http404
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 
@@ -96,3 +97,26 @@ class ProfesorJWTAuthentication(JWTAuthentication):
             return ProfesorDummyUser(profesor_id, dni)
         except KeyError:
             raise InvalidToken('Token contained no recognizable user identification')
+
+
+def get_profesor_for_ciclo(dni, ciclo_id):
+    """
+    Resolves the correct Profesor ID for a given DNI and cycle.
+
+    Since Profesor has unique_together = ['ciclo', 'dni'], a teacher
+    gets a different profesor_id per cycle. This helper resolves the
+    correct one at request time instead of trusting the JWT-locked ID.
+
+    Returns:
+        int — the resolved profesor_id
+
+    Raises:
+        Http404 — if no Profesor record exists for (dni, ciclo_id)
+    """
+    from core.models import Profesor
+
+    try:
+        profesor = Profesor.objects.get(dni=dni, ciclo_id=ciclo_id, activo=True)
+        return profesor.id
+    except Profesor.DoesNotExist:
+        raise Http404('Profesor no encontrado para este ciclo')
