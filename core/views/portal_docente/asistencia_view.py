@@ -5,8 +5,14 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from django.db.models import Count
+from django.db.models.functions import TruncDate
+
 from core.models import Asistencia, Horario
-from core.serializers.portal_docente.serializers import AsistenciaPorHorarioSerializer
+from core.serializers.portal_docente.serializers import (
+    AsistenciaPorHorarioSerializer,
+    HorarioResumenSerializer,
+)
 from core.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 
 
@@ -100,3 +106,62 @@ class ProfesorAsistenciasView(APIView):
             {"detail": "Método no permitido. La asistencia es de solo lectura."},
             status=status.HTTP_405_METHOD_NOT_ALLOWED
         )
+
+
+class ProfesorAsistenciasPorHorarioView(APIView):
+    """
+    GET /api/portal-docente/ciclos/{id}/asistencias/por-horario/
+
+    Returns grouped horario summaries with attendance dates for the
+    authenticated profesor in the given cycle.
+
+    Response shape:
+    {
+        "horarios": [
+            {
+                "horario_id": int,
+                "taller_nombre": str,
+                "dia_semana": int,
+                "hora_inicio": "HH:MM",
+                "hora_fin": "HH:MM",
+                "total_clases": int,
+                "fechas": ["YYYY-MM-DD", ...]
+            }
+        ]
+    }
+    """
+    authentication_classes = [ProfesorJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, ciclo_id):
+        profesor_id = get_profesor_for_ciclo(request.user.dni, ciclo_id)
+
+        # Get active horarios for this profesor in this cycle
+        horarios = Horario.objects.filter(
+            ciclo_id=ciclo_id,
+            profesor_id=profesor_id,
+            activo=True,
+        ).select_related('taller').order_by('dia_semana', 'hora_inicio')
+
+        # Build response with date lists per horario
+        result = []
+        for horario in horarios:
+            fechas_qs = Asistencia.objects.filter(
+                horario=horario,
+                matricula__activo=True,
+            ).dates('fecha', 'day')
+
+            fechas = [f.strftime('%Y-%m-%d') for f in fechas_qs]
+
+            total_clases = Asistencia.objects.filter(
+                horario=horario,
+                matricula__activo=True,
+            ).values('fecha').distinct().count()
+
+            # Attach annotations for the serializer
+            horario.total_clases = total_clases
+            horario.fechas = fechas
+
+        return Response({
+            'horarios': HorarioResumenSerializer(horarios, many=True).data,
+        })

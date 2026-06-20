@@ -3,7 +3,7 @@ from .auth_view import ProfesorLoginView, ProfesorLogoutView, ProfesorRefreshVie
 from .me_view import ProfesorMeView
 from .ciclos_view import ProfesorCiclosView
 from .horarios_view import ProfesorHorariosView, ProfesorHorarioDetalleView
-from .asistencia_view import ProfesorAsistenciasView
+from .asistencia_view import ProfesorAsistenciasView, ProfesorAsistenciasPorHorarioView
 from .horas_trabajadas_view import ProfesorHorasTrabajadasView
 from .dashboard_view import ProfesorDashboardView
 from .notas_view import ProfesorNotasView, ProfesorNotaDetailView
@@ -28,6 +28,7 @@ urlpatterns = [
     path('ciclos/<int:ciclo_id>/horarios/', ProfesorHorariosView.as_view(), name='portal-docente-horarios'),
     path('ciclos/<int:ciclo_id>/horarios/<int:horario_id>/', ProfesorHorarioDetalleView.as_view(), name='portal-docente-horario-detalle'),
     path('ciclos/<int:ciclo_id>/asistencias/', ProfesorAsistenciasView.as_view(), name='portal-docente-asistencias'),
+    path('ciclos/<int:ciclo_id>/asistencias/por-horario/', ProfesorAsistenciasPorHorarioView.as_view(), name='portal-docente-asistencias-por-horario'),
     path('ciclos/<int:ciclo_id>/horas-trabajadas/', ProfesorHorasTrabajadasView.as_view(), name='portal-docente-horas-trabajadas'),
     path('ciclos/<int:ciclo_id>/dashboard/', ProfesorDashboardView.as_view(), name='portal-docente-dashboard'),
     path('ciclos/<int:ciclo_id>/notas/', ProfesorNotasView.as_view(), name='portal-docente-notas'),

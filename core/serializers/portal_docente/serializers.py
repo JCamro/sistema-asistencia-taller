@@ -102,10 +102,11 @@ class HoraTrabajadaSerializer(serializers.ModelSerializer):
 
 class NotaClaseSerializer(serializers.ModelSerializer):
     """NotaClase serializer for list/create/update."""
+    taller_nombre = serializers.CharField(source='horario.taller.nombre', read_only=True)
 
     class Meta:
         model = NotaClase
-        fields = ['id', 'horario', 'fecha', 'contenido', 'created_at', 'updated_at']
+        fields = ['id', 'horario', 'fecha', 'contenido', 'created_at', 'updated_at', 'taller_nombre']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def validate_horario(self, value):
@@ -147,6 +148,23 @@ class ProfesorDashboardSerializer(serializers.Serializer):
     horas_mes = serializers.FloatField()
     monto_acumulado = serializers.FloatField()
     tiene_pagos = serializers.BooleanField()
+
+
+class HorarioResumenSerializer(serializers.Serializer):
+    """Summary of a horario with attendance stats for the por-horario endpoint."""
+    horario_id = serializers.IntegerField(source='id')
+    taller_nombre = serializers.CharField(source='taller.nombre')
+    dia_semana = serializers.IntegerField()
+    hora_inicio = serializers.TimeField()
+    hora_fin = serializers.TimeField()
+    total_clases = serializers.SerializerMethodField()
+    fechas = serializers.SerializerMethodField()
+
+    def get_total_clases(self, obj):
+        return obj.total_clases if hasattr(obj, 'total_clases') else 0
+
+    def get_fechas(self, obj):
+        return obj.fechas if hasattr(obj, 'fechas') else []
 
 
 class PagoProfesorDetallePortalSerializer(serializers.Serializer):

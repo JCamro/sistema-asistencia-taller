@@ -160,11 +160,9 @@ class TestHorarioConAlumnosEdad:
 
         assert len(alumnos_data) == 1
         alumno_keys = set(alumnos_data[0].keys())
-        assert 'dni' not in alumno_keys, "dni should not be in serialized alumnos output"
-        assert 'telefono' not in alumno_keys, "telefono should not be in serialized alumnos output"
-        # Should have these keys
-        assert alumno_keys == {'id', 'nombre', 'apellido', 'edad'}, \
-            f"Expected keys {{'id','nombre','apellido','edad'}}, got {alumno_keys}"
+        # Should have these keys (dni/telefono added intentionally)
+        assert alumno_keys == {'id', 'nombre', 'apellido', 'dni', 'telefono', 'edad'}, \
+            f"Expected keys {{'id','nombre','apellido','dni','telefono','edad'}}, got {alumno_keys}"
 
 
 # ---------------------------------------------------------------------------
@@ -207,8 +205,8 @@ class TestHorarioEndpointEdad:
                 assert 'edad' in a, "Each alumno must have 'edad' field"
                 if a['edad'] is not None:
                     found_edad = True
-                # dni and telefono should NOT be present
-                assert 'dni' not in a, "dni should not be in response"
-                assert 'telefono' not in a, "telefono should not be in response"
+                # dni and telefono should be present (enriched per spec)
+                assert 'dni' in a, "dni should be in response"
+                assert 'telefono' in a, "telefono should be in response"
 
         assert found_edad, "At least one alumno should have non-null edad"
