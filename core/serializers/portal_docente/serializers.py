@@ -65,7 +65,7 @@ class HorarioConAlumnosSerializer(serializers.ModelSerializer):
                 Value(current_year) - ExtractYear('fecha_nacimiento'),
                 output_field=IntegerField()
             )
-        ).values('id', 'nombre', 'apellido', 'edad')
+        ).values('id', 'nombre', 'apellido', 'dni', 'telefono', 'edad')
         return sorted(list(alumnos), key=lambda a: a['apellido'])
 
 

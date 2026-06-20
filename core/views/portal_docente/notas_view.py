@@ -5,7 +5,7 @@ from rest_framework.response import Response
 
 from core.models import NotaClase, Horario, Ciclo
 from core.serializers.portal_docente.serializers import NotaClaseSerializer
-from core.authentication import ProfesorJWTAuthentication
+from core.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 
 
 class ProfesorNotasView(APIView):
@@ -23,7 +23,7 @@ class ProfesorNotasView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, ciclo_id):
-        profesor_id = request.user.id
+        profesor_id = get_profesor_for_ciclo(request.user.dni, ciclo_id)
 
         queryset = NotaClase.objects.filter(
             profesor_id=profesor_id,
@@ -45,7 +45,7 @@ class ProfesorNotasView(APIView):
         )
 
     def post(self, request, ciclo_id):
-        profesor_id = request.user.id
+        profesor_id = get_profesor_for_ciclo(request.user.dni, ciclo_id)
 
         # Validate ciclo exists
         try:
@@ -122,7 +122,8 @@ class ProfesorNotaDetailView(APIView):
             return None
 
     def get(self, request, ciclo_id, nota_id):
-        nota = self._get_nota(nota_id, request.user.id, ciclo_id)
+        profesor_id = get_profesor_for_ciclo(request.user.dni, ciclo_id)
+        nota = self._get_nota(nota_id, profesor_id, ciclo_id)
         if not nota:
             return Response(
                 {"detail": "Nota no encontrada"},
@@ -131,7 +132,8 @@ class ProfesorNotaDetailView(APIView):
         return Response(NotaClaseSerializer(nota).data)
 
     def put(self, request, ciclo_id, nota_id):
-        nota = self._get_nota(nota_id, request.user.id, ciclo_id)
+        profesor_id = get_profesor_for_ciclo(request.user.dni, ciclo_id)
+        nota = self._get_nota(nota_id, profesor_id, ciclo_id)
         if not nota:
             return Response(
                 {"detail": "Nota no encontrada"},
@@ -155,7 +157,8 @@ class ProfesorNotaDetailView(APIView):
         return self.put(request, ciclo_id, nota_id)
 
     def delete(self, request, ciclo_id, nota_id):
-        nota = self._get_nota(nota_id, request.user.id, ciclo_id)
+        profesor_id = get_profesor_for_ciclo(request.user.dni, ciclo_id)
+        nota = self._get_nota(nota_id, profesor_id, ciclo_id)
         if not nota:
             return Response(
                 {"detail": "Nota no encontrada"},

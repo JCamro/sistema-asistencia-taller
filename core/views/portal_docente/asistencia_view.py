@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from core.models import Asistencia, Horario
 from core.serializers.portal_docente.serializers import AsistenciaPorHorarioSerializer
-from core.authentication import ProfesorJWTAuthentication
+from core.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 
 
 class ProfesorAsistenciasView(APIView):
@@ -25,7 +25,7 @@ class ProfesorAsistenciasView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, ciclo_id):
-        profesor_id = request.user.id
+        profesor_id = get_profesor_for_ciclo(request.user.dni, ciclo_id)
         horario_id = request.query_params.get('horario_id')
         fecha_str = request.query_params.get('fecha')
 
