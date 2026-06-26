@@ -283,87 +283,23 @@ function MenuOpciones({ onEditar, onEliminar }: { onEditar: () => void, onElimin
     <div style={{ position: 'relative' }}>
       <button
         onClick={(e) => { e.stopPropagation(); setAbierto(!abierto); }}
-        style={{
-          width: '32px',
-          height: '32px',
-          borderRadius: '6px',
-          border: 'none',
-          background: '#f3f4f6',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '1.25rem',
-          color: '#6b7280'
-        }}
-      >
-        ⋮
-      </button>
-      {abierto && (
-        <>
-          <div 
-            onClick={(e) => { e.stopPropagation(); setAbierto(false); }}
-            style={{ position: 'fixed', inset: 0, zIndex: 10 }}
-          />
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'absolute',
-              right: 0,
-              top: '100%',
-              marginTop: '4px',
-              background: 'white',
-              borderRadius: '8px',
-              boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-              border: '1px solid #e5e7eb',
-              minWidth: '140px',
-              zIndex: 20,
-              overflow: 'hidden'
-            }}
-          >
-            <button
-              onClick={() => { setAbierto(false); onEditar(); }}
-              style={{
-                width: '100%',
-                padding: '0.625rem 1rem',
-                border: 'none',
-                background: 'none',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                color: '#374151',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#f9fafb')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
-            >
-              ✏️ Editar
-            </button>
-            <button
-              onClick={() => { setAbierto(false); onEliminar(); }}
-              style={{
-                width: '100%',
-                padding: '0.625rem 1rem',
-                border: 'none',
-                background: 'none',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                color: '#dc2626',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#fef2f2')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
-            >
-              🗑️ Eliminar
-            </button>
-          </div>
-        </>
-      )}
+        style={{ width:'32px',height:'32px',borderRadius:'8px',border:'1px solid rgba(255,255,255,0.08)',background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#888',fontSize:'1.25rem',transition:'all 0.15s' }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#d4af37'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#888'; }}
+      >⋮</button>
+      {abierto && (<>
+        <div onClick={(e) => { e.stopPropagation(); setAbierto(false); }} style={{ position:'fixed',inset:0,zIndex:10 }}/>
+        <div onClick={e => e.stopPropagation()} style={{ position:'absolute',right:0,top:'100%',marginTop:'4px',background:'#1c1c1c',borderRadius:'10px',boxShadow:'0 10px 30px rgba(0,0,0,0.5)',border:'1px solid rgba(255,255,255,0.08)',minWidth:'150px',zIndex:20,overflow:'hidden' }}>
+          <button onClick={() => { setAbierto(false); onEditar(); }} style={{ width:'100%',padding:'0.6rem 1rem',border:'none',background:'none',textAlign:'left',cursor:'pointer',fontSize:'0.8125rem',color:'#ccc',display:'flex',alignItems:'center',gap:'0.5rem',transition:'background 0.1s' }}
+            onMouseEnter={e => e.currentTarget.style.background='rgba(212,175,55,0.08)'} onMouseLeave={e => e.currentTarget.style.background='none'}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar
+          </button>
+          <button onClick={() => { setAbierto(false); onEliminar(); }} style={{ width:'100%',padding:'0.6rem 1rem',border:'none',background:'none',textAlign:'left',cursor:'pointer',fontSize:'0.8125rem',color:'#ef4444',display:'flex',alignItems:'center',gap:'0.5rem',transition:'background 0.1s' }}
+            onMouseEnter={e => e.currentTarget.style.background='rgba(239,68,68,0.08)'} onMouseLeave={e => e.currentTarget.style.background='none'}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> Eliminar
+          </button>
+        </div>
+      </>)}
     </div>
   );
 }
@@ -537,60 +473,56 @@ function SeleccionCiclos() {
       </div>
       
       {(mostrarForm || mostrarEditar) && (
-        <form onSubmit={mostrarEditar ? handleGuardarEdicion : handleCrear} style={{ background: '#1c1c1c', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid rgba(212, 175, 55, 0.15)', width: '100%', maxWidth: '600px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
-          <h3 style={{ marginBottom: '1rem', fontWeight: '600', color: '#d4af37', fontFamily: "'Inter', sans-serif" }}>{mostrarEditar ? 'Editar ciclo' : 'Crear nuevo ciclo'}</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#a1a1a1' }}>Nombre</label>
-              <input type="text" placeholder="Ej: Ciclo Anual 2026" value={nombre} onChange={e => setNombre(e.target.value)} required style={{ width: '100%', padding: '0.625rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#a1a1a1' }}>Tipo</label>
-              <select value={tipo} onChange={e => setTipo(e.target.value)} style={{ width: '100%', padding: '0.625rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }}>
-                <option value="anual">Anual</option>
-                <option value="verano">Verano</option>
-                <option value="otro">Otro</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#a1a1a1' }}>Fecha inicio</label>
-              <input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} required style={{ width: '100%', padding: '0.625rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#a1a1a1' }}>Fecha fin</label>
-              <input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} required style={{ width: '100%', padding: '0.625rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }} />
-            </div>
-            {mostrarEditar && (
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#a1a1a1', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={activo} onChange={e => setActivo(e.target.checked)} style={{ width: '16px', height: '16px', accentColor: '#d4af37' }} />
-                  Ciclo activo
-                </label>
+        <div style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '16px', marginBottom: '2rem', border: '1px solid rgba(212,175,55,0.12)', width: '100%', maxWidth: '600px', boxShadow: '0 12px 40px rgba(0,0,0,0.5)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <h3 style={{ fontWeight: 600, fontSize: '1rem', color: '#d4af37', margin: 0 }}>{mostrarEditar ? 'Editar ciclo' : 'Crear nuevo ciclo'}</h3>
+            <button type="button" onClick={() => { setMostrarForm(false); setMostrarEditar(false); setCicloEditando(null); }} style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.05)', color: '#888', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+          </div>
+          <form onSubmit={mostrarEditar ? handleGuardarEdicion : handleCrear}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.7rem', fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Nombre</label>
+                <input type="text" placeholder="Ej: Ciclo Anual 2026" value={nombre} onChange={e => setNombre(e.target.value)} required style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid rgba(212,175,55,0.12)', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.875rem' }} />
               </div>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-            <button type="submit" disabled={guardando} style={{ padding: '0.625rem 1.5rem', background: 'linear-gradient(135deg, #d4af37 0%, #b8962e 100%)', color: '#0a0a0a', border: 'none', borderRadius: '8px', cursor: guardando ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
-              {guardando ? 'Guardando...' : 'Guardar'}
-            </button>
-            <button type="button" onClick={() => { setMostrarForm(false); setMostrarEditar(false); setCicloEditando(null); }} style={{ padding: '0.625rem 1.5rem', background: 'rgba(255,255,255,0.05)', color: '#a1a1a1', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', cursor: 'pointer', fontWeight: 500 }}>
-              Cancelar
-            </button>
-          </div>
-        </form>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.7rem', fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Tipo</label>
+                <select value={tipo} onChange={e => setTipo(e.target.value)} style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid rgba(212,175,55,0.12)', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.875rem' }}>
+                  <option value="anual">Anual</option>
+                  <option value="verano">Verano</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.7rem', fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Fecha inicio</label>
+                <input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} required style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid rgba(212,175,55,0.12)', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.875rem' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.7rem', fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Fecha fin</label>
+                <input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} required style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid rgba(212,175,55,0.12)', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.875rem' }} />
+              </div>
+              {mostrarEditar && (
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', color: '#aaa', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={activo} onChange={e => setActivo(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#d4af37' }} /> Ciclo activo
+                  </label>
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button type="submit" disabled={guardando} style={{ flex: 1, padding: '0.625rem', background: guardando ? 'rgba(212,175,55,0.3)' : 'linear-gradient(135deg, #d4af37, #b8962e)', color: '#0a0a0a', border: 'none', borderRadius: '10px', cursor: guardando ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.875rem' }}>{guardando ? 'Guardando...' : 'Guardar'}</button>
+              <button type="button" onClick={() => { setMostrarForm(false); setMostrarEditar(false); setCicloEditando(null); }} style={{ flex: 1, padding: '0.625rem', background: 'transparent', color: '#888', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>Cancelar</button>
+            </div>
+          </form>
+        </div>
       )}
       
       {ciclos.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '3rem', background: 'rgba(28, 28, 28, 0.8)', borderRadius: '16px', border: '2px dashed rgba(212, 175, 55, 0.3)', maxWidth: '400px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
-          <div style={{ width: '64px', height: '64px', background: 'rgba(212, 175, 55, 0.1)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
+        <div style={{ textAlign: 'center', padding: '3.5rem 2rem', background: 'rgba(28,28,28,0.6)', borderRadius: '20px', border: '2px dashed rgba(212,175,55,0.2)', maxWidth: '420px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+          <div style={{ width: 64, height: 64, background: 'rgba(212,175,55,0.08)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="1.5"><path d="M12 5v14M5 12h14"/></svg>
           </div>
-          <p style={{ color: '#a1a1a1', marginBottom: '1.25rem' }}>No hay ciclos creados</p>
-          <button onClick={abrirFormulario} style={{ padding: '0.75rem 1.5rem', background: 'linear-gradient(135deg, #d4af37 0%, #b8962e 100%)', color: '#0a0a0a', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, boxShadow: '0 4px 12px rgba(212, 175, 55, 0.3)' }}>
-            Crear primer ciclo
-          </button>
+          <p style={{ color: '#888', marginBottom: '1.5rem', fontSize: '0.9375rem' }}>No hay ciclos creados</p>
+          <button onClick={abrirFormulario} style={{ padding: '0.7rem 1.5rem', background: 'linear-gradient(135deg,#d4af37,#b8962e)', color: '#0a0a0a', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}>Crear primer ciclo</button>
         </div>
       ) : (
         <>
