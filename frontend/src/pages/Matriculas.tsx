@@ -158,6 +158,7 @@ function MatriculasPage() {
   const [filtroTaller, setFiltroTaller] = useState<number | ''>('');
   const [filtroDia, setFiltroDia] = useState<number | ''>('');
   const [filtroHora, setFiltroHora] = useState<number | ''>('');
+  const filterSelect: React.CSSProperties = { padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem', background: 'white', minWidth: '130px' };
 
   const getOrderingParam = (order: string) => {
     switch (order) {
@@ -615,58 +616,42 @@ function MatriculasPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#111827', marginBottom: '0.25rem' }}>Matrículas</h1>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{totalCount} matrículas activas</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+            <h1 style={{ fontSize: '1.625rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Matrículas</h1>
+            <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#b59410', background: '#fef9e7', padding: '0.2rem 0.65rem', borderRadius: '9999px' }}>{cicloActual?.nombre}</span>
+          </div>
+          <div style={{ height: 3, width: 48, background: 'linear-gradient(90deg, #d4af37, #f0d878)', borderRadius: 2, marginTop: '0.5rem' }} />
+          <p style={{ color: '#6b7280', fontSize: '0.8125rem', marginTop: '0.25rem' }}>{totalCount} matrículas</p>
         </div>
-        <button onClick={openCreateModal} disabled={alumnos.length === 0 || talleres.length === 0} style={{ background: alumnos.length === 0 || talleres.length === 0 ? '#e5e7eb' : '#40E0D0', color: '#000000', border: 'none', padding: '0.625rem 1.25rem', borderRadius: '8px', fontWeight: '600', fontSize: '0.875rem', cursor: (alumnos.length === 0 || talleres.length === 0) ? 'not-allowed' : 'pointer' }}>
-          <span>+</span> Nueva Matrícula
+        <button onClick={openCreateModal} disabled={alumnos.length === 0 || talleres.length === 0}
+          style={{ padding: '0.625rem 1.25rem', borderRadius: '10px', border: 'none', cursor: (alumnos.length === 0 || talleres.length === 0) ? 'not-allowed' : 'pointer', background: (alumnos.length === 0 || talleres.length === 0) ? '#e5e7eb' : 'linear-gradient(135deg, #d4af37, #c59b2e)', color: (alumnos.length === 0 || talleres.length === 0) ? '#9ca3af' : '#0a0a0a', fontWeight: 600, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.375rem', boxShadow: (alumnos.length === 0 || talleres.length === 0) ? 'none' : '0 2px 8px rgba(212,175,55,0.25)' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Matrícula
         </button>
       </div>
 
-      {alumnos.length === 0 && <div style={{ padding: '1rem', background: '#fef3c7', borderRadius: '8px', marginBottom: '1.5rem', color: '#b45309', fontSize: '0.875rem' }}>⚠️ Debes crear alumnos y talleres primero.</div>}
+      {alumnos.length === 0 && <div style={{ padding: '0.75rem 1rem', background: '#fffbeb', borderRadius: '10px', marginBottom: '1rem', color: '#92400e', fontSize: '0.8125rem', border: '1px solid #fef3c7', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Debes crear alumnos y talleres primero.</div>}
 
-      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-        <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <input 
-            type="text" 
-            placeholder="Buscar por alumno, taller..." 
-            value={searchText} 
-            onChange={(e) => setSearchText(e.target.value)} 
-            style={{ flex: 1, minWidth: '200px', padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }} 
-          />
-          <select 
-            value={filtroTaller} 
-            onChange={(e) => setFiltroTaller(e.target.value ? Number(e.target.value) : '')} 
-            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}
-          >
+      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #f1f5f9', overflow: 'hidden' }}>
+        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
+            <svg style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Buscar por alumno, taller..." value={searchText} onChange={(e) => setSearchText(e.target.value)} style={{ width: '100%', padding: '0.5rem 0.75rem 0.5rem 2.25rem', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem' }} />
+          </div>
+          <select value={filtroTaller} onChange={(e) => setFiltroTaller(e.target.value ? Number(e.target.value) : '')} style={filterSelect}>
             <option value="">Todos los talleres</option>
-            {talleres.map(t => (
-              <option key={t.id} value={t.id}>{t.nombre}</option>
-            ))}
+            {talleres.map(t => (<option key={t.id} value={t.id}>{t.nombre}</option>))}
           </select>
-          <select 
-            value={filtroDia} 
-            onChange={(e) => setFiltroDia(e.target.value !== '' ? Number(e.target.value) : '')} 
-            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '120px' }}
-          >
+          <select value={filtroDia} onChange={(e) => setFiltroDia(e.target.value !== '' ? Number(e.target.value) : '')} style={filterSelect}>
             <option value="">Todos los días</option>
-            {DIAS_GRID.map(d => (
-              <option key={d.value} value={d.value}>{d.label}</option>
-            ))}
+            {DIAS_GRID.map(d => (<option key={d.value} value={d.value}>{d.label}</option>))}
           </select>
-          <select 
-            value={filtroHora} 
-            onChange={(e) => setFiltroHora(e.target.value !== '' ? Number(e.target.value) : '')} 
-            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '120px' }}
-          >
+          <select value={filtroHora} onChange={(e) => setFiltroHora(e.target.value !== '' ? Number(e.target.value) : '')} style={filterSelect}>
             <option value="">Todas las horas</option>
-            {HORAS_GRID.map(h => (
-              <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
-            ))}
+            {HORAS_GRID.map(h => (<option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>))}
           </select>
-          <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}>
+          <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} style={filterSelect}>
             <option value="todas">Todas</option>
             <option value="activa">Activas</option>
             <option value="por_concluir">Por concluir (≤3 clases)</option>
@@ -677,7 +662,7 @@ function MatriculasPage() {
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value as 'recent' | 'oldest' | 'alpha')}
-            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '160px' }}
+            style={filterSelect}
           >
             <option value="recent">Más recientes</option>
             <option value="oldest">Más antiguos</option>
@@ -753,7 +738,7 @@ function MatriculasPage() {
               <button
                 onClick={() => handleEdit(m)}
                 className="touch-target"
-                style={{ background: 'none', border: 'none', color: '#40E0D0', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500' }}
+                style={{ background: 'none', border: 'none', color: '#d4af37', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: '500', padding: '0.35rem 0.5rem' }}
               >
                 Editar
               </button>
@@ -784,14 +769,18 @@ function MatriculasPage() {
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
           <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '800px', maxHeight: '90vh', overflow: 'auto' }}>
-            <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb', background: '#f9fafb', borderRadius: '16px 16px 0 0' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#111827' }}>{editingId ? 'Editar Matrícula' : 'Nueva Matrícula'}</h2>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>{editingId ? 'Editar Matrícula' : 'Nueva Matrícula'}</h2>
+              <button type="button" onClick={() => { setShowModal(false); setEditingId(null); setFormData(initialFormData); }} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#f3f4f6', color: '#6b7280', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
             <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
               
               {/* SECCIÓN 1: DATOS DEL ALUMNO */}
-              <div style={{ marginBottom: '2rem' }}>
-                <h3 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.05em' }}>Datos del Alumno</h3>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <div style={{ width: 4, height: 16, borderRadius: 2, background: '#d4af37' }} />
+                  <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#475569', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Datos del Alumno</h3>
+                </div>
                 {editingId ? (
                   <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2">
@@ -831,8 +820,11 @@ function MatriculasPage() {
               </div>
 
               {/* SECCIÓN 2: TALLER Y HORARIOS */}
-              <div style={{ marginBottom: '2rem' }}>
-                <h3 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.05em' }}>Taller y Horarios</h3>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <div style={{ width: 4, height: 16, borderRadius: 2, background: '#7c3aed' }} />
+                  <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#475569', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Taller y Horarios</h3>
+                </div>
                 <div style={{ marginBottom: '1rem' }}>
                   <select
                     value={formData.taller}
@@ -881,19 +873,20 @@ function MatriculasPage() {
                                       <td key={key} style={{ padding: '0.25rem', border: '1px solid #e5e7eb', minHeight: '50px', verticalAlign: 'top', background: '#fafafa' }}>
                                         {horariosEnCelda.map(h => {
                                           const isSelected = formData.horarios.includes(h.id);
-                                          const estaLleno = h.cupo_disponible <= 0;
-                                          
+                                          const estaLleno = h.cupo_disponible <= 0 && !isSelected;
+
                                           return (
                                             <div
                                               key={h.id}
-                                              onClick={() => !estaLleno && toggleHorario(h.id)}
+                                              onClick={() => toggleHorario(h.id)}
                                               style={{
                                                 padding: '0.25rem',
                                                 marginBottom: '0.25rem',
                                                 borderRadius: '4px',
-                                                cursor: estaLleno ? 'not-allowed' : 'pointer',
+                                                cursor: 'pointer',
                                                 background: isSelected ? '#dbeafe' : estaLleno ? '#fef2f2' : '#ecfdf5',
                                                 border: isSelected ? '2px solid #40E0D0' : '1px solid #86efac',
+                                                opacity: estaLleno ? 0.5 : 1,
                                               }}
                                             >
                                               <div style={{ fontWeight: '600', fontSize: '0.65rem', color: '#111827' }}>
@@ -946,9 +939,11 @@ function MatriculasPage() {
 
               {/* SECCIÓN 3: DETALLES DE PAGO */}
               <div style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.05em' }}>Detalles de Pago</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                  
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <div style={{ width: 4, height: 16, borderRadius: 2, background: '#059669' }} />
+                  <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#475569', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Detalles de Pago</h3>
+                </div>
+                  <div>
                   {/* Columna Izquierda */}
                   <div>
                     <div style={{ marginBottom: '1rem' }}>
@@ -1006,34 +1001,6 @@ function MatriculasPage() {
                       )}
                     </div>
                   </div>
-
-                  {/* Columna Derecha */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.75rem' }}>Método de Pago</label>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {['efectivo', 'transferencia', 'tarjeta'].map((metodo) => (
-                        <button
-                          key={metodo}
-                          type="button"
-                          onClick={() => setFormData({ ...formData, metodo_pago: metodo })}
-                          style={{
-                            padding: '0.75rem 1rem',
-                            borderRadius: '8px',
-                            border: formData.metodo_pago === metodo ? '2px solid #40E0D0' : '1px solid #d1d5db',
-                            background: formData.metodo_pago === metodo ? '#eff6ff' : 'white',
-                            color: formData.metodo_pago === metodo ? '#1d4ed8' : '#374151',
-                            fontWeight: formData.metodo_pago === metodo ? '600' : '400',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            textTransform: 'capitalize',
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          {metodo}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               </div>
 
@@ -1053,8 +1020,8 @@ function MatriculasPage() {
 
               {/* Botones */}
               <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <button type="button" onClick={() => setShowModal(false)} style={{ flex: 1, padding: '0.75rem', background: '#f3f4f6', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Cancelar</button>
-                <button type="submit" disabled={saving || !formData.alumno || !formData.taller || formData.horarios.length === 0} style={{ flex: 1, padding: '0.75rem', background: (saving || !formData.alumno || !formData.taller || formData.horarios.length === 0) ? '#93c5fc' : '#40E0D0', color: '#000000', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: (saving || !formData.alumno || !formData.taller || formData.horarios.length === 0) ? 'not-allowed' : 'pointer' }}>
+                <button type="button" onClick={() => setShowModal(false)} style={{ flex: 1, padding: '0.625rem', border: '1px solid #e5e7eb', borderRadius: '10px', background: 'white', color: '#374151', fontWeight: 500, cursor: 'pointer', fontSize: '0.875rem' }}>Cancelar</button>
+                <button type="submit" disabled={saving || !formData.alumno || !formData.taller || formData.horarios.length === 0} style={{ flex: 1, padding: '0.625rem', border: 'none', borderRadius: '10px', background: (saving || !formData.alumno || !formData.taller || formData.horarios.length === 0) ? '#e5e7eb' : '#d4af37', color: (saving || !formData.alumno || !formData.taller || formData.horarios.length === 0) ? '#9ca3af' : '#0a0a0a', fontWeight: 600, cursor: (saving || !formData.alumno || !formData.taller || formData.horarios.length === 0) ? 'not-allowed' : 'pointer', fontSize: '0.875rem' }}>
                   {saving ? 'Guardando...' : 'Guardar Matrícula'}
                 </button>
               </div>
@@ -1064,66 +1031,57 @@ function MatriculasPage() {
       )}
 
       {viewMatricula && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '650px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb', background: '#f9fafb', borderRadius: '16px 16px 0 0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <h2 style={{ fontSize: '1.125rem', fontWeight: '700', color: '#111827', marginBottom: '0.25rem' }}>{viewMatricula.alumno_nombre}</h2>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{viewMatricula.taller_nombre} · {asistenciasDetalle.length} registro{asistenciasDetalle.length !== 1 ? 's' : ''}</p>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '650px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+            {/* Header */}
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>{viewMatricula.alumno_nombre}</h2>
+                <p style={{ fontSize: '0.8125rem', color: '#94a3b8', margin: '0.125rem 0 0' }}>{viewMatricula.taller_nombre} · {asistenciasDetalle.length} registro{asistenciasDetalle.length !== 1 ? 's' : ''}</p>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                  {[
+                    { label: 'Asistió', count: asistenciasDetalle.filter(a => a.estado === 'asistio').length, bg: '#ecfdf5', color: '#059669' },
+                    { label: 'Falta', count: asistenciasDetalle.filter(a => a.estado === 'falta').length, bg: '#fef3c7', color: '#d97706' },
+                    { label: 'Falta Grave', count: asistenciasDetalle.filter(a => a.estado === 'falta_grave').length, bg: '#fef2f2', color: '#dc2626' },
+                  ].map(s => (
+                    <span key={s.label} style={{ padding: '0.2rem 0.55rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, background: s.bg, color: s.color }}>
+                      {s.count} {s.label}
+                    </span>
+                  ))}
                 </div>
-                <button onClick={() => setViewMatricula(null)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, padding: '0.25rem' }}>&times;</button>
               </div>
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem' }}>
-                <span style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '600', background: '#d1fae5', color: '#059669' }}>
-                  {asistenciasDetalle.filter(a => a.estado === 'asistio').length} Asistió
-                </span>
-                <span style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '600', background: '#fef3c7', color: '#d97706' }}>
-                  {asistenciasDetalle.filter(a => a.estado === 'falta').length} Falta
-                </span>
-                <span style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '600', background: '#fee2e2', color: '#dc2626' }}>
-                  {asistenciasDetalle.filter(a => a.estado === 'falta_grave').length} Falta Grave
-                </span>
-              </div>
+              <button onClick={() => setViewMatricula(null)} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#f3f4f6', color: '#6b7280', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0' }}>
+            {/* Body */}
+            <div style={{ flex: 1, overflowY: 'auto' }}>
               {loadingDetalle ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>Cargando asistencias...</div>
+                <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>Cargando asistencias...</div>
               ) : asistenciasDetalle.length === 0 ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>No hay asistencias registradas</div>
+                <div style={{ padding: '3rem', textAlign: 'center', color: '#cbd5e1' }}>No hay asistencias registradas</div>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                   <thead>
-                    <tr style={{ background: '#f9fafb', position: 'sticky', top: 0 }}>
-                      <th style={{ padding: '0.5rem 1rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Fecha</th>
-                      <th style={{ padding: '0.5rem 1rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Horario</th>
-                      <th style={{ padding: '0.5rem 1rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Estado</th>
-                      <th style={{ padding: '0.5rem 1rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Profesor</th>
-                      <th style={{ padding: '0.5rem 1rem', textAlign: 'center', fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', width: '60px' }}></th>
+                    <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #f1f5f9', position: 'sticky', top: 0 }}>
+                      <th style={th}>Fecha</th><th style={th}>Horario</th><th style={th}>Estado</th><th style={th}>Profesor</th><th style={{ ...th, width: 50, textAlign: 'center' }}></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {asistenciasDetalle.map((a) => {
-                      const estadoInfo = a.estado === 'asistio'
-                        ? { label: 'Asistió', color: '#059669', bg: '#d1fae5' }
-                        : a.estado === 'falta_grave'
-                          ? { label: 'Falta Grave', color: '#dc2626', bg: '#fee2e2' }
-                          : { label: 'Falta', color: '#d97706', bg: '#fef3c7' };
+                    {asistenciasDetalle.map(a => {
+                      const ei = a.estado === 'asistio' ? { label: 'Asistió', color: '#059669', bg: '#ecfdf5' }
+                        : a.estado === 'falta_grave' ? { label: 'Falta Grave', color: '#dc2626', bg: '#fef2f2' }
+                        : { label: 'Falta', color: '#d97706', bg: '#fef3c7' };
                       return (
-                        <tr key={a.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '0.625rem 1rem', fontSize: '0.8rem', color: '#111827', fontWeight: '500' }}>{a.fecha}</td>
-                          <td style={{ padding: '0.625rem 1rem', fontSize: '0.8rem', color: '#6b7280' }}>{a.horario_hora_inicio?.substring(0,5)} a {a.horario_hora_fin?.substring(0,5)}</td>
-                          <td style={{ padding: '0.625rem 1rem' }}>
-                            <span style={{ padding: '0.125rem 0.5rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '600', background: estadoInfo.bg, color: estadoInfo.color }}>
-                              {estadoInfo.label}
+                        <tr key={a.id} style={{ borderBottom: '1px solid #f8fafc' }}>
+                          <td style={td}>{a.fecha}</td>
+                          <td style={{ ...td, color: '#64748b' }}>{a.horario_hora_inicio?.substring(0,5)} – {a.horario_hora_fin?.substring(0,5)}</td>
+                          <td style={td}>
+                            <span style={{ padding: '0.15rem 0.45rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600, background: ei.bg, color: ei.color }}>
+                              {ei.label}{a.es_recuperacion && <span style={{ marginLeft: 4, fontSize: '0.65rem', color: '#7c3aed' }}>Recup.</span>}
                             </span>
-                            {a.es_recuperacion && (
-                              <span style={{ marginLeft: '0.375rem', fontSize: '0.65rem', color: '#8b5cf6', fontWeight: '500' }}>Recup.</span>
-                            )}
                           </td>
-                          <td style={{ padding: '0.625rem 1rem', fontSize: '0.8rem', color: '#374151' }}>{a.profesor_nombre}</td>
-                          <td style={{ padding: '0.625rem 1rem', textAlign: 'center' }}>
-                            <button onClick={() => confirmarEliminarAsistencia(a)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '500' }} title="Eliminar">✕</button>
+                          <td style={td}>{a.profesor_nombre}</td>
+                          <td style={{ ...td, textAlign: 'center' }}>
+                            <button onClick={() => confirmarEliminarAsistencia(a)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, padding: '0.25rem 0.5rem' }}>×</button>
                           </td>
                         </tr>
                       );
@@ -1132,8 +1090,9 @@ function MatriculasPage() {
                 </table>
               )}
             </div>
-            <div style={{ padding: '1rem', borderTop: '1px solid #e5e7eb' }}>
-              <button onClick={() => setViewMatricula(null)} style={{ width: '100%', padding: '0.625rem', background: '#f3f4f6', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Cerrar</button>
+            {/* Footer */}
+            <div style={{ padding: '0.75rem 1.5rem', borderTop: '1px solid #f3f4f6' }}>
+              <button onClick={() => setViewMatricula(null)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e5e7eb', borderRadius: '10px', background: 'white', color: '#374151', fontWeight: 500, cursor: 'pointer', fontSize: '0.875rem' }}>Cerrar</button>
             </div>
           </div>
         </div>
@@ -1189,31 +1148,34 @@ function MatriculasPage() {
       )}
 
       {verHorarioMatriculaId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb', background: '#f9fafb', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '1.125rem', fontWeight: '700', color: '#111827' }}>Horario del Alumno</h2>
-              <button onClick={() => setVerHorarioMatriculaId(null)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1 }}>&times;</button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '480px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Horario del Alumno</h2>
+              <button onClick={() => setVerHorarioMatriculaId(null)} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#f3f4f6', color: '#6b7280', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
               {horariosDetalle.length === 0 ? (
-                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>No hay horarios registrados</div>
+                <div style={{ padding: '3rem', textAlign: 'center', color: '#cbd5e1', fontSize: '0.875rem' }}>No hay horarios registrados</div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {horariosDetalle.map((h) => (
-                    <div key={h.id} style={{ padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb' }}>
-                      <div style={{ fontWeight: '600', color: '#111827', marginBottom: '0.25rem' }}>{h.horario_detalle.taller}</div>
-                      <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                        {h.horario_detalle.dia} · {h.horario_detalle.hora_inicio} a {h.horario_detalle.hora_fin}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {horariosDetalle.map(h => (
+                    <div key={h.id} style={{ padding: '0.875rem 1rem', borderRadius: '10px', background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#d4af37', flexShrink: 0 }} />
+                        <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.875rem' }}>{h.horario_detalle.taller}</span>
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '0.25rem' }}>Profesor: {h.horario_detalle.profesor}</div>
+                      <div style={{ fontSize: '0.8125rem', color: '#64748b', marginBottom: '0.125rem' }}>
+                        {h.horario_detalle.dia} · {h.horario_detalle.hora_inicio?.substring(0,5)} – {h.horario_detalle.hora_fin?.substring(0,5)}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Prof. {h.horario_detalle.profesor}</div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-            <div style={{ padding: '1rem', borderTop: '1px solid #e5e7eb' }}>
-              <button onClick={() => setVerHorarioMatriculaId(null)} style={{ width: '100%', padding: '0.625rem', background: '#f3f4f6', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Cerrar</button>
+            <div style={{ padding: '0.75rem 1.5rem', borderTop: '1px solid #f3f4f6' }}>
+              <button onClick={() => setVerHorarioMatriculaId(null)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e5e7eb', borderRadius: '10px', background: 'white', color: '#374151', fontWeight: 500, cursor: 'pointer', fontSize: '0.875rem' }}>Cerrar</button>
             </div>
           </div>
         </div>
@@ -1223,3 +1185,6 @@ function MatriculasPage() {
 }
 
 export default memo(MatriculasPage);
+
+const th: React.CSSProperties = { padding: '0.5rem 0.75rem', textAlign: 'left', fontSize: '0.65rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' };
+const td: React.CSSProperties = { padding: '0.5rem 0.75rem', fontSize: '0.8125rem', color: '#1f2937' };

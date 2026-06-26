@@ -40,7 +40,7 @@ class HoraTrabajada(models.Model):
     fecha = models.DateField()
     tipo = models.CharField(max_length=20, choices=TIPO, default='clase_regular')
     horas_trabajadas = models.DecimalField(max_digits=6, decimal_places=2, default=0)
-    estado = models.CharField(max_length=20, choices=ESTADO, default='pendiente')
+    estado = models.CharField(max_length=20, choices=ESTADO, default='aprobada')
 
     # Campos monetarios
     num_alumnos = models.PositiveIntegerField(default=0)

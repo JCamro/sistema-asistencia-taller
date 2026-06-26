@@ -132,13 +132,13 @@ class TestDistributeAmounts(TestCase):
             Decimal('100.00')
         )
         
-        # Verificar que la matrícula recibió el monto completo
+        # Verificar que el monto se guardó en ReciboMatricula (no en matricula.precio_total)
         rm = ReciboMatricula.objects.get(recibo=self.recibo)
         self.assertEqual(rm.monto, Decimal('100.00'))
         
-        # Verificar que se actualizó el precio_total de la matrícula
+        # matricula.precio_total NO se muta — conserva su valor original
         self.matricula1.refresh_from_db()
-        self.assertEqual(self.matricula1.precio_total, Decimal('100.00'))
+        self.assertEqual(self.matricula1.precio_total, Decimal('200.00'))
 
     def test_dos_matriculas_mismo_tipo_igual_distribucion(self):
         """2 matrículas mismo tipo → distribución equitativa con redondeo a 5."""

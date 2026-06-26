@@ -6,6 +6,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Prefetch
 from ..models import Recibo, ReciboMatricula
 from ..serializers import ReciboSerializer, ReciboListSerializer, CalcularPrecioSerializer
+from .pagination import StandardResultsSetPagination
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,12 +20,12 @@ class ReciboViewSet(viewsets.ModelViewSet):
         )
     ).all()
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['ciclo', 'estado', 'paquete_aplicado']
-    search_fields = ['numero', 'alumno__nombre', 'alumno__apellido']
+    search_fields = ['numero', 'alumno__nombre', 'alumno__apellido', 'matriculas__matricula__alumno__nombre', 'matriculas__matricula__alumno__apellido']
     ordering_fields = ['fecha_emision', 'monto_total', 'id']
     ordering = ['-id']
-    # No pagination - list is typically small and frontend expects direct array
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -36,6 +37,9 @@ class ReciboViewSet(viewsets.ModelViewSet):
         ciclo_id = self.kwargs.get('ciclo_id')
         if ciclo_id:
             queryset = queryset.filter(ciclo_id=ciclo_id)
+        # When searching through matriculas (multi-student), avoid duplicates
+        if self.request.query_params.get('search'):
+            queryset = queryset.distinct()
         return queryset
 
     def create(self, request, *args, **kwargs):

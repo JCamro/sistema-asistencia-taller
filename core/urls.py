@@ -76,10 +76,12 @@ urlpatterns = [
     
     # Horas trabajadas por ciclo
     path('ciclos/<int:ciclo_id>/horas-trabajadas/', HoraTrabajadaViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-horas-trabajadas'),
-    path('ciclos/<int:ciclo_id>/horas-trabajadas/generar/', HoraTrabajadaViewSet.as_view({'post': 'generar'}), name='ciclo-horas-trabajadas-generar'),
     
     # Endpoints anidados para matrículas
     path('matriculas/<int:matricula_id>/horarios/', MatriculaHorarioViewSet.as_view({'get': 'list'}), name='matricula-horarios'),
+    
+    # Acción calcular precio (debe ir antes del router)
+    path('recibos/calcular-precio/', ReciboViewSet.as_view({'post': 'calcular_precio'}), name='recibo-calcular-precio'),
     
     # Router URLs LAST
     path('', include(router.urls)),

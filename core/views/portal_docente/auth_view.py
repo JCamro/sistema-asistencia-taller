@@ -32,15 +32,18 @@ class ProfesorLoginView(APIView):
 
         dni = serializer.validated_data['dni']
 
-        # Enumeration prevention
-        if not Profesor.objects.filter(dni__iexact=dni, activo=True).exists():
+        # Enumeration prevention: check if ANY profesor record exists for this DNI
+        profesores_qs = Profesor.objects.filter(dni__iexact=dni, activo=True)
+        if not profesores_qs.exists():
             time.sleep(2)
             return Response(
                 {"detail": "Credenciales inválidas"},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        profesor = Profesor.objects.filter(dni__iexact=dni, activo=True).first()
+        # Pick the first profesor for the JWT token (a teacher may have
+        # multiple Profesor records, one per ciclo, same DNI)
+        profesor = profesores_qs.first()
 
         # Generate JWT with custom claims
         refresh = RefreshToken()
@@ -48,9 +51,12 @@ class ProfesorLoginView(APIView):
         refresh['dni'] = profesor.dni
         refresh['type'] = 'portal_docente'
 
-        # Get cycles where profesor has horarios
+        # Get ALL cycles where the teacher has a Profesor record.
+        # Uses the direct Profesor→Ciclo FK (related_name='profesores')
+        # instead of going through Horarios, so newly registered teachers
+        # without assigned schedules still see their ciclo.
         ciclos = Ciclo.objects.filter(
-            horarios__profesor=profesor
+            profesores__in=profesores_qs
         ).distinct()
 
         return Response({

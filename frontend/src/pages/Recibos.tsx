@@ -1,7 +1,8 @@
-import { useState, useEffect, memo, useCallback, useMemo } from 'react';
+import { useState, useEffect, memo, useCallback, useMemo, useRef } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import { ResponsiveTable } from '../components/ui/ResponsiveTable';
+import { Pagination } from '../components/ui/Pagination';
 import { getApiBaseUrl } from '../utils/api';
 import { useWindowWidth } from '../hooks/useWindowWidth';
 
@@ -82,7 +83,6 @@ interface PrecioCalculado {
 }
 
 interface ReciboFormData {
-  numero: string;
   fecha_emision: string;
   monto_bruto: string;
   monto_total: string;
@@ -91,11 +91,11 @@ interface ReciboFormData {
   paquete_aplicado: string;
   precio_editado: boolean;
   estado: string;
+  metodo_pago: string;
   matricula_ids: number[];
 }
 
 const initialFormData: ReciboFormData = {
-  numero: '',
   fecha_emision: getLimaToday(),
   monto_bruto: '0',
   monto_total: '0',
@@ -104,6 +104,7 @@ const initialFormData: ReciboFormData = {
   paquete_aplicado: 'individual',
   precio_editado: false,
   estado: 'pendiente',
+  metodo_pago: 'efectivo',
   matricula_ids: [],
 };
 
@@ -131,15 +132,33 @@ function RecibosPage() {
   const [precioEditadoManual, setPrecioEditadoManual] = useState(false);
   const [searchMatricula, setSearchMatricula] = useState('');
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showDashboardAmounts, setShowDashboardAmounts] = useState(false);
   const [selectedRecibo, setSelectedRecibo] = useState<Recibo | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [pagado, setPagado] = useState(0);
+  const [pendiente, setPendiente] = useState(0);
 
-  const fetchData = useCallback(async () => {
+  const searchRef = useRef(search);
+  const filtroRef = useRef(filtroEstado);
+  useEffect(() => { searchRef.current = search; }, [search]);
+  useEffect(() => { filtroRef.current = filtroEstado; }, [filtroEstado]);
+
+  const fetchData = async (page = 1) => {
     if (!cicloActual) return;
+    setCurrentPage(page);
     const token = localStorage.getItem('access_token');
+    const s = searchRef.current;
+    const fe = filtroRef.current;
     try {
+      const params = new URLSearchParams({ ordering: '-id', page: String(page) });
+      if (fe !== 'todos') params.set('estado', fe);
+      if (s) params.set('search', s);
       const [recibosRes, alumnosRes, matriculasRes] = await Promise.all([
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/recibos/?ordering=-id`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/recibos/?${params}`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/alumnos/?page_size=200`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/matriculas/?estado=no_procesado&page_size=200`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
@@ -150,7 +169,17 @@ function RecibosPage() {
       ]);
       const recibosArray = recibosData.results || recibosData;
       setRecibos(recibosArray);
+      setTotalCount(recibosData.count || 0);
+      setTotalPages(Math.ceil((recibosData.count || 0) / 20) || 1);
       setAlumnos((alumnosData.results || alumnosData).filter((a: Alumno) => a.activo));
+
+      // Fetch ALL recibos for dashboard totals (unpaginated)
+      const todosRes = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/recibos/?page_size=500`, { headers: { Authorization: `Bearer ${token}` } });
+      const todosData = await todosRes.json();
+      const todosArr = todosData.results || todosData;
+      setTotal(Array.isArray(todosArr) ? todosArr.reduce((s: number, r: any) => s + Number(r.monto_total || 0), 0) : 0);
+      setPagado(Array.isArray(todosArr) ? todosArr.filter((r: any) => r.estado === 'pagado').reduce((s: number, r: any) => s + Number(r.monto_pagado || 0), 0) : 0);
+      setPendiente(Array.isArray(todosArr) ? todosArr.filter((r: any) => r.estado === 'pendiente').reduce((s: number, r: any) => s + Number(r.monto_total || 0), 0) : 0);
 
       // Matriculas ya filtradas por el servidor (?estado=no_procesado = activas sin recibo pagado/pendiente)
       setMatriculas(Array.isArray(matriculasData.results || matriculasData) ? (matriculasData.results || matriculasData) : []);
@@ -159,9 +188,9 @@ function RecibosPage() {
     } finally {
       setLoading(false);
     }
-  }, [cicloActual]);
+  };
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchData(1); }, [cicloActual, search, filtroEstado]);
 
   const filteredRecibos = useMemo(() => {
     let resultado = recibos.filter((r) =>
@@ -233,13 +262,14 @@ function RecibosPage() {
   const calcularPrecioRecomendado = async (matriculaIds: number[]) => {
     if (matriculaIds.length === 0) {
       setPrecioCalculado(null);
+      setFormData(prev => ({ ...prev, monto_bruto: '0', monto_total: '0', descuento: '0' }));
       return;
     }
 
     setCalculandoPrecio(true);
     const token = localStorage.getItem('access_token');
     try {
-    const res = await fetch(`${apiBase}/api/recibos/calcular_precio/`, {
+    const res = await fetch(`${apiBase}/api/recibos/calcular-precio/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -250,15 +280,18 @@ function RecibosPage() {
 
       if (res.ok) {
         const data = await res.json();
+        console.log('Precio calculado:', data);
         setPrecioCalculado(data);
         setFormData(prev => ({
           ...prev,
-          monto_bruto: data.precio_bruto.toString(),
-          monto_total: data.precio_sugerido.toString(),
-          descuento: data.descuento.toString(),
-          paquete_aplicado: data.paquete_detectado,
+          monto_bruto: String(data.precio_bruto ?? '0'),
+          monto_total: String(data.precio_sugerido ?? '0'),
+          descuento: String(data.descuento ?? '0'),
+          paquete_aplicado: data.paquete_detectado || 'individual',
         }));
         setPrecioEditadoManual(false);
+      } else {
+        console.error('Calcular precio error:', res.status, await res.text());
       }
     } catch (err) {
       console.error('Error calculando precio:', err);
@@ -306,7 +339,6 @@ function RecibosPage() {
       const method = editingId ? 'PATCH' : 'POST';
 
       const body: any = {
-        numero: formData.numero,
         fecha_emision: formData.fecha_emision,
         monto_bruto: parseFloat(formData.monto_bruto),
         monto_total: parseFloat(formData.monto_total),
@@ -315,6 +347,7 @@ function RecibosPage() {
         paquete_aplicado: formData.paquete_aplicado,
         precio_editado: formData.precio_editado,
         estado: formData.estado,
+        metodo_pago: formData.metodo_pago,
         ciclo: cicloActual.id,
         alumno: null,
       };
@@ -363,24 +396,23 @@ function RecibosPage() {
   const handleEdit = (recibo: Recibo) => {
     setEditingId(recibo.id);
     setFormData({
-      numero: recibo.numero,
       fecha_emision: recibo.fecha_emision,
       monto_bruto: recibo.monto_bruto.toString(),
       monto_total: recibo.monto_total.toString(),
       monto_pagado: recibo.monto_pagado.toString(),
       descuento: recibo.descuento.toString(),
-      paquete_aplicado: recibo.paquete_aplicado,
+      paquete_aplicado: recibo.paquete_aplicado || 'individual',
       precio_editado: recibo.precio_editado,
       estado: recibo.estado,
+      metodo_pago: (recibo as any).metodo_pago || 'efectivo',
       matricula_ids: [],
     });
     setShowModal(true);
   };
 
   const openCreateModal = () => {
-    const num = `R-${Date.now().toString().slice(-6)}`;
     setEditingId(null);
-    setFormData({ ...initialFormData, numero: num });
+    setFormData({ ...initialFormData });
     setPrecioCalculado(null);
     setPrecioEditadoManual(false);
     setSearchMatricula('');
@@ -440,83 +472,59 @@ function RecibosPage() {
     );
   }
 
-  const total = filteredRecibos.reduce((sum, r) => sum + Number(r.monto_total), 0);
-  const pendiente = filteredRecibos.filter((r) => r.estado === 'pendiente').reduce((sum, r) => sum + Number(r.saldo_pendiente), 0);
-  const pagado = filteredRecibos.filter((r) => r.estado === 'pagado').reduce((sum, r) => sum + Number(r.monto_pagado), 0);
-
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#111827', marginBottom: '0.25rem' }}>Recibos</h1>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{recibos.length} recibos emitidos</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+            <h1 style={{ fontSize: '1.625rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Recibos</h1>
+            <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#b59410', background: '#fef9e7', padding: '0.2rem 0.65rem', borderRadius: '9999px' }}>{cicloActual?.nombre}</span>
+            <button onClick={() => setShowDashboardAmounts(v => !v)} title={showDashboardAmounts ? 'Ocultar montos' : 'Mostrar montos'} style={{ padding: '0.35rem 0.65rem', border: '1px solid #e5e7eb', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '0.75rem', color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', lineHeight: 1 }}>
+              <span style={{ fontSize: '1rem', lineHeight: 1 }}>{showDashboardAmounts ? '👁' : '👁‍🗨'}</span> {showDashboardAmounts ? 'Ocultar' : 'Mostrar'}
+            </button>
+          </div>
+          <div style={{ height: 3, width: 48, background: 'linear-gradient(90deg, #d4af37, #f0d878)', borderRadius: 2, marginTop: '0.5rem' }} />
+          <p style={{ color: '#6b7280', fontSize: '0.8125rem', marginTop: '0.25rem' }}>{totalCount} recibos</p>
         </div>
-        <button onClick={openCreateModal} disabled={matriculas.length === 0} style={{ background: matriculas.length === 0 ? '#e5e7eb' : '#14b8a6', color: 'white', border: 'none', padding: '0.625rem 1.25rem', borderRadius: '8px', fontWeight: '600', cursor: matriculas.length === 0 ? 'not-allowed' : 'pointer' }}>
-          <span>+</span> Nuevo Recibo
+        <button onClick={openCreateModal} disabled={matriculas.length === 0}
+          style={{ padding: '0.625rem 1.25rem', borderRadius: '10px', border: 'none', cursor: matriculas.length === 0 ? 'not-allowed' : 'pointer', background: matriculas.length === 0 ? '#e5e7eb' : 'linear-gradient(135deg, #d4af37, #c59b2e)', color: matriculas.length === 0 ? '#9ca3af' : '#0a0a0a', fontWeight: 600, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.375rem', boxShadow: matriculas.length === 0 ? 'none' : '0 2px 8px rgba(212,175,55,0.25)' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo Recibo
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: isMobile ? '0.75rem' : '1rem', marginBottom: '1.5rem' }}>
-        <div style={{ background: 'white', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <p style={{ color: '#6b7280', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Total</p>
-          <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#111827' }}>S/. {total.toFixed(2)}</p>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <div style={{ background: '#ecfdf5', padding: '1.25rem', borderRadius: '14px', border: '1px solid rgba(16,185,129,0.15)' }}>
+          <p style={{ color: '#059669', fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}>Total</p>
+          <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#059669' }}>{showDashboardAmounts ? `S/. ${Number(total||0).toFixed(2)}` : '••••••'}</p>
         </div>
-        <div style={{ background: 'white', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <p style={{ color: '#6b7280', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Pendiente</p>
-          <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#d97706' }}>S/. {pendiente.toFixed(2)}</p>
+        <div style={{ background: '#fffbeb', padding: '1.25rem', borderRadius: '14px', border: '1px solid rgba(217,119,6,0.15)' }}>
+          <p style={{ color: '#d97706', fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}>Pendiente</p>
+          <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#d97706' }}>S/. {Number(pendiente||0).toFixed(2)}</p>
         </div>
-        <div style={{ background: 'white', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <p style={{ color: '#6b7280', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Pagado</p>
-          <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#059669' }}>S/. {pagado.toFixed(2)}</p>
+        <div style={{ background: '#f0fdf4', padding: '1.25rem', borderRadius: '14px', border: '1px solid rgba(16,185,129,0.15)' }}>
+          <p style={{ color: '#059669', fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}>Pagado</p>
+          <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#059669' }}>{showDashboardAmounts ? `S/. ${Number(pagado||0).toFixed(2)}` : '••••••'}</p>
         </div>
       </div>
 
-      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-        <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <input 
-            type="text" 
-            placeholder="Buscar por número o alumno..." 
-            value={search} 
-            onChange={(e) => setSearch(e.target.value)} 
-            style={{ flex: 1, minWidth: '200px', padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px' }} 
-          />
-          <select 
-            value={filtroEstado} 
-            onChange={(e) => setFiltroEstado(e.target.value)} 
-            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '130px' }}
-          >
-            <option value="todos">Todos los estados</option>
+      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #f1f5f9', overflow: 'hidden' }}>
+        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
+            <svg style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Buscar por número o alumno..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: '100%', padding: '0.5rem 0.75rem 0.5rem 2.25rem', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem' }} />
+          </div>
+          <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} style={{ padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem', background: 'white', minWidth: '130px' }}>
+            <option value="todos">Todos</option>
             <option value="pendiente">Pendientes</option>
             <option value="pagado">Pagados</option>
             <option value="anulado">Anulados</option>
           </select>
-          <select 
-            value={filtroPreset} 
-            onChange={(e) => setFiltroPreset(e.target.value)} 
-            style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}
-          >
+          <select value={filtroPreset} onChange={(e) => setFiltroPreset(e.target.value)} style={{ padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem', background: 'white', minWidth: '140px' }}>
             <option value="todos">Todas las fechas</option>
             <option value="hoy">Del día</option>
             <option value="semana">De la semana</option>
             <option value="mes">Del mes</option>
-            <option value="personalizado">Rango personalizado</option>
           </select>
-          {filtroPreset === 'personalizado' && (
-            <>
-              <input 
-                type="date" 
-                value={fechaDesde} 
-                onChange={(e) => setFechaDesde(e.target.value)}
-                style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
-              />
-              <input 
-                type="date" 
-                value={fechaHasta} 
-                onChange={(e) => setFechaHasta(e.target.value)}
-                style={{ padding: '0.625rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
-              />
-            </>
-          )}
         </div>
         <ResponsiveTable<Recibo>
           columns={[
@@ -614,275 +622,152 @@ function RecibosPage() {
           )}
           emptyMessage="No hay recibos"
         />
+        {totalPages > 1 && <Pagination currentPage={currentPage} totalPages={totalPages} totalCount={totalCount} onPageChange={(p) => fetchData(p)} />}
       </div>
 
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '800px', maxHeight: '90vh', overflow: 'auto' }}>
-            <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: '700' }}>{editingId ? 'Editar Recibo' : 'Nuevo Recibo'}</h2>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '800px', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+            {/* Header */}
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>{editingId ? 'Editar Recibo' : 'Nuevo Recibo'}</h2>
+                {editingId && <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '0.125rem 0 0' }}>N° {recibos.find(r => r.id === editingId)?.numero || '—'}</p>}
+              </div>
+              <button type="button" onClick={() => { setShowModal(false); setPrecioCalculado(null); setPrecioEditadoManual(false); setSearchMatricula(''); }} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#f3f4f6', color: '#6b7280', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
             <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>Número</label>
-                    <input type="text" value={formData.numero} onChange={(e) => setFormData({ ...formData, numero: e.target.value })} required style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+
+              {/* ── Fecha ── */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 500, color: '#94a3b8', marginBottom: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Fecha de emisión</label>
+                <input type="date" value={formData.fecha_emision} onChange={e => setFormData({ ...formData, fecha_emision: e.target.value })} required style={{ padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem', maxWidth: '220px' }} />
+              </div>
+
+              {/* ── Matrículas (solo nuevo) ── */}
+              {!editingId && (
+                <div style={{ marginBottom: '1.25rem', background: '#f8fafc', borderRadius: '12px', padding: '1rem', border: '1px solid #f1f5f9' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Matrículas a incluir</span>
+                    <span style={{ fontSize: '0.7rem', color: '#d4af37', background: '#fef9e7', padding: '0.15rem 0.6rem', borderRadius: '9999px', fontWeight: 600 }}>{formData.matricula_ids.length} seleccionadas</span>
                   </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>Fecha</label>
-                    <input type="date" value={formData.fecha_emision} onChange={(e) => setFormData({ ...formData, fecha_emision: e.target.value })} required style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+                  <input type="text" placeholder="Buscar por alumno o taller..." value={searchMatricula} onChange={e => setSearchMatricula(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '10px', marginBottom: '0.5rem', fontSize: '0.875rem', background: 'white' }} />
+                  <div style={{ border: '1px solid #e5e7eb', borderRadius: '10px', maxHeight: '280px', overflow: 'auto', background: 'white' }}>
+                    {Object.keys(matriculasPorAlumno).length === 0 ? (
+                      <p style={{ padding: '1.5rem', color: '#9ca3af', textAlign: 'center' }}>No hay matrículas activas</p>
+                    ) : (
+                      Object.entries(matriculasPorAlumno).map(([alumnoId, mats]) => (
+                        <div key={alumnoId}>
+                          <div style={{ padding: '0.5rem 1rem', background: '#f8fafc', borderBottom: '1px solid #f1f5f9', fontWeight: 600, fontSize: '0.8125rem', color: '#334155' }}>{getAlumnoNombre(parseInt(alumnoId))}</div>
+                          {mats.map(m => (
+                            <label key={m.id} style={{ display: 'flex', alignItems: 'center', padding: '0.625rem 1rem', borderBottom: '1px solid #f8fafc', cursor: 'pointer', background: formData.matricula_ids.includes(m.id) ? '#f0fdf4' : 'transparent', transition: 'background 0.1s' }}>
+                              <input type="checkbox" checked={formData.matricula_ids.includes(m.id)} onChange={() => handleMatriculaToggle(m.id)} style={{ marginRight: '0.75rem', accentColor: '#14b8a6', width: 16, height: 16 }} />
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 500, color: '#0f172a', fontSize: '0.875rem' }}>{m.taller_nombre}</div>
+                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{m.taller_tipo === 'instrumento' ? 'Instrumento' : 'Taller'} · {m.sesiones_contratadas} sesiones</div>
+                              </div>
+                              <div style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f172a', fontSize: '0.875rem' }}>S/. {m.precio_total}</div>
+                            </label>
+                          ))}
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
+              )}
 
-                {!editingId && (
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: '500' }}>Matrículas a incluir</label>
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{formData.matricula_ids.length} seleccionadas</span>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Buscar por alumno o taller..."
-                      value={searchMatricula}
-                      onChange={(e) => setSearchMatricula(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', marginBottom: '0.5rem', fontSize: '0.875rem' }}
-                    />
-                    <div style={{ border: '1px solid #d1d5db', borderRadius: '8px', maxHeight: '300px', overflow: 'auto' }}>
-                      {Object.keys(matriculasPorAlumno).length === 0 ? (
-                        <p style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>No hay matrículas activas</p>
-                      ) : (
-                        Object.entries(matriculasPorAlumno).map(([alumnoId, mats]) => (
-                          <div key={alumnoId}>
-                            <div style={{ padding: '0.5rem 1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', fontWeight: '600', fontSize: '0.875rem', color: '#374151' }}>
-                              {getAlumnoNombre(parseInt(alumnoId))}
-                            </div>
-                            {mats.map((m) => (
-                              <label
-                                key={m.id}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  padding: '0.75rem 1rem',
-                                  borderBottom: '1px solid #f3f4f6',
-                                  cursor: 'pointer',
-                                  background: formData.matricula_ids.includes(m.id) ? '#f0fdf4' : 'transparent',
-                                }}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={formData.matricula_ids.includes(m.id)}
-                                  onChange={() => handleMatriculaToggle(m.id)}
-                                  style={{ marginRight: '0.75rem', accentColor: '#14b8a6' }}
-                                />
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ fontWeight: '500', color: '#111827' }}>{m.taller_nombre}</div>
-                                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                                    {m.taller_tipo === 'instrumento' ? 'Instrumento' : 'Taller'} - {m.sesiones_contratadas} sesiones
-                                  </div>
-                                </div>
-                                <div style={{ fontFamily: 'monospace', fontWeight: '600', color: '#111827' }}>
-                                  S/. {m.precio_total}
-                                </div>
-                              </label>
-                            ))}
-                          </div>
-                        ))
-                      )}
-                    </div>
+              {/* ── Precio calculado ── */}
+              {calculandoPrecio && <div style={{ textAlign: 'center', padding: '1rem', color: '#94a3b8', fontSize: '0.875rem' }}>Calculando precio recomendado...</div>}
+              {precioCalculado && !calculandoPrecio && (
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '1rem 1.125rem', marginBottom: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.8125rem' }}>
+                    <span style={{ color: '#166534' }}>Precio bruto</span><span style={{ fontFamily: 'monospace', fontWeight: 600 }}>S/. {precioCalculado.precio_bruto.toFixed(2)}</span>
                   </div>
-                )}
-
-                {calculandoPrecio && (
-                  <div style={{ textAlign: 'center', padding: '1rem', color: '#6b7280' }}>
-                    Calculando precio recomendado...
-                  </div>
-                )}
-
-                {precioCalculado && !calculandoPrecio && (
-                  <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '8px', padding: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <span style={{ color: '#166534', fontWeight: '500' }}>Precio bruto:</span>
-                      <span style={{ fontFamily: 'monospace', fontWeight: '600' }}>S/. {precioCalculado.precio_bruto.toFixed(2)}</span>
+                  {precioCalculado.descuento > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.8125rem' }}>
+                      <span style={{ color: '#166534' }}>{getPaqueteLabel(precioCalculado.paquete_detectado)}</span>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#dc2626' }}>-S/. {precioCalculado.descuento.toFixed(2)}</span>
                     </div>
-                    {precioCalculado.descuento > 0 && (
-                      <>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                          <span style={{ color: '#166534', fontWeight: '500' }}>Paquete detectado:</span>
-                          <span style={{ fontWeight: '600', color: '#166534' }}>{getPaqueteLabel(precioCalculado.paquete_detectado)}</span>
+                  )}
+                  {precioCalculado.detalles && precioCalculado.detalles.length > 0 && (
+                    <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid #bbf7d0' }}>
+                      <p style={{ fontSize: '0.7rem', fontWeight: 600, color: '#166534', marginBottom: '0.375rem' }}>Desglose por alumno:</p>
+                      {precioCalculado.detalles.map((d, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.125rem' }}>
+                          <span style={{ color: '#166534' }}>{d.alumno} - {d.taller} ({d.cantidad_clases})</span>
+                          <span style={{ fontFamily: 'monospace', color: '#166534' }}>S/. {d.precio_individual.toFixed(2)}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                          <span style={{ color: '#166534', fontWeight: '500' }}>Descuento:</span>
-                          <span style={{ fontFamily: 'monospace', fontWeight: '600', color: '#dc2626' }}>-S/. {precioCalculado.descuento.toFixed(2)}</span>
-                        </div>
-                      </>
-                    )}
-                    {precioCalculado.detalles && precioCalculado.detalles.length > 0 && (
-                      <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #86efac' }}>
-                        <p style={{ fontSize: '0.75rem', fontWeight: '600', color: '#166534', marginBottom: '0.5rem' }}>Desglose por alumno:</p>
-                        {precioCalculado.detalles.map((d, idx) => (
-                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginBottom: '0.25rem' }}>
-                            <span style={{ color: '#166534' }}>{d.alumno} - {d.taller} ({d.cantidad_clases})</span>
-                            <span style={{ fontFamily: 'monospace', color: '#166534' }}>S/. {d.precio_individual.toFixed(2)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid #86efac', marginTop: '0.5rem' }}>
-                      <span style={{ color: '#166534', fontWeight: '600' }}>Precio sugerido:</span>
-                      <span style={{ fontFamily: 'monospace', fontWeight: '700', fontSize: '1.125rem' }}>S/. {precioCalculado.precio_sugerido.toFixed(2)}</span>
+                      ))}
                     </div>
-                  </div>
-                )}
-
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: isMobile ? '0.75rem' : '1rem' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>Monto Bruto (S/.)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.monto_bruto}
-                      readOnly
-                      style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', background: '#f9fafb' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>
-                      Monto Final (S/.)
-                      {precioEditadoManual && <span style={{ color: '#f59e0b', marginLeft: '0.25rem' }}>*</span>}
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.monto_total}
-                      onChange={(e) => handlePrecioChange(e.target.value)}
-                      required
-                      style={{
-                        width: '100%',
-                        padding: '0.625rem',
-                        border: precioEditadoManual ? '2px solid #f59e0b' : '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        background: precioEditadoManual ? '#fffbeb' : 'white',
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>Descuento (S/.)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.descuento}
-                      readOnly
-                      style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', background: '#f9fafb', color: '#dc2626' }}
-                    />
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid #bbf7d0', marginTop: '0.375rem' }}>
+                    <span style={{ fontWeight: 600, color: '#166534', fontSize: '0.875rem' }}>Precio sugerido</span>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '1.125rem', color: '#059669' }}>S/. {precioCalculado.precio_sugerido.toFixed(2)}</span>
                   </div>
                 </div>
+              )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+              {/* ── Montos ── */}
+              <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.125rem', marginBottom: '1.25rem', border: '1px solid #f1f5f9' }}>
+                <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '0.75rem' }}>Montos</span>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4,1fr)', gap: '0.75rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>Pagado (S/.)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.monto_pagado}
-                      onChange={(e) => setFormData({ ...formData, monto_pagado: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '0.625rem',
-                        border: parseFloat(formData.monto_pagado) >= parseFloat(formData.monto_total) ? '2px solid #10b981' : '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        background: formData.estado === 'pagado' ? '#f0fdf4' : 'white'
-                      }}
-                    />
-                    {formData.estado === 'pagado' && (
-                      <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '0.25rem' }}>
-                        Pago completo
-                      </div>
-                    )}
+                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '0.2rem' }}>Bruto</span>
+                    <input type="number" step="0.01" value={formData.monto_bruto} readOnly style={{ width: '100%', padding: '0.5rem', border: '1px solid #e5e7eb', borderRadius: '8px', background: 'white', fontSize: '0.875rem', color: '#6b7280' }} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>Estado</label>
-                    <select
-                      value={formData.estado}
-                      onChange={(e) => {
-                        const newEstado = e.target.value;
-                        if (newEstado === 'pagado') {
-                          setFormData(prev => ({
-                            ...prev,
-                            estado: newEstado,
-                            monto_pagado: prev.monto_total
-                          }));
-                        } else {
-                          setFormData({ ...formData, estado: newEstado });
-                        }
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '0.625rem',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        background: formData.estado === 'pagado' ? '#f0fdf4' : formData.estado === 'anulado' ? '#fef2f2' : 'white'
-                      }}
-                    >
-                      <option value="pendiente">Pendiente</option>
-                      <option value="pagado">Pagado</option>
-                      <option value="anulado">Anulado</option>
+                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '0.2rem' }}>Descuento</span>
+                    <input type="number" step="0.01" value={formData.descuento} readOnly style={{ width: '100%', padding: '0.5rem', border: '1px solid #e5e7eb', borderRadius: '8px', background: 'white', fontSize: '0.875rem', color: '#dc2626', fontWeight: 500 }} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '0.2rem' }}>Final {precioEditadoManual && <span style={{ color: '#f59e0b' }}>*</span>}</span>
+                    <input type="number" step="0.01" value={formData.monto_total} onChange={e => handlePrecioChange(e.target.value)} required style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', fontSize: '0.9375rem', fontWeight: 600, border: precioEditadoManual ? '2px solid #f59e0b' : '1px solid #d1d5db', background: precioEditadoManual ? '#fffbeb' : 'white' }} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '0.2rem' }}>Pagado</span>
+                    <input type="number" step="0.01" value={formData.monto_pagado} onChange={e => setFormData({ ...formData, monto_pagado: e.target.value })} style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', fontSize: '0.9375rem', fontWeight: 600, color: '#059669', border: parseFloat(formData.monto_pagado) >= parseFloat(formData.monto_total) ? '2px solid #10b981' : '1px solid #d1d5db', background: formData.estado === 'pagado' ? '#f0fdf4' : 'white' }} />
+                  </div>
+                </div>
+                {editingId && (
+                  <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Saldo pendiente</span>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.9375rem', color: parseFloat(formData.monto_total) - parseFloat(formData.monto_pagado) > 0 ? '#dc2626' : '#059669' }}>S/. {(parseFloat(formData.monto_total) - parseFloat(formData.monto_pagado)).toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Estado y Método de Pago ── */}
+              <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.125rem', marginBottom: '1.5rem', border: '1px solid #f1f5f9' }}>
+                <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '0.75rem' }}>Estado del pago</span>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '0.2rem' }}>Estado</span>
+                    <select value={formData.estado} onChange={e => { const ne = e.target.value; if (ne === 'pagado') setFormData(prev => ({ ...prev, estado: ne, monto_pagado: prev.monto_total })); else setFormData({ ...formData, estado: ne }); }} style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '0.875rem', background: 'white' }}>
+                      <option value="pendiente">Pendiente</option><option value="pagado">Pagado</option><option value="anulado">Anulado</option>
+                    </select>
+                    {formData.estado === 'pagado' && <div style={{ fontSize: '0.7rem', color: '#059669', marginTop: '0.25rem' }}>✓ Pago completo</div>}
+                    {formData.estado === 'anulado' && <div style={{ fontSize: '0.7rem', color: '#dc2626', marginTop: '0.25rem' }}>Este recibo fue anulado</div>}
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '0.2rem' }}>Método de pago</span>
+                    <select value={formData.metodo_pago} onChange={e => setFormData({ ...formData, metodo_pago: e.target.value })} style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '0.875rem', background: 'white' }}>
+                      <option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option><option value="yape">Yape</option><option value="plin">Plin</option><option value="otro">Otro</option>
                     </select>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
-                <button type="button" onClick={() => { setShowModal(false); setPrecioCalculado(null); setPrecioEditadoManual(false); setSearchMatricula(''); }} style={{ flex: 1, minWidth: '100px', padding: '0.75rem', background: '#f3f4f6', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Cancelar</button>
-                
+              {/* ── Acciones ── */}
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => { setShowModal(false); setPrecioCalculado(null); setPrecioEditadoManual(false); setSearchMatricula(''); }} style={{ padding: '0.75rem 1.5rem', background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', fontWeight: 500, cursor: 'pointer', fontSize: '0.875rem', color: '#374151' }}>Cancelar</button>
                 {editingId && formData.estado === 'pendiente' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormData(prev => ({
-                        ...prev,
-                        estado: 'pagado',
-                        monto_pagado: prev.monto_total
-                      }));
-                    }}
-                    style={{ flex: 1, minWidth: '120px', padding: '0.75rem', background: '#d1fae5', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', color: '#059669' }}
-                  >
-                    Marcar Pagado
-                  </button>
+                  <button type="button" onClick={() => { setFormData(prev => ({ ...prev, estado: 'pagado', monto_pagado: prev.monto_total })); }} style={{ padding: '0.75rem 1.5rem', background: '#d1fae5', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', color: '#059669', fontSize: '0.875rem' }}>Marcar Pagado</button>
                 )}
-                
                 {editingId && formData.estado !== 'anulado' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormData(prev => ({
-                        ...prev,
-                        estado: 'anulado'
-                      }));
-                    }}
-                    style={{ flex: 1, minWidth: '100px', padding: '0.75rem', background: '#fee2e2', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', color: '#dc2626' }}
-                  >
-                    Anular
-                  </button>
+                  <button type="button" onClick={() => setFormData(prev => ({ ...prev, estado: 'anulado' }))} style={{ padding: '0.75rem 1.5rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', fontWeight: 500, cursor: 'pointer', color: '#dc2626', fontSize: '0.875rem' }}>Anular</button>
                 )}
-                
-                <button
-                  type="submit"
-                  disabled={saving || (!editingId && formData.matricula_ids.length === 0)}
-                  style={{
-                    flex: 1,
-                    minWidth: '100px',
-                    padding: '0.75rem',
-                    background: saving || (!editingId && formData.matricula_ids.length === 0) ? '#5eead4' : '#14b8a6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontWeight: '600',
-                    cursor: saving || (!editingId && formData.matricula_ids.length === 0) ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  {saving ? 'Guardando...' : 'Guardar'}
-                </button>
+                <button type="submit" disabled={saving || (!editingId && formData.matricula_ids.length === 0)} style={{ marginLeft: 'auto', padding: '0.75rem 2rem', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem', color: 'white', background: (saving || (!editingId && formData.matricula_ids.length === 0)) ? '#94a3b8' : 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: (saving || (!editingId && formData.matricula_ids.length === 0)) ? 'none' : '0 2px 8px rgba(20,184,166,0.3)', cursor: (saving || (!editingId && formData.matricula_ids.length === 0)) ? 'not-allowed' : 'pointer' }}>{saving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Crear recibo'}</button>
               </div>
             </form>
           </div>
@@ -890,114 +775,116 @@ function RecibosPage() {
       )}
 
       {showDetailModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflow: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
             {loadingDetail ? (
-              <div style={{ padding: '3rem', textAlign: 'center' }}>
-                <div style={{ width: '40px', height: '40px', border: '3px solid #e5e7eb', borderTop: '3px solid #14b8a6', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} />
-              </div>
-            ) : selectedRecibo ? (
-              <>
-                <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#111827' }}>Recibo {selectedRecibo.numero}</h2>
-                    <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{formatReciboDate(selectedRecibo.fecha_emision)}</p>
+              <div style={{ padding: '3rem', textAlign: 'center' }}><div style={{ width: 40, height: 40, border: '3px solid #f1f5f9', borderTop: '3px solid #d4af37', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} /></div>
+            ) : selectedRecibo ? (<>
+              {/* Header */}
+              <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                    <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Recibo {selectedRecibo.numero}</h2>
+                    <span style={{ padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.65rem', fontWeight: 600, background: getEstadoColor(selectedRecibo.estado).bg, color: getEstadoColor(selectedRecibo.estado).color }}>{selectedRecibo.estado.charAt(0).toUpperCase() + selectedRecibo.estado.slice(1)}</span>
                   </div>
-                  <span style={{ padding: '0.375rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '600', background: getEstadoColor(selectedRecibo.estado).bg, color: getEstadoColor(selectedRecibo.estado).color }}>
-                    {selectedRecibo.estado.charAt(0).toUpperCase() + selectedRecibo.estado.slice(1)}
-                  </span>
+                  <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: 0 }}>{formatReciboDate(selectedRecibo.fecha_emision)}</p>
+                  {(selectedRecibo as any).updated_at && selectedRecibo.estado !== 'pendiente' && (
+                    <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '2px 0 0' }}>
+                      {selectedRecibo.estado === 'pagado' ? 'Completado' : 'Anulado'} el {new Date((selectedRecibo as any).updated_at).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  )}
+                  {(selectedRecibo as any).metodo_pago && (
+                    <span style={{ display: 'inline-block', marginTop: '0.375rem', padding: '0.15rem 0.45rem', borderRadius: '5px', fontSize: '0.65rem', fontWeight: 500, background: '#f1f5f9', color: '#64748b' }}>
+                      {(selectedRecibo as any).metodo_pago === 'efectivo' ? 'Efectivo' : (selectedRecibo as any).metodo_pago === 'transferencia' ? 'Transferencia' : (selectedRecibo as any).metodo_pago === 'tarjeta' ? 'Tarjeta' : (selectedRecibo as any).metodo_pago === 'yape' ? 'Yape' : (selectedRecibo as any).metodo_pago === 'plin' ? 'Plin' : (selectedRecibo as any).metodo_pago}
+                    </span>
+                  )}
+                </div>
+                <button onClick={() => { setShowDetailModal(false); setSelectedRecibo(null); }} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#f3f4f6', color: '#6b7280', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+              </div>
+
+              <div style={{ padding: '1.5rem' }}>
+                {/* Alumnos */}
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.5rem' }}>
+                    <div style={{ width: 4, height: 14, borderRadius: 2, background: '#d4af37' }} />
+                    <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Alumno(s)</span>
+                  </div>
+                  {selectedRecibo.alumnos_nombres && selectedRecibo.alumnos_nombres.length > 0 ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                      {selectedRecibo.alumnos_nombres.map((nombre, idx) => (
+                        <span key={idx} style={{ padding: '0.35rem 0.65rem', background: '#f8fafc', borderRadius: '8px', fontSize: '0.8125rem', fontWeight: 500, color: '#334155', border: '1px solid #f1f5f9' }}>{nombre}</span>
+                      ))}
+                    </div>
+                  ) : selectedRecibo.alumno_nombre ? (
+                    <span style={{ padding: '0.35rem 0.65rem', background: '#f8fafc', borderRadius: '8px', fontSize: '0.8125rem', fontWeight: 500, color: '#334155', border: '1px solid #f1f5f9' }}>{selectedRecibo.alumno_nombre}</span>
+                  ) : (
+                    <p style={{ color: '#cbd5e1', fontSize: '0.8125rem' }}>Sin alumno específico</p>
+                  )}
                 </div>
 
-                <div style={{ padding: '1.5rem' }}>
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Alumno(s)</h3>
-                    {selectedRecibo.alumnos_nombres && selectedRecibo.alumnos_nombres.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {selectedRecibo.alumnos_nombres.map((nombre, idx) => (
-                          <div key={idx} style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', borderRadius: '6px', fontWeight: '500', color: '#111827' }}>
-                            {nombre}
-                          </div>
-                        ))}
-                      </div>
-                    ) : selectedRecibo.alumno_nombre ? (
-                      <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', borderRadius: '6px', fontWeight: '500', color: '#111827' }}>
-                        {selectedRecibo.alumno_nombre}
-                      </div>
-                    ) : (
-                      <p style={{ color: '#6b7280' }}>Sin alumno específico</p>
-                    )}
-                  </div>
-
-                  {(selectedRecibo as any).matriculas_detalle && (selectedRecibo as any).matriculas_detalle.length > 0 && (
-                    <div style={{ marginBottom: '1.5rem' }}>
-                      <h3 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Matrículas</h3>
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <th style={{ padding: '0.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280' }}>Taller</th>
-                            <th style={{ padding: '0.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280' }}>Tipo</th>
-                            <th style={{ padding: '0.5rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280' }}>Sesiones</th>
-                            <th style={{ padding: '0.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280' }}>Monto</th>
+                {/* Matrículas */}
+                {(selectedRecibo as any).matriculas_detalle && (selectedRecibo as any).matriculas_detalle.length > 0 && (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.5rem' }}>
+                      <div style={{ width: 4, height: 14, borderRadius: 2, background: '#7c3aed' }} />
+                      <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Matrículas</span>
+                    </div>
+                    <div style={{ background: '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9', overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                        <thead><tr style={{ borderBottom: '1px solid #f1f5f9' }}><th style={th}>Alumno</th><th style={th}>Taller</th><th style={{ ...th, width: 60, textAlign: 'center' }}>Ses.</th><th style={{ ...th, textAlign: 'right' }}>Monto</th></tr></thead>
+                        <tbody>{(selectedRecibo as any).matriculas_detalle.map((m: any, i: number) => (
+                          <tr key={i} style={{ borderBottom: '1px solid #f8fafc' }}>
+                            <td style={{ ...td, fontWeight: 500 }}>{m.alumno_nombre}</td>
+                            <td style={td}>{m.taller_nombre}</td>
+                            <td style={{ ...td, textAlign: 'center' }}>{m.sesiones_contratadas}</td>
+                            <td style={{ ...td, textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>S/. {Number(m.monto).toFixed(2)}</td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {(selectedRecibo as any).matriculas_detalle.map((m: any, idx: number) => (
-                            <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                              <td style={{ padding: '0.5rem', fontSize: '0.875rem', color: '#111827' }}>{m.taller_nombre}</td>
-                              <td style={{ padding: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>{m.taller_tipo === 'instrumento' ? 'Instrumento' : 'Taller'}</td>
-                              <td style={{ padding: '0.5rem', textAlign: 'center', fontSize: '0.875rem', color: '#111827' }}>{m.sesiones_contratadas}</td>
-                              <td style={{ padding: '0.5rem', textAlign: 'right', fontFamily: 'monospace', fontSize: '0.875rem', color: '#111827' }}>S/. {Number(m.monto).toFixed(2)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
+                        ))}</tbody>
                       </table>
                     </div>
+                  </div>
+                )}
+
+                {/* Montos */}
+                <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1rem 1.125rem', border: '1px solid #f1f5f9' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.8125rem' }}>
+                    <span style={{ color: '#64748b' }}>Monto Bruto</span>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 500, color: '#334155' }}>S/. {Number(selectedRecibo.monto_bruto || 0).toFixed(2)}</span>
+                  </div>
+                  {Number(selectedRecibo.descuento) > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.8125rem', padding: '0.25rem 0.5rem', background: '#fef2f2', borderRadius: '6px' }}>
+                      <span style={{ color: '#dc2626', fontWeight: 500 }}>Descuento</span>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#dc2626' }}>-S/. {Number(selectedRecibo.descuento).toFixed(2)}</span>
+                    </div>
                   )}
-
-                  <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Monto Bruto:</span>
-                      <span style={{ fontFamily: 'monospace', fontWeight: '500', color: '#111827' }}>S/. {Number(selectedRecibo.monto_bruto || 0).toFixed(2)}</span>
-                    </div>
-                    {selectedRecibo.descuento > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                        <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Descuento:</span>
-                        <span style={{ fontFamily: 'monospace', fontWeight: '500', color: '#dc2626' }}>-S/. {Number(selectedRecibo.descuento).toFixed(2)}</span>
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb' }}>
-                      <span style={{ color: '#111827', fontWeight: '600', fontSize: '0.875rem' }}>Total:</span>
-                      <span style={{ fontFamily: 'monospace', fontWeight: '700', color: '#111827', fontSize: '1rem' }}>S/. {Number(selectedRecibo.monto_total).toFixed(2)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Pagado:</span>
-                      <span style={{ fontFamily: 'monospace', fontWeight: '500', color: '#059669' }}>S/. {Number(selectedRecibo.monto_pagado || 0).toFixed(2)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb' }}>
-                      <span style={{ color: '#111827', fontWeight: '600', fontSize: '0.875rem' }}>Saldo Pendiente:</span>
-                      <span style={{ fontFamily: 'monospace', fontWeight: '700', color: Number(selectedRecibo.saldo_pendiente) > 0 ? '#dc2626' : '#059669' }}>S/. {Number(selectedRecibo.saldo_pendiente || 0).toFixed(2)}</span>
-                    </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', marginBottom: '0.375rem', borderTop: '1px solid #e5e7eb' }}>
+                    <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.875rem' }}>Total</span>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0f172a', fontSize: '1rem' }}>S/. {Number(selectedRecibo.monto_total).toFixed(2)}</span>
                   </div>
-
-                  <div style={{ marginTop: '1rem', padding: '0.75rem', background: selectedRecibo.precio_editado ? '#fef3c7' : '#f3f4f6', borderRadius: '6px' }}>
-                    <span style={{ fontSize: '0.75rem', color: selectedRecibo.precio_editado ? '#b45309' : '#6b7280' }}>
-                      Paquete: {getPaqueteLabel(selectedRecibo.paquete_aplicado)}
-                      {selectedRecibo.precio_editado && ' • Precio editado manualmente'}
-                    </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.8125rem' }}>
+                    <span style={{ color: '#64748b' }}>Pagado</span>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#059669' }}>S/. {Number(selectedRecibo.monto_pagado || 0).toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb' }}>
+                    <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.875rem' }}>Saldo Pendiente</span>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: Number(selectedRecibo.saldo_pendiente) > 0 ? '#dc2626' : '#059669', fontSize: '0.9375rem' }}>S/. {Number(selectedRecibo.saldo_pendiente || 0).toFixed(2)}</span>
                   </div>
                 </div>
 
-                <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
-                  <button
-                    onClick={() => { setShowDetailModal(false); setSelectedRecibo(null); }}
-                    style={{ padding: '0.625rem 1.5rem', background: '#14b8a6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
-                  >
-                    Cerrar
-                  </button>
+                {/* Paquete */}
+                <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', background: selectedRecibo.precio_editado ? '#fef9e7' : '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                  <span style={{ fontSize: '0.7rem', color: selectedRecibo.precio_editado ? '#8b6914' : '#94a3b8' }}>
+                    Paquete: <strong style={{ color: selectedRecibo.precio_editado ? '#5c4508' : '#64748b' }}>{getPaqueteLabel(selectedRecibo.paquete_aplicado)}</strong>
+                    {selectedRecibo.precio_editado && ' · Precio editado'}
+                  </span>
                 </div>
-              </>
-            ) : (
-              <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Error al cargar los datos</div>
+              </div>
+
+              <div style={{ padding: '0.75rem 1.5rem', borderTop: '1px solid #f3f4f6' }}>
+                <button onClick={() => { setShowDetailModal(false); setSelectedRecibo(null); }} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e5e7eb', borderRadius: '10px', background: 'white', color: '#374151', fontWeight: 500, cursor: 'pointer', fontSize: '0.875rem' }}>Cerrar</button>
+              </div>
+            </>) : (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Error al cargar</div>
             )}
           </div>
         </div>
@@ -1007,3 +894,6 @@ function RecibosPage() {
 }
 
 export default memo(RecibosPage);
+
+const th: React.CSSProperties = { padding: '0.4rem 0.65rem', textAlign: 'left', fontSize: '0.65rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' };
+const td: React.CSSProperties = { padding: '0.4rem 0.65rem', fontSize: '0.8125rem', color: '#334155' };

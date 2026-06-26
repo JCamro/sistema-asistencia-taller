@@ -74,17 +74,21 @@ class PagoProfesorService:
 
         resultados = []
         for profesor in profesores:
-            # Obtener combinaciones únicas (horario_id, fecha) desde HoraTrabajada aprobadas
+            # Obtener HoraTrabajada aprobadas para este profesor en el período
+            horas_trabajadas = list(HoraTrabajada.objects.filter(
+                ciclo=ciclo,
+                profesor=profesor,
+                estado='aprobada',
+                tipo='clase_regular',
+                fecha__gte=fecha_inicio,
+                fecha__lte=fecha_fin,
+                horario__isnull=False,
+            ))
+            
+            # Mapa para acceso O(1) en el inner loop
+            ht_map = {(r.horario_id, r.fecha): r for r in horas_trabajadas}
             clases_raw = list(dict.fromkeys(
-                (int(r.horario_id), r.fecha) for r in HoraTrabajada.objects.filter(
-                    ciclo=ciclo,
-                    profesor=profesor,
-                    estado='aprobada',
-                    tipo='clase_regular',
-                    fecha__gte=fecha_inicio,
-                    fecha__lte=fecha_fin,
-                    horario__isnull=False,
-                ).only('horario_id', 'fecha')
+                (int(r.horario_id), r.fecha) for r in horas_trabajadas
             ))
             
             total_clases = len(clases_raw)
@@ -110,15 +114,7 @@ class PagoProfesorService:
             )
 
             for horario_id, fecha in clases_raw:
-                # Leer valores precalculados desde HoraTrabajada (ya tiene montos
-                # calculados con el config_snapshot del momento de generación)
-                ht = HoraTrabajada.objects.filter(
-                    profesor=profesor,
-                    horario_id=horario_id,
-                    fecha=fecha,
-                    estado='aprobada',
-                    tipo='clase_regular',
-                ).first()
+                ht = ht_map.get((horario_id, fecha))
                 
                 if not ht:
                     continue

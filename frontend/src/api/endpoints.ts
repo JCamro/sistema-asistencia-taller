@@ -139,6 +139,12 @@ export interface Recibo {
   monto_pagado: number;
   saldo_pendiente: number;
   estado: string;
+  metodo_pago?: string;
+  paquete_aplicado?: string;
+  paquete_display?: string;
+  precio_editado?: boolean;
+  descuento?: number;
+  monto_bruto?: number;
 }
 
 export interface PagoProfesor {
@@ -350,8 +356,10 @@ export const createAsistencia = (data: Partial<Asistencia>) => api.post('/asiste
 export const updateAsistencia = (id: number, data: Partial<Asistencia>) => api.patch(`/asistencias/${id}/`, data);
 
 // Recibos
-export const getRecibos = (cicloId?: number) =>
-  cicloId ? api.get<Recibo[]>(`/ciclos/${cicloId}/recibos/`) : api.get<Recibo[]>('/recibos/');
+export const getRecibos = (cicloId?: number, params?: string) => {
+  const query = params ? `?${params}` : '';
+  return cicloId ? api.get<PaginatedResponse<Recibo>>(`/ciclos/${cicloId}/recibos/${query}`) : api.get<PaginatedResponse<Recibo>>(`/recibos/${query}`);
+};
 export const getRecibo = (id: number) => api.get<Recibo>(`/recibos/${id}/`);
 export const createRecibo = (data: Partial<Recibo>) => api.post('/recibos/', data);
 export const marcarReciboPagado = (id: number, monto?: number) => 
@@ -428,28 +436,17 @@ export const getHoraTrabajada = (id: number) =>
 export const createHoraTrabajada = (data: Partial<HoraTrabajadaDetail>) =>
   api.post<HoraTrabajadaDetail>('/horas-trabajadas/', data);
 
-export const aprobarHoraTrabajada = (id: number) =>
-  api.patch(`/horas-trabajadas/${id}/aprobar/`);
-
-export const rechazarHoraTrabajada = (id: number) =>
-  api.patch(`/horas-trabajadas/${id}/rechazar/`);
-
 export const deleteHoraTrabajada = (id: number) =>
   api.delete(`/horas-trabajadas/${id}/`);
 
 export const updateHoraTrabajada = (id: number, data: Partial<HoraTrabajadaDetail>) =>
   api.patch<HoraTrabajadaDetail>(`/horas-trabajadas/${id}/`, data);
 
-export const generarHorasTrabajadas = (cicloId: number, fechaInicio: string, fechaFin: string) =>
-  api.post('/horas-trabajadas/generar/', {
-    ciclo_id: cicloId,
-    fecha_inicio: fechaInicio,
-    fecha_fin: fechaFin,
-  });
-
 // Egresos
-export const getEgresos = (cicloId?: number) =>
-  cicloId ? api.get<Egreso[]>(`/ciclos/${cicloId}/egresos/`) : api.get<Egreso[]>('/egresos/');
+export const getEgresos = (cicloId?: number, params?: string) => {
+  const query = params ? `?${params}` : '';
+  return cicloId ? api.get<PaginatedResponse<Egreso>>(`/ciclos/${cicloId}/egresos/${query}`) : api.get<PaginatedResponse<Egreso>>(`/egresos/${query}`);
+};
 export const getEgreso = (id: number) => api.get<Egreso>(`/egresos/${id}/`);
 export const createEgreso = (data: Partial<Egreso>, cicloId?: number) => 
   cicloId ? api.post(`/ciclos/${cicloId}/egresos/`, data) : api.post('/egresos/', data);

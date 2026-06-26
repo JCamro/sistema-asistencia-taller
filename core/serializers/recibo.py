@@ -70,17 +70,20 @@ class ReciboListSerializer(serializers.ModelSerializer):
     alumno_nombre = serializers.SerializerMethodField()
     alumnos_nombres = serializers.SerializerMethodField()
     matricula_ids = serializers.SerializerMethodField()
+    matriculas_detalle = ReciboMatriculaSerializer(source='matriculas', many=True, read_only=True)
     ciclo_nombre = serializers.CharField(source='ciclo.nombre', read_only=True)
     saldo_pendiente = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     paquete_display = serializers.CharField(source='get_paquete_aplicado_display', read_only=True)
+    metodo_pago = serializers.CharField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = Recibo
         fields = [
             'id', 'numero', 'alumno', 'alumno_nombre', 'alumnos_nombres',
-            'matricula_ids', 'ciclo', 'ciclo_nombre', 'fecha_emision', 'monto_bruto', 'monto_total',
+            'matricula_ids', 'matriculas_detalle', 'ciclo', 'ciclo_nombre', 'fecha_emision', 'monto_bruto', 'monto_total',
             'monto_pagado', 'descuento', 'paquete_aplicado', 'paquete_display',
-            'precio_editado', 'saldo_pendiente', 'estado'
+            'precio_editado', 'saldo_pendiente', 'estado', 'metodo_pago', 'updated_at'
         ]
 
     def get_alumno_nombre(self, obj):
@@ -96,7 +99,7 @@ class ReciboListSerializer(serializers.ModelSerializer):
         return get_alumnos_nombres(obj)
 
     def get_matricula_ids(self, obj):
-        return list(obj.matriculas.values_list('matricula_id', flat=True))
+        return [rm.matricula_id for rm in obj.matriculas.all()]
 
 
 class CalcularPrecioSerializer(serializers.Serializer):
@@ -106,8 +109,10 @@ class CalcularPrecioSerializer(serializers.Serializer):
     )
 
     def validate_matricula_ids(self, value):
+        ids = set(value)
+        existing = Matricula.objects.filter(id__in=ids).values_list('id', flat=True)
         for mid in value:
-            if not Matricula.objects.filter(id=mid).exists():
+            if mid not in existing:
                 raise serializers.ValidationError(f"Matrícula {mid} no existe")
         return value
 
@@ -119,26 +124,25 @@ class CalcularPrecioSerializer(serializers.Serializer):
             total = 0
             detalles = []
             
-            # Obtener el ciclo de la primera matrícula para buscar precios específicos
-            ciclo_id = None
+            # Batch fetch all matrículas in one query
+            matriculas = Matricula.objects.filter(id__in=matricula_ids).select_related('taller', 'alumno', 'ciclo')
+            matricula_map = {m.id: m for m in matriculas}
+            ciclo_id = next((m.ciclo_id for m in matriculas), None)
+            
             matriculas_data = []
             for mid in matricula_ids:
-                matricula = Matricula.objects.select_related('taller', 'alumno', 'ciclo').get(id=mid)
-                
-                # Usar el ciclo de la matrícula para precios específicos
-                if ciclo_id is None and matricula.ciclo_id:
-                    ciclo_id = matricula.ciclo_id
+                matricula = matricula_map.get(mid)
+                if not matricula:
+                    continue
                 
                 precio = PrecioPaquete.get_precio_individual(
                     matricula.taller.tipo,
                     matricula.sesiones_contratadas,
                     ciclo_id
                 )
-                # Si no hay precio configurado, usar precio_por_sesion de la matrícula
                 if precio:
                     precio_val = precio['precio_total']
                 else:
-                    # Fallback: calcular desde precio_por_sesion de la matrícula
                     precio_por_sesion = float(matricula.precio_por_sesion or 0)
                     precio_val = precio_por_sesion * matricula.sesiones_contratadas
                 total += precio_val
@@ -158,7 +162,7 @@ class CalcularPrecioSerializer(serializers.Serializer):
             # Usar PrecioPaquete.calcular_precio_recomendado que lee de la BD
             resultado_precio = PrecioPaquete.calcular_precio_recomendado(matriculas_data, ciclo_id)
             
-            if resultado_precio:
+            if resultado_precio and resultado_precio['precio_bruto'] > 0:
                 return {
                     'precio_bruto': resultado_precio['precio_bruto'],
                     'precio_sugerido': resultado_precio['precio_sugerido'],
@@ -168,13 +172,13 @@ class CalcularPrecioSerializer(serializers.Serializer):
                     'detalles': detalles
                 }
             
-            # Fallback si no se pudo calcular
+            # Fallback si no hay precios configurados o resultado_precio es 0
             return {
                 'precio_bruto': total,
                 'precio_sugerido': total,
                 'descuento': 0,
                 'paquete_detectado': 'individual',
-                'desglose': [],
+                'desglose': [{'alumno': d['alumno'], 'taller': d['taller'], 'cantidad_clases': d['cantidad_clases'], 'precio_individual': d['precio_individual']} for d in detalles],
                 'detalles': detalles
             }
         except Exception as e:

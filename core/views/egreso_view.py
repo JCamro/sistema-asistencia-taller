@@ -9,6 +9,7 @@ import logging
 
 from ..models import Egreso
 from ..serializers import EgresoSerializer, EgresoListSerializer
+from .pagination import StandardResultsSetPagination
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 class EgresoViewSet(viewsets.ModelViewSet):
     queryset = Egreso.objects.select_related('ciclo', 'profesor').all()
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['ciclo', 'tipo', 'estado']
     search_fields = ['descripcion', 'beneficiario']
@@ -56,26 +58,23 @@ class EgresoViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def resumen(self, request, ciclo_id=None):
-        """Resumen de egresos por tipo para un ciclo"""
+        """Resumen de egresos cancelados por tipo para un ciclo."""
         try:
             ciclo_id = self.kwargs.get('ciclo_id')
-            logger.debug(f"resumen called with ciclo_id: {ciclo_id}")
             if not ciclo_id:
                 return Response(
                     {'error': 'Se requiere especificar el ciclo'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Todos los egresos (pendiente y cancelado)
+            # Solo egresos cancelados (consistente con Finanzas)
             egresos = Egreso.objects.filter(
-                ciclo_id=ciclo_id
+                ciclo_id=ciclo_id, estado='cancelado'
             )
-            logger.debug(f"egresos count: {egresos.count()}")
 
             resumen = egresos.values('tipo').annotate(
                 total=Sum('monto')
             )
-            logger.debug(f"resumen query: {resumen.query}")
 
             resultados = {
                 'gasto_taller': 0,
@@ -87,20 +86,13 @@ class EgresoViewSet(viewsets.ModelViewSet):
             for item in resumen:
                 tipo = item['tipo']
                 monto = float(item['total'] or 0)
-                if tipo == 'gasto_taller':
-                    resultados['gasto_taller'] = monto
-                elif tipo == 'pago_profesor':
-                    resultados['pago_profesor'] = monto
-                elif tipo == 'gasto_personal':
-                    resultados['gasto_personal'] = monto
-                resultados['total'] += monto
+                if tipo in resultados:
+                    resultados[tipo] = monto
+                    resultados['total'] += monto
 
-            logger.debug(f"resultados: {resultados}")
             return Response(resultados, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Error in resumen: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -118,7 +110,7 @@ class EgresoViewSet(viewsets.ModelViewSet):
 
         egresos = Egreso.objects.filter(
             profesor_id=profesor_id,
-            tipo__in=['pago_profesor', 'adelanto_profesor']
+            tipo__in=['gasto_personal', 'pago_profesor']
         ).select_related('ciclo')
 
         serializer = EgresoListSerializer(egresos, many=True)

@@ -8,463 +8,51 @@ import { getTalleres, createTaller, updateTaller, deleteTaller } from '../api/en
 import type { Taller } from '../api/endpoints';
 import { useWindowWidth } from '../hooks/useWindowWidth';
 
-interface TallerFormData {
-  nombre: string;
-  tipo: string;
-  descripcion: string;
-  activo: boolean;
-}
-
-const initialFormData: TallerFormData = {
-  nombre: '',
-  tipo: 'taller',
-  descripcion: '',
-  activo: true,
-};
+interface TallerFormData { nombre: string; tipo: string; descripcion: string; activo: boolean; }
+const init: TallerFormData = { nombre: '', tipo: 'taller', descripcion: '', activo: true };
+const ls: React.CSSProperties = { display:'block',fontSize:'0.6875rem',fontWeight:500,color:'#94a3b8',marginBottom:'0.2rem',textTransform:'uppercase',letterSpacing:'0.04em' };
+const is: React.CSSProperties = { width:'100%',padding:'0.5rem 0.75rem',border:'1px solid #e5e7eb',borderRadius:'10px',fontSize:'0.875rem' };
 
 function TalleresPage() {
-  const navigate = useNavigate();
-  const { cicloActual } = useCiclo();
-  const { showApiError } = useToast();
-  const windowWidth = useWindowWidth();
-  const isMobile = windowWidth < 768;
-  const [talleres, setTalleres] = useState<Taller[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchText, setSearchText] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [filterTipo, setFilterTipo] = useState<string>('');
-  const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<TallerFormData>(initialFormData);
-  const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [deletingName, setDeletingName] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+  const n = useNavigate(); const { cicloActual } = useCiclo(); const { showApiError } = useToast(); const ww = useWindowWidth(); const mb = ww < 768;
+  const [t, setT] = useState<Taller[]>([]); const [l, setL] = useState(true); const [s, setS] = useState(''); const [ds, setDs] = useState('');
+  const [ft, setFt] = useState(''); const [sm, setSm] = useState(false); const [eid, setEid] = useState<number|null>(null);
+  const [fd, setFd] = useState(init); const [sv, setSv] = useState(false); const [did, setDid] = useState<number|null>(null); const [dn, setDn] = useState('');
+  const [cp, setCp] = useState(1); const [tp, setTp] = useState(1); const [tc, setTc] = useState(0);
 
-  const fetchTalleres = useCallback(async (page: number = 1, search?: string) => {
-    if (!cicloActual) return;
-    setLoading(true);
-    try {
-      const res = await getTalleres(cicloActual.id, page, search);
-      setTalleres(res.data.results || res.data);
-      setTotalPages(Math.ceil((res.data.count || 0) / 20) || 1);
-      setTotalCount(res.data.count || 0);
-      setCurrentPage(page);
-    } catch (err) {
-      console.error('Error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [cicloActual]);
+  const fetch = useCallback(async (page=1, search?:string) => { if(!cicloActual)return; setL(true); try { const r=await getTalleres(cicloActual.id,page,search); setT(r.data.results||r.data); setTp(Math.ceil((r.data.count||0)/20)||1); setTc(r.data.count||0); setCp(page); } catch{} finally{setL(false)} },[cicloActual]);
+  useEffect(()=>{const tm=setTimeout(()=>setDs(s),300);return()=>clearTimeout(tm)},[s]);
+  useEffect(()=>{fetch(1,ds)},[fetch,ds]);
+  const ft2 = t.filter(x=>!ft||x.tipo===ft);
+  const pc = (pg:number) => fetch(pg,ds);
+  const hs = async (e:React.FormEvent) => { e.preventDefault(); if(!cicloActual)return; setSv(true); try { const pl={...fd,ciclo:cicloActual.id}; if(eid) await updateTaller(eid,pl); else await createTaller(pl); setSm(false); setEid(null); setFd(init); fetch(cp); } catch(err){showApiError(err)} finally{setSv(false)} };
+  const he = (tl:Taller) => { setEid(tl.id); setFd({nombre:tl.nombre,tipo:tl.tipo||'taller',descripcion:tl.descripcion||'',activo:tl.activo}); setSm(true) };
+  const hd = (id:number,nm:string) => { setDid(id); setDn(nm) };
+  const cd = async () => { if(!did)return; setSv(true); try { await deleteTaller(did); fetch(cp); } catch(err){showApiError(err)} finally{setDid(null);setDn('');setSv(false)} };
+  const cc = () => { setDid(null); setDn('') };
+  const oc = () => { setEid(null); setFd(init); setSm(true) };
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchText);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchText]);
+  if(l) return <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'60vh',gap:'1rem'}}><div style={{width:40,height:40,border:'3px solid #f1f5f9',borderTop:'3px solid #d4af37',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/><p style={{color:'#94a3b8',fontSize:'0.875rem'}}>Cargando...</p><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
 
-  useEffect(() => {
-    fetchTalleres(1, debouncedSearch);
-  }, [fetchTalleres, debouncedSearch]);
-
-  const filteredTalleres = talleres.filter((t) => {
-    const matchesTipo = !filterTipo || t.tipo === filterTipo;
-    return matchesTipo;
-  });
-
-  const handlePageChange = (page: number) => {
-    fetchTalleres(page, debouncedSearch);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!cicloActual) return;
-    setSaving(true);
-    try {
-      const payload = { ...formData, ciclo: cicloActual.id };
-      if (editingId) {
-        await updateTaller(editingId, payload);
-      } else {
-        await createTaller(payload);
-      }
-      setShowModal(false);
-      setEditingId(null);
-      setFormData(initialFormData);
-      fetchTalleres(currentPage);
-    } catch (err) {
-      console.error('Error:', err);
-      showApiError(err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleEdit = (taller: Taller) => {
-    setEditingId(taller.id);
-    setFormData({
-      nombre: taller.nombre,
-      tipo: taller.tipo || 'taller',
-      descripcion: taller.descripcion || '',
-      activo: taller.activo,
-    });
-    setShowModal(true);
-  };
-
-  const handleDelete = (id: number, nombre: string) => {
-    setDeletingId(id);
-    setDeletingName(nombre);
-  };
-
-  const confirmDelete = async () => {
-    if (!deletingId || !cicloActual) return;
-    setSaving(true);
-    try {
-      await deleteTaller(deletingId);
-      fetchTalleres(currentPage);
-    } catch (err) {
-      console.error('Error:', err);
-      showApiError(err);
-    } finally {
-      setDeletingId(null);
-      setDeletingName('');
-      setSaving(false);
-    }
-  };
-
-  const cancelDelete = () => {
-    setDeletingId(null);
-    setDeletingName('');
-  };
-
-  const openCreateModal = () => {
-    setEditingId(null);
-    setFormData(initialFormData);
-    setShowModal(true);
-  };
-
-  const colores = ['#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'];
-
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
-        <div style={{ width: '40px', height: '40px', border: '3px solid #e5e7eb', borderTop: '3px solid #f59e0b', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#111827', marginBottom: '0.25rem' }}>Talleres</h1>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{totalCount} talleres disponibles</p>
-        </div>
-        <button
-          onClick={openCreateModal}
-          style={{
-            background: '#f59e0b',
-            color: 'white',
-            border: 'none',
-            padding: '0.625rem 1.25rem',
-            borderRadius: '8px',
-            fontWeight: '600',
-            fontSize: '0.875rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            boxShadow: '0 2px 4px rgba(245, 158, 11, 0.3)',
-          }}
-        >
-          <span>+</span> Nuevo Taller
-        </button>
-      </div>
-
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-        <input
-          type="text"
-          placeholder="Buscar talleres..."
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          style={{
-            flex: 1,
-            maxWidth: '400px',
-            padding: '0.625rem 1rem',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            fontSize: '0.875rem',
-            outline: 'none',
-          }}
-        />
-        <select
-          value={filterTipo}
-          onChange={(e) => setFilterTipo(e.target.value)}
-          style={{
-            padding: '0.625rem 1rem',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            fontSize: '0.875rem',
-            outline: 'none',
-            background: 'white',
-          }}
-        >
-          <option value="">Todos los tipos</option>
-          <option value="instrumento">Instrumento</option>
-          <option value="taller">Taller</option>
-        </select>
-      </div>
-
-      {filteredTalleres.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '4rem', background: 'white', borderRadius: '12px', border: '1px dashed #d1d5db' }}>
-          <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
-            {debouncedSearch || filterTipo ? 'No se encontraron talleres' : 'No hay talleres registrados'}
-          </p>
-          {!debouncedSearch && !filterTipo && (
-            <button onClick={openCreateModal} style={{ padding: '0.625rem 1.25rem', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
-              Crear primer taller
-            </button>
-          )}
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '160px' : '240px'}, 1fr))`, gap: '1rem' }}>
-          {filteredTalleres.map((taller, index) => (
-            <div
-              key={taller.id}
-              onClick={() => navigate(`/talleres/${taller.id}`)}
-              style={{
-                background: 'white',
-                borderRadius: '12px',
-                border: '1px solid #e5e7eb',
-                overflow: 'hidden',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                cursor: 'pointer',
-              }}
-            >
-              <div style={{ height: '8px', background: taller.tipo === 'instrumento' ? '#8b5cf6' : colores[index % colores.length] }} />
-              <div style={{ padding: '1.25rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827' }}>{taller.nombre}</h3>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <span style={{
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '9999px',
-                      fontSize: '0.625rem',
-                      fontWeight: '600',
-                      background: taller.tipo === 'instrumento' ? '#ede9fe' : '#fef3c7',
-                      color: taller.tipo === 'instrumento' ? '#7c3aed' : '#b45309',
-                    }}>
-                      {taller.tipo === 'instrumento' ? 'Instrumento' : 'Taller'}
-                    </span>
-                    <span style={{
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '9999px',
-                      fontSize: '0.625rem',
-                      fontWeight: '600',
-                      background: taller.activo ? '#d1fae5' : '#f3f4f6',
-                      color: taller.activo ? '#059669' : '#6b7280',
-                    }}>
-                      {taller.activo ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </div>
-                </div>
-                <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', lineHeight: '1.5' }}>
-                  {taller.descripcion || 'Sin descripción'}
-                </p>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); navigate(`/talleres/${taller.id}`); }}
-                    style={{
-                      flex: 1,
-                      padding: '0.5rem',
-                      background: '#e0e7ff',
-                      color: '#4338ca',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      minHeight: '44px',
-                    }}
-                  >
-                    Ver Detalle
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleEdit(taller); }}
-                    style={{
-                      flex: 1,
-                      padding: '0.5rem',
-                      background: '#fef3c7',
-                      color: '#b45309',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      minHeight: '44px',
-                    }}
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(taller.id, taller.nombre); }}
-                    disabled={deletingId === taller.id}
-                    style={{
-                      flex: 1,
-                      padding: '0.5rem',
-                      background: deletingId === taller.id ? '#f3f4f6' : '#fef2f2',
-                      color: deletingId === taller.id ? '#9ca3af' : '#ef4444',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      cursor: deletingId === taller.id ? 'not-allowed' : 'pointer',
-                      minHeight: '44px',
-                    }}
-                  >
-                    {deletingId === taller.id ? '...' : 'Eliminar'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalCount={totalCount}
-          onPageChange={handlePageChange}
-        />
-      )}
-
-      {showModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 50,
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '16px',
-            width: '100%',
-            maxWidth: '500px',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          }}>
-            <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#111827' }}>
-                {editingId ? 'Editar Taller' : 'Nuevo Taller'}
-              </h2>
-            </div>
-            <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Nombre del Taller</label>
-                  <input
-                    type="text"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    required
-                    placeholder="Ej: Piano, Guitarra, Dibujo..."
-                    style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Tipo</label>
-                  <select
-                    value={formData.tipo}
-                    onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
-                    required
-                    style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', background: 'white' }}
-                  >
-                    <option value="instrumento">Instrumento</option>
-                    <option value="taller">Taller</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Descripción</label>
-                  <textarea
-                    value={formData.descripcion}
-                    onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                    rows={4}
-                    placeholder="Describe el contenido del taller..."
-                    style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', resize: 'vertical' }}
-                  />
-                </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#374151' }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.activo}
-                    onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-                    style={{ width: '16px', height: '16px', accentColor: '#f59e0b' }}
-                  />
-                  Taller activo
-                </label>
-              </div>
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  style={{
-                    flex: 1,
-                    padding: '0.75rem',
-                    background: '#f3f4f6',
-                    color: '#374151',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  style={{
-                    flex: 1,
-                    padding: '0.75rem',
-                    background: saving ? '#fcd34d' : '#f59e0b',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontWeight: '600',
-                    cursor: saving ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {saving ? 'Guardando...' : 'Guardar'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      
-      <ConfirmModal
-        isOpen={deletingId !== null}
-        title="Confirmar Eliminación"
-        message="¿Estás seguro de eliminar este taller?"
-        itemName={deletingName}
-        confirmLabel="Eliminar"
-        cancelLabel="Cancelar"
-        onConfirm={confirmDelete}
-        onCancel={cancelDelete}
-        isLoading={saving}
-      />
+  return (<div style={{maxWidth:'1100px',margin:'0 auto'}}>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'1.75rem',flexWrap:'wrap',gap:'0.75rem'}}>
+      <div><div style={{display:'flex',alignItems:'baseline',gap:'0.75rem'}}><h1 style={{fontSize:'1.625rem',fontWeight:700,color:'#0f172a',margin:0,letterSpacing:'-0.02em'}}>Talleres</h1><span style={{fontSize:'0.75rem',fontWeight:500,color:'#b59410',background:'#fef9e7',padding:'0.2rem 0.65rem',borderRadius:'9999px'}}>{cicloActual?.nombre}</span></div><div style={{height:3,width:48,background:'linear-gradient(90deg,#d4af37,#f0d878)',borderRadius:2,marginTop:'0.5rem'}}/></div>
+      <button onClick={oc} style={{padding:'0.625rem 1.25rem',borderRadius:'10px',border:'none',cursor:'pointer',background:'linear-gradient(135deg,#d4af37,#c59b2e)',color:'#0a0a0a',fontWeight:600,fontSize:'0.875rem',display:'flex',alignItems:'center',gap:'0.375rem',boxShadow:'0 2px 8px rgba(212,175,55,0.25)'}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo taller</button>
     </div>
-  );
+    <div style={{background:'white',borderRadius:'12px',border:'1px solid #f1f5f9',padding:'0.75rem 1rem',marginBottom:'1rem',display:'flex',gap:'0.75rem',flexWrap:'wrap'}}>
+      <div style={{flex:1,minWidth:200,position:'relative'}}><svg style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input placeholder="Buscar talleres..." value={s} onChange={e=>setS(e.target.value)} style={{width:'100%',padding:'0.5rem 0.75rem 0.5rem 2.25rem',border:'1px solid #e5e7eb',borderRadius:'10px',fontSize:'0.875rem'}}/></div>
+      <select value={ft} onChange={e=>setFt(e.target.value)} style={{padding:'0.5rem 0.75rem',border:'1px solid #e5e7eb',borderRadius:'10px',fontSize:'0.875rem',background:'white',minWidth:160}}><option value="">Todos</option><option value="instrumento">Instrumento</option><option value="taller">Taller</option></select>
+    </div>
+    {ft2.length===0?(
+      <div style={{textAlign:'center',padding:'3rem',background:'white',borderRadius:'14px',border:'1px dashed #e5e7eb'}}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" style={{marginBottom:'0.75rem'}}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg><p style={{color:'#94a3b8',marginBottom:'1rem',fontSize:'0.875rem'}}>{ds||ft?'No se encontraron talleres':'No hay talleres'}</p>{!ds&&!ft&&<button onClick={oc} style={{padding:'0.5rem 1.25rem',borderRadius:'10px',border:'none',background:'#d4af37',color:'#0a0a0a',fontWeight:600,cursor:'pointer',fontSize:'0.875rem'}}>Crear primer taller</button>}</div>
+    ):(
+      <div style={{display:'grid',gridTemplateColumns:`repeat(auto-fill,minmax(${mb?'155px':'250px'},1fr))`,gap:'0.875rem'}}>
+        {ft2.map(tl=>{const ii=tl.tipo==='instrumento';const c=ii?'#7c3aed':'#d97706';return(<div key={tl.id} onClick={()=>n(`/talleres/${tl.id}`)} style={{background:'white',borderRadius:'14px',border:'1px solid #f1f5f9',overflow:'hidden',cursor:'pointer',transition:'box-shadow 0.2s,transform 0.15s'}} onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 6px 20px rgba(0,0,0,0.08)';e.currentTarget.style.transform='translateY(-3px)'}} onMouseLeave={e=>{e.currentTarget.style.boxShadow='none';e.currentTarget.style.transform='none'}}><div style={{height:6,background:c}}/><div style={{padding:'1.125rem 1.25rem 1rem'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem',gap:'0.5rem'}}><h3 style={{fontSize:'1rem',fontWeight:600,color:'#0f172a',margin:0,lineHeight:1.3}}>{tl.nombre}</h3><span style={{padding:'0.15rem 0.5rem',borderRadius:'9999px',fontSize:'0.6rem',fontWeight:600,background:tl.activo?'#ecfdf5':'#f3f4f6',color:tl.activo?'#059669':'#94a3b8',whiteSpace:'nowrap',flexShrink:0}}>{tl.activo?'Activo':'Inactivo'}</span></div><span style={{display:'inline-block',padding:'0.15rem 0.5rem',borderRadius:'5px',fontSize:'0.65rem',fontWeight:500,background:ii?'#f5f3ff':'#fefce8',color:c,marginBottom:'0.5rem'}}>{ii?'Instrumento':'Taller'}</span><p style={{fontSize:'0.8125rem',color:'#94a3b8',lineHeight:1.5,marginBottom:'0.75rem',overflow:'hidden',textOverflow:'ellipsis',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'} as React.CSSProperties}>{tl.descripcion||'Sin descripción'}</p><div style={{display:'flex',gap:'0.375rem'}}><button onClick={e=>{e.stopPropagation();n(`/talleres/${tl.id}`)}} className="touch-target" style={{flex:1,padding:'0.4rem',borderRadius:'8px',border:'none',background:'#f1f5f9',color:'#475569',fontSize:'0.75rem',fontWeight:500,cursor:'pointer'}}>Ver</button><button onClick={e=>{e.stopPropagation();he(tl)}} className="touch-target" style={{flex:1,padding:'0.4rem',borderRadius:'8px',border:'none',background:'#fef9e7',color:'#8b6914',fontSize:'0.75rem',fontWeight:500,cursor:'pointer'}}>Editar</button><button onClick={e=>{e.stopPropagation();hd(tl.id,tl.nombre)}} disabled={did===tl.id} className="touch-target" style={{flex:1,padding:'0.4rem',borderRadius:'8px',border:'none',background:did===tl.id?'#f3f4f6':'#fef2f2',color:did===tl.id?'#cbd5e1':'#ef4444',fontSize:'0.75rem',fontWeight:500,cursor:did===tl.id?'not-allowed':'pointer'}}>{did===tl.id?'...':'Eliminar'}</button></div></div></div>)})}
+      </div>
+    )}
+    {tp>1&&<Pagination currentPage={cp} totalPages={tp} totalCount={tc} onPageChange={pc}/>}
+    {sm&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:50}}><div style={{background:'white',borderRadius:'16px',width:'100%',maxWidth:'500px',maxHeight:'90vh',overflow:'auto',boxShadow:'0 20px 60px rgba(0,0,0,0.15)'}}><div style={{padding:'1.25rem 1.5rem',borderBottom:'1px solid #f3f4f6',display:'flex',justifyContent:'space-between',alignItems:'center'}}><h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#0f172a',margin:0}}>{eid?'Editar taller':'Nuevo taller'}</h2><button onClick={()=>setSm(false)} style={{width:32,height:32,borderRadius:'50%',border:'none',background:'#f3f4f6',color:'#6b7280',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button></div><form onSubmit={hs} style={{padding:'1.5rem'}}><div style={{marginBottom:'0.75rem'}}><label style={ls}>Nombre</label><input value={fd.nombre} onChange={e=>setFd({...fd,nombre:e.target.value})} required placeholder="Ej: Piano, Guitarra..." style={is}/></div><div style={{marginBottom:'0.75rem'}}><label style={ls}>Tipo</label><div style={{display:'flex',gap:0,background:'#f8fafc',borderRadius:'10px',border:'1px solid #e5e7eb',overflow:'hidden'}}>{(['taller','instrumento']as const).map(tp=>(<button key={tp} type="button" onClick={()=>setFd({...fd,tipo:tp})} style={{flex:1,padding:'0.5rem',border:'none',cursor:'pointer',fontSize:'0.8125rem',fontWeight:fd.tipo===tp?600:400,background:fd.tipo===tp?(tp==='instrumento'?'#f5f3ff':'#fefce8'):'transparent',color:fd.tipo===tp?(tp==='instrumento'?'#7c3aed':'#d97706'):'#94a3b8',transition:'all 0.15s'}}>{tp==='instrumento'?'Instrumento':'Taller'}</button>))}</div></div><div style={{marginBottom:'0.75rem'}}><label style={ls}>Descripción</label><textarea value={fd.descripcion} onChange={e=>setFd({...fd,descripcion:e.target.value})} rows={3} style={{...is,resize:'vertical'}}/></div><label style={{display:'flex',alignItems:'center',gap:'0.5rem',fontSize:'0.8125rem',color:'#475569',cursor:'pointer',marginBottom:'1.25rem'}}><input type="checkbox" checked={fd.activo} onChange={e=>setFd({...fd,activo:e.target.checked})} style={{width:16,height:16,accentColor:'#d4af37'}}/> Taller activo</label><div style={{display:'flex',gap:'0.75rem'}}><button type="button" onClick={()=>setSm(false)} style={{flex:1,padding:'0.625rem',border:'1px solid #e5e7eb',borderRadius:'10px',background:'white',color:'#374151',fontWeight:500,cursor:'pointer',fontSize:'0.875rem'}}>Cancelar</button><button type="submit" disabled={sv} style={{flex:1,padding:'0.625rem',border:'none',borderRadius:'10px',background:sv?'#e5e7eb':'#d4af37',color:sv?'#9ca3af':'#0a0a0a',fontWeight:600,cursor:sv?'not-allowed':'pointer',fontSize:'0.875rem'}}>{sv?'Guardando...':'Guardar'}</button></div></form></div></div>)}
+    <ConfirmModal isOpen={did!==null} title="Confirmar Eliminación" message="¿Estás seguro de eliminar este taller?" itemName={dn} confirmLabel="Eliminar" cancelLabel="Cancelar" onConfirm={cd} onCancel={cc} isLoading={sv}/>
+  </div>);
 }
-
 export default memo(TalleresPage);

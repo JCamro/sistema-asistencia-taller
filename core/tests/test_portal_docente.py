@@ -1358,15 +1358,17 @@ class TestProfesorAlumnosCartilla:
         """Returns a single student with the correct horario badge fields."""
         response = authenticated_client.get(self.ENDPOINT.format(ciclo.id))
         assert response.status_code == status.HTTP_200_OK
-        assert isinstance(response.data, list)
-        assert len(response.data) == 1
+        assert isinstance(response.data, dict)
+        assert 'results' in response.data
+        assert len(response.data['results']) == 1
 
-        entry = response.data[0]
+        entry = response.data['results'][0]
         assert entry['nombre'] == 'Test'
         assert entry['apellido'] == 'Student'
         assert entry['dni'] == '12345678'
         assert entry['telefono'] == '999999999'
         assert entry['email'] == 'test@test.com'
+        assert entry['estado'] == 'activo'
         assert 'horarios' in entry
         assert len(entry['horarios']) == 1
 
@@ -1389,10 +1391,10 @@ class TestProfesorAlumnosCartilla:
 
         response = authenticated_client.get(self.ENDPOINT.format(ciclo.id))
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1, 'Student must appear exactly once'
-        assert len(response.data[0]['horarios']) == 2, '2 horario badges expected'
+        assert len(response.data['results']) == 1, 'Student must appear exactly once'
+        assert len(response.data['results'][0]['horarios']) == 2, '2 horario badges expected'
 
-        taller_names = {b['taller_nombre'] for b in response.data[0]['horarios']}
+        taller_names = {b['taller_nombre'] for b in response.data['results'][0]['horarios']}
         assert 'Guitarra' in taller_names
         assert 'Piano' in taller_names
 
@@ -1404,7 +1406,7 @@ class TestProfesorAlumnosCartilla:
             {'search': 'test'}
         )
         assert response.status_code == status.HTTP_200_OK
-        ids = [e['id'] for e in response.data]
+        ids = [e['id'] for e in response.data['results']]
         assert alumno.id in ids
         assert otro_alumno.id not in ids  # 'Another' doesn't match 'test'
 
@@ -1416,7 +1418,7 @@ class TestProfesorAlumnosCartilla:
             {'search': 'student'}
         )
         assert response.status_code == status.HTTP_200_OK
-        ids = [e['id'] for e in response.data]
+        ids = [e['id'] for e in response.data['results']]
         assert alumno.id in ids
         assert otro_alumno.id in ids  # Both have apellido 'Student'
 
@@ -1428,7 +1430,7 @@ class TestProfesorAlumnosCartilla:
             {'search': '87654321'}
         )
         assert response.status_code == status.HTTP_200_OK
-        ids = [e['id'] for e in response.data]
+        ids = [e['id'] for e in response.data['results']]
         assert otro_alumno.id in ids
         assert alumno.id not in ids
 
@@ -1459,7 +1461,7 @@ class TestProfesorAlumnosCartilla:
             {'taller_id': horario.taller_id}
         )
         assert response.status_code == status.HTTP_200_OK
-        ids = [e['id'] for e in response.data]
+        ids = [e['id'] for e in response.data['results']]
         assert alumno.id in ids
         assert otro_alumno.id not in ids  # Only in Piano
 
@@ -1469,39 +1471,42 @@ class TestProfesorAlumnosCartilla:
             {'taller_id': otro_horario.taller_id}
         )
         assert response.status_code == status.HTTP_200_OK
-        ids = [e['id'] for e in response.data]
+        ids = [e['id'] for e in response.data['results']]
         assert otro_alumno.id in ids
         assert alumno.id not in ids
 
-    def test_inactive_matricula_excluded(self, authenticated_client, ciclo, alumno, horario,
-                                         matricula):
-        """Students with activo=False matricula are excluded."""
+    def test_inactive_matricula_shows_as_historico(self, authenticated_client, ciclo, alumno,
+                                                    horario, matricula):
+        """Students with activo=False matricula appear as 'historico'."""
         matricula.activo = False
         matricula.save()
 
         response = authenticated_client.get(self.ENDPOINT.format(ciclo.id))
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 0
+        assert len(response.data['results']) == 1
+        assert response.data['results'][0]['estado'] == 'historico'
 
-    def test_concluded_matricula_excluded(self, authenticated_client, ciclo, alumno, horario,
-                                          matricula):
-        """Students with concluida=True matricula are excluded."""
+    def test_concluded_matricula_shows_as_historico(self, authenticated_client, ciclo, alumno,
+                                                     horario, matricula):
+        """Students with concluida=True matricula appear as 'historico'."""
         matricula.concluida = True
         matricula.save()
 
         response = authenticated_client.get(self.ENDPOINT.format(ciclo.id))
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 0
+        assert len(response.data['results']) == 1
+        assert response.data['results'][0]['estado'] == 'historico'
 
     def test_empty_response(self, authenticated_client, ciclo):
-        """Returns empty array when there are no active students."""
+        """Returns paginated response with empty results when no students."""
         response = authenticated_client.get(self.ENDPOINT.format(ciclo.id))
         assert response.status_code == status.HTTP_200_OK
-        assert isinstance(response.data, list)
-        assert len(response.data) == 0
+        assert 'results' in response.data
+        assert isinstance(response.data['results'], list)
+        assert len(response.data['results']) == 0
 
     def test_other_profesor_students_not_visible(self, authenticated_client, api_client, ciclo,
-                                                 otro_profesor, alumno, db):
+                                                  otro_profesor, alumno, db):
         """Students enrolled only under otro_profesor are not visible."""
         from datetime import timezone, datetime
         from core.models import Horario, Matricula, MatriculaHorario, Taller
@@ -1522,10 +1527,10 @@ class TestProfesorAlumnosCartilla:
 
         response = authenticated_client.get(self.ENDPOINT.format(ciclo.id))
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 0
+        assert len(response.data['results']) == 0
 
     def test_combined_search_and_taller_filter(self, authenticated_client, ciclo, alumno,
-                                               otro_alumno, horario, db):
+                                                otro_alumno, horario, db):
         """Combined ?search + ?taller_id narrows results."""
         from datetime import timezone, datetime
         from core.models import Matricula, MatriculaHorario
@@ -1545,18 +1550,18 @@ class TestProfesorAlumnosCartilla:
             {'search': 'Another', 'taller_id': str(horario.taller_id)}
         )
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
-        assert response.data[0]['id'] == otro_alumno.id
+        assert len(response.data['results']) == 1
+        assert response.data['results'][0]['id'] == otro_alumno.id
 
     def test_inactive_horario_excluded(self, authenticated_client, ciclo, alumno, horario,
-                                       matricula):
+                                        matricula):
         """Students in inactivo horarios are excluded."""
         horario.activo = False
         horario.save()
 
         response = authenticated_client.get(self.ENDPOINT.format(ciclo.id))
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 0
+        assert len(response.data['results']) == 0
 
     def test_student_portal_token_rejected(self, api_client, portal_token, ciclo):
         """Student portal token (type='portal') is rejected with 401."""

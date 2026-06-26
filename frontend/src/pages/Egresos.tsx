@@ -1,415 +1,116 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import { ResponsiveTable } from '../components/ui/ResponsiveTable';
-import { 
-  getEgresos, createEgreso, updateEgreso, deleteEgreso, 
-  getResumenEgresos, getProfesores 
-} from '../api/endpoints';
+import { Pagination } from '../components/ui/Pagination';
+import { getEgresos, createEgreso, updateEgreso, deleteEgreso, getResumenEgresos, getProfesores } from '../api/endpoints';
 import { formatMonto } from '../utils/formatters';
 import { useWindowWidth } from '../hooks/useWindowWidth';
 
-const EgresosPage = () => {
-  const { cicloActual } = useCiclo();
-  const toast = useToast();
-  const windowWidth = useWindowWidth();
-  const isMobile = windowWidth < 768;
-  const [egresos, setEgresos] = useState<any[]>([]);
-  const [profesores, setProfesores] = useState<any[]>([]);
-  const [resumen, setResumen] = useState<{gasto_taller: number; pago_profesor: number; gasto_personal: number; total: number}>({ gasto_taller: 0, pago_profesor: 0, gasto_personal: 0, total: 0 });
-  const [loading, setLoading] = useState(true);
-  const [filtroTipo, setFiltroTipo] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState('');
-  const [ordenarPor, setOrdenarPor] = useState('fecha');
-  const [ordenDireccion, setOrdenDireccion] = useState<'asc' | 'desc'>('desc');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [egresoEditando, setEgresoEditando] = useState<any>(null);
+const labelStyle: React.CSSProperties = { display:'block',fontSize:'0.6875rem',fontWeight:500,color:'#94a3b8',marginBottom:'0.2rem',textTransform:'uppercase',letterSpacing:'0.04em' };
+const inputStyle: React.CSSProperties = { width:'100%',padding:'0.5rem 0.75rem',border:'1px solid #e5e7eb',borderRadius:'10px',fontSize:'0.875rem' };
 
-  // Form state
-  const [formTipo, setFormTipo] = useState('gasto_taller');
-  const [formMonto, setFormMonto] = useState('');
-  const [formDescripcion, setFormDescripcion] = useState('');
-  const [formFecha, setFormFecha] = useState(new Date().toISOString().split('T')[0]);
-  const [formMetodoPago, setFormMetodoPago] = useState('efectivo');
-  const [formCategoria, setFormCategoria] = useState('');
-  const [formBeneficiario, setFormBeneficiario] = useState('');
-  const [formProfesor, setFormProfesor] = useState<number | null>(null);
-  const [formEstado, setFormEstado] = useState('pendiente');
+const EgresosPage = () => {
+  const { cicloActual } = useCiclo(); const toast = useToast(); const ww = useWindowWidth(); const mb = ww < 768;
+  const [egresos, setEgresos] = useState<any[]>([]); const [profesores, setProfesores] = useState<any[]>([]);
+  const [resumen, setResumen] = useState({ gasto_taller:0, pago_profesor:0, gasto_personal:0, total:0 });
+  const [loading, setLoading] = useState(true); const [page, setPage] = useState(1); const [tp, setTp] = useState(1); const [tc, setTc] = useState(0);
+  const [filtroTipo, setFiltroTipo] = useState(''); const [filtroEstado, setFiltroEstado] = useState('');
+  const [modalOpen, setModalOpen] = useState(false); const [egresoEditando, setEgresoEditando] = useState<any>(null);
+  const [formTipo, setFormTipo] = useState('gasto_taller'); const [formMonto, setFormMonto] = useState('');
+  const [formDesc, setFormDesc] = useState(''); const formToday = new Date().toISOString().split('T')[0];
+  const [formFecha, setFormFecha] = useState(formToday); const [formMetodo, setFormMetodo] = useState('efectivo');
+  const [formCat, setFormCat] = useState(''); const [formBenef, setFormBenef] = useState('');
+  const [formProf, setFormProf] = useState<number|null>(null); const [formEst, setFormEst] = useState('pendiente');
   const [guardando, setGuardando] = useState(false);
 
-  const loadData = async () => {
-    if (!cicloActual) return;
-    setLoading(true);
+  const loadData = useCallback(async () => {
+    if(!cicloActual)return; setLoading(true);
     try {
-      const [egresosRes, resumenRes, profesoresRes] = await Promise.all([
-        getEgresos(cicloActual.id),
-        getResumenEgresos(cicloActual.id),
-        getProfesores(cicloActual.id)
-      ]);
-      setEgresos(egresosRes.data);
-      setResumen(resumenRes.data);
-      // DRF pagination: data.results contains the actual array (cast to any to handle paginated vs array)
-      const profesData = profesoresRes.data as any;
-      setProfesores(profesData.results || profesData || []);
-    } catch (error) {
-      console.error('Error:', error);
-      toast.showToast('Error al cargar egresos', 'error');
+      const [er, rr, pr] = await Promise.all([getEgresos(cicloActual.id,`page=${page}`), getResumenEgresos(cicloActual.id), getProfesores(cicloActual.id)]);
+      const ed = er.data as any; setEgresos(ed.results||ed||[]); setTc(ed.count||0); setTp(Math.ceil((ed.count||0)/20)||1);
+      setResumen(rr.data); const pd = pr.data as any; setProfesores(pd.results||pd||[]);
+    } catch { toast.showToast('Error al cargar','error') } finally { setLoading(false) }
+  }, [cicloActual, page, toast]);
+
+  useEffect(() => { if(cicloActual)loadData() }, [loadData]);
+
+  const gastoPersonalTotal = resumen.gasto_personal + resumen.pago_profesor;
+
+  const filteredEgresos = egresos.filter(e => {
+    if(filtroTipo){
+      if(filtroTipo==='gasto_personal'){ if(e.tipo!=='gasto_personal'&&e.tipo!=='pago_profesor')return false }
+      else if(e.tipo!==filtroTipo) return false;
     }
-    setLoading(false);
+    if(filtroEstado && e.estado!==filtroEstado) return false;
+    return true;
+  });
+
+  const tipoLabel = (t: string) => t==='gasto_taller'?'Gasto Taller':(t==='gasto_personal'||t==='pago_profesor')?'Gasto Personal':t;
+  const tipoBadge = (t: string) => { const ip = t==='gasto_personal'||t==='pago_profesor'; return <span style={{ padding:'0.2rem 0.55rem',borderRadius:'5px',fontSize:'0.75rem',fontWeight:500,background:ip?'#fef2f2':'#fefce8',color:ip?'#dc2626':'#ca8a04',whiteSpace:'nowrap' }}>{ip?'Profesor':'Taller'}</span> };
+
+  const resetForm = () => { setFormTipo('gasto_taller'); setFormMonto(''); setFormDesc(''); setFormFecha(formToday); setFormMetodo('efectivo'); setFormCat(''); setFormBenef(''); setFormProf(null); setFormEst('pendiente') };
+  const abrirEditar = (e: any) => { setEgresoEditando(e); const tn = e.tipo==='pago_profesor'?'gasto_personal':e.tipo; setFormTipo(tn); setFormMonto(String(e.monto)); setFormDesc(e.descripcion||''); setFormFecha(e.fecha); setFormMetodo(e.metodo_pago); setFormCat(e.categoria||''); setFormBenef(e.beneficiario||''); setFormProf(e.profesor); setFormEst(e.estado); setModalOpen(true) };
+
+  const guardar = async (e: React.FormEvent) => { e.preventDefault(); if(!cicloActual)return; setGuardando(true);
+    try { const d: any = { tipo:formTipo, monto:parseFloat(formMonto), descripcion:formDesc, fecha:formFecha, metodo_pago:formMetodo, categoria:formTipo==='gasto_taller'?formCat:'', beneficiario:formBenef, estado:formEst };
+      if(formTipo==='gasto_personal'){ if(formProf)d.profesor=formProf; else d.profesor=null }
+      if(egresoEditando){ await updateEgreso(egresoEditando.id,d); toast.showToast('Actualizado','success') } else { await createEgreso(d,cicloActual.id); toast.showToast('Creado','success') }
+      setModalOpen(false); setEgresoEditando(null); resetForm(); setPage(1); loadData();
+    } catch(err:any){ toast.showToast(err.response?.data?.detail||'Error','error') } finally { setGuardando(false) }
   };
 
-  useEffect(() => {
-    if (cicloActual) {
-      loadData();
-    }
-  }, [cicloActual]);
+  const eliminar = async (id: number) => { if(!window.confirm('¿Eliminar?'))return; try { await deleteEgreso(id); toast.showToast('Eliminado','success'); loadData() } catch { toast.showToast('Error','error') } };
 
-  const filteredEgresos = useMemo(() => {
-    let result = egresos.filter(e => {
-      if (filtroTipo && e.tipo !== filtroTipo) return false;
-      if (filtroEstado && e.estado !== filtroEstado) return false;
-      return true;
-    });
-    
-    // Ordenar
-    result.sort((a, b) => {
-      let valA = a[ordenarPor];
-      let valB = b[ordenarPor];
-      
-      if (ordenarPor === 'fecha') {
-        valA = new Date(valA).getTime();
-        valB = new Date(valB).getTime();
-      } else if (typeof valA === 'string') {
-        valA = valA.toLowerCase();
-        valB = valB.toLowerCase();
-      }
-      
-      if (valA < valB) return ordenDireccion === 'asc' ? -1 : 1;
-      if (valA > valB) return ordenDireccion === 'asc' ? 1 : -1;
-      return 0;
-    });
-    
-    return result;
-  }, [egresos, filtroTipo, filtroEstado, ordenarPor, ordenDireccion]);
+  if(!cicloActual) return null;
 
-  const handleCrear = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!cicloActual) return;
-    setGuardando(true);
-    try {
-      const data: any = {
-        tipo: formTipo,
-        monto: parseFloat(formMonto),
-        descripcion: formDescripcion,
-        fecha: formFecha,
-        metodo_pago: formMetodoPago,
-        categoria: formCategoria,
-        beneficiario: formBeneficiario,
-        estado: formEstado
-      };
-      // Agregar profesor para pago a profesor
-      if (formTipo === 'pago_profesor' && formProfesor) {
-        data.profesor = formProfesor;
-      }
-      await createEgreso(data, cicloActual.id);
-      toast.showToast('Egreso creado exitosamente', 'success');
-      setModalOpen(false);
-      resetForm();
-      loadData();
-    } catch (error: any) {
-      console.error('Error:', error);
-      toast.showToast(error.response?.data?.detail || 'Error al crear egreso', 'error');
-    }
-    setGuardando(false);
-  };
-
-  const handleEditar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!egresoEditando) return;
-    setGuardando(true);
-    try {
-      const data: any = {
-        tipo: formTipo,
-        monto: parseFloat(formMonto),
-        descripcion: formDescripcion,
-        fecha: formFecha,
-        metodo_pago: formMetodoPago,
-        categoria: formCategoria,
-        beneficiario: formBeneficiario,
-        estado: formEstado
-      };
-      if (formTipo === 'pago_profesor' && formProfesor) {
-        data.profesor = formProfesor;
-      }
-      await updateEgreso(egresoEditando.id, data);
-      toast.showToast('Egreso actualizado exitosamente', 'success');
-      setModalOpen(false);
-      setEgresoEditando(null);
-      resetForm();
-      loadData();
-    } catch (error: any) {
-      console.error('Error:', error);
-      toast.showToast(error.response?.data?.detail || 'Error al actualizar egreso', 'error');
-    }
-    setGuardando(false);
-  };
-
-  const handleEliminar = async (id: number) => {
-    if (!window.confirm('¿Estás seguro de eliminar este egreso?')) return;
-    try {
-      await deleteEgreso(id);
-      toast.showToast('Egreso eliminado', 'success');
-      loadData();
-    } catch (error) {
-      console.error('Error:', error);
-      toast.showToast('Error al eliminar egreso', 'error');
-    }
-  };
-
-  const abrirEditar = (egreso: any) => {
-    setEgresoEditando(egreso);
-    setFormTipo(egreso.tipo);
-    setFormMonto(String(egreso.monto));
-    setFormDescripcion(egreso.descripcion || '');
-    setFormFecha(egreso.fecha);
-    setFormMetodoPago(egreso.metodo_pago);
-    setFormCategoria(egreso.categoria || '');
-    setFormBeneficiario(egreso.beneficiario || '');
-    setFormProfesor(egreso.profesor);
-    setFormEstado(egreso.estado);
-    setModalOpen(true);
-  };
-
-  const resetForm = () => {
-    setFormTipo('gasto_taller');
-    setFormMonto('');
-    setFormDescripcion('');
-    setFormFecha(new Date().toISOString().split('T')[0]);
-    setFormMetodoPago('efectivo');
-    setFormCategoria('');
-    setFormBeneficiario('');
-    setFormProfesor(null);
-    setFormEstado('pendiente');
-  };
-
-  const getTipoLabel = (tipo: string) => {
-    const labels: Record<string, string> = {
-      gasto_taller: 'Gasto Taller',
-      pago_profesor: 'Pago Profesor',
-      gasto_personal: 'Gasto Personal'
-    };
-    return labels[tipo] || tipo;
-  };
-
-  const getEstadoLabel = (estado: string) => {
-    return estado === 'pendiente' ? 'Pendiente' : 'Cancelado';
-  };
-
-  const getEstadoColor = (estado: string) => {
-    return estado === 'pendiente' ? '#f59e0b' : '#10b981';
-  };
-
-  if (!cicloActual) return null;
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.25rem' }}>Egresos</h1>
-          <p style={{ color: '#6b7280' }}>Gestiona los egresos del ciclo {cicloActual.nombre}</p>
-        </div>
-        <button 
-          onClick={() => { resetForm(); setEgresoEditando(null); setModalOpen(true); }}
-          style={{ padding: '0.625rem 1.25rem', background: 'linear-gradient(135deg, #d4af37 0%, #b8962e 100%)', color: '#0a0a0a', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, boxShadow: '0 4px 12px rgba(212, 175, 55, 0.3)' }}
-        >
-          + Nuevo Egreso
-        </button>
-      </div>
-
-      {/* Resumen Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div style={{ background: '#fef3c7', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(212, 175, 55, 0.2)' }}>
-          <p style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gasto Taller</p>
-          <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#92400e' }}>{formatMonto(resumen.gasto_taller)}</p>
-        </div>
-        <div style={{ background: '#fee2e2', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(196, 30, 58, 0.2)' }}>
-          <p style={{ fontSize: '0.75rem', color: '#b91c1c', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pago Profesor</p>
-          <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#b91c1c' }}>{formatMonto(resumen.pago_profesor)}</p>
-        </div>
-        <div style={{ background: '#e0e7ff', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(79, 70, 229, 0.2)' }}>
-          <p style={{ fontSize: '0.75rem', color: '#3730a3', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gasto Personal</p>
-          <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#3730a3' }}>{formatMonto(resumen.gasto_personal)}</p>
-        </div>
-        <div style={{ background: '#1f2937', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(31, 41, 55, 0.3)' }}>
-          <p style={{ fontSize: '0.75rem', color: '#d4af37', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total</p>
-          <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#d4af37' }}>{formatMonto(resumen.total)}</p>
-        </div>
-      </div>
-
-      {/* Filtros y Ordenamiento */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <select 
-          value={filtroTipo} 
-          onChange={e => setFiltroTipo(e.target.value)}
-          style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', minWidth: '150px' }}
-        >
-          <option value="">Todos los tipos</option>
-          <option value="gasto_taller">Gasto Taller</option>
-          <option value="pago_profesor">Pago Profesor</option>
-          <option value="gasto_personal">Gasto Personal</option>
-        </select>
-        <select 
-          value={filtroEstado} 
-          onChange={e => setFiltroEstado(e.target.value)}
-          style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', minWidth: '150px' }}
-        >
-          <option value="">Todos los estados</option>
-          <option value="pendiente">Pendiente</option>
-          <option value="cancelado">Cancelado</option>
-        </select>
-        <select 
-          value={ordenarPor} 
-          onChange={e => setOrdenarPor(e.target.value)}
-          style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', minWidth: '120px' }}
-        >
-          <option value="fecha">Ordenar por Fecha</option>
-          <option value="monto">Ordenar por Monto</option>
-          <option value="descripcion">Ordenar por Descripción</option>
-        </select>
-        <button 
-          onClick={() => setOrdenDireccion(ordenDireccion === 'asc' ? 'desc' : 'asc')}
-          style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-        >
-          {ordenDireccion === 'asc' ? '↑' : '↓'}
-        </button>
-      </div>
-
-      {/* Tabla */}
-      <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-        <ResponsiveTable<any>
-          columns={[
-            { key: 'tipo', label: 'Tipo', render: (e) => getTipoLabel(e.tipo) },
-            { key: 'monto', label: 'Monto', align: 'right', render: (e) => <span style={{ fontWeight: 600 }}>{formatMonto(e.monto)}</span> },
-            { key: 'descripcion', label: 'Descripción', render: (e) => e.descripcion || '-' },
-            { key: 'categoria', label: 'Categoría', render: (e) => e.categoria || '-' },
-            { key: 'beneficiario', label: 'Beneficiario', render: (e) => e.beneficiario || e.profesor_nombre || '-' },
-            { key: 'fecha', label: 'Fecha', render: (e) => new Date(e.fecha).toLocaleDateString('es-PE') },
-            { 
-              key: 'estado', 
-              label: 'Estado', 
-              align: 'center',
-              render: (e: any) => (
-                <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, background: `${getEstadoColor(e.estado)}20`, color: getEstadoColor(e.estado) }}>
-                  {getEstadoLabel(e.estado)}
-                </span>
-              ),
-            },
-          ]}
-          data={loading ? [] : filteredEgresos}
-          keyField="id"
-          actions={(e) => (
-            <>
-              <button
-                onClick={() => abrirEditar(e)}
-                className="touch-target"
-                style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '0.75rem' }}
-              >
-                Editar
-              </button>
-              <button
-                onClick={() => handleEliminar(e.id)}
-                className="touch-target"
-                style={{ padding: '0.25rem 0.5rem', border: '1px solid #ef4444', borderRadius: '6px', background: 'white', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem' }}
-              >
-                Eliminar
-              </button>
-            </>
-          )}
-          emptyMessage={loading ? 'Cargando...' : 'No hay egresos'}
-        />
-      </div>
-
-      {/* Modal */}
-      {modalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflow: 'auto' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem' }}>{egresoEditando ? 'Editar Egreso' : 'Nuevo Egreso'}</h2>
-            <form onSubmit={egresoEditando ? handleEditar : handleCrear}>
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Tipo</label>
-                  <select value={formTipo} onChange={e => setFormTipo(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '8px' }}>
-                    <option value="gasto_taller">Gasto del Taller</option>
-                    <option value="pago_profesor">Pago a Profesor</option>
-                    <option value="gasto_personal">Gasto de Personal</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Monto</label>
-                  <input type="number" step="0.01" value={formMonto} onChange={e => setFormMonto(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '8px' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Descripción</label>
-                  <input type="text" value={formDescripcion} onChange={e => setFormDescripcion(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '8px' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Fecha</label>
-                  <input type="date" value={formFecha} onChange={e => setFormFecha(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '8px' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Método de Pago</label>
-                  <select value={formMetodoPago} onChange={e => setFormMetodoPago(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '8px' }}>
-                    <option value="efectivo">Efectivo</option>
-                    <option value="transferencia">Transferencia</option>
-                    <option value="yape">Yape</option>
-                    <option value="plin">Plin</option>
-                  </select>
-                </div>
-                {formTipo === 'gasto_taller' && (
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Categoría</label>
-                    <input type="text" value={formCategoria} onChange={e => setFormCategoria(e.target.value)} placeholder="Ej: materiales, equipos, local" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '8px' }} />
-                  </div>
-                )}
-                {formTipo !== 'pago_profesor' && (
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Beneficiario</label>
-                    <input type="text" value={formBeneficiario} onChange={e => setFormBeneficiario(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '8px' }} />
-                  </div>
-                )}
-                {formTipo === 'pago_profesor' && (
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Profesor</label>
-                    <select value={formProfesor || ''} onChange={e => setFormProfesor(e.target.value ? Number(e.target.value) : null)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '8px' }}>
-                      <option value="">Seleccionar profesor</option>
-                      {profesores.map(p => (
-                        <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Estado</label>
-                  <select value={formEstado} onChange={e => setFormEstado(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '8px' }}>
-                    <option value="pendiente">Pendiente</option>
-                    <option value="cancelado">Cancelado</option>
-                  </select>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button type="submit" disabled={guardando} style={{ flex: 1, padding: '0.625rem', background: '#d4af37', color: '#0a0a0a', border: 'none', borderRadius: '8px', cursor: guardando ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
-                  {guardando ? 'Guardando...' : 'Guardar'}
-                </button>
-                <button type="button" onClick={() => { setModalOpen(false); setEgresoEditando(null); }} style={{ flex: 1, padding: '0.625rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer' }}>
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+  return (<div style={{maxWidth:'1100px',margin:'0 auto'}}>
+    {/* Header */}
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'1.75rem',flexWrap:'wrap',gap:'0.75rem'}}>
+      <div><div style={{display:'flex',alignItems:'baseline',gap:'0.75rem'}}><h1 style={{fontSize:'1.625rem',fontWeight:700,color:'#0f172a',margin:0,letterSpacing:'-0.02em'}}>Egresos</h1><span style={{fontSize:'0.75rem',fontWeight:500,color:'#b59410',background:'#fef9e7',padding:'0.2rem 0.65rem',borderRadius:'9999px'}}>{cicloActual.nombre}</span></div><div style={{height:3,width:48,background:'linear-gradient(90deg,#d4af37,#f0d878)',borderRadius:2,marginTop:'0.5rem'}}/></div>
+      <button onClick={()=>{resetForm();setEgresoEditando(null);setModalOpen(true)}} style={{padding:'0.625rem 1.25rem',borderRadius:'10px',border:'none',cursor:'pointer',background:'linear-gradient(135deg,#d4af37,#c59b2e)',color:'#0a0a0a',fontWeight:600,fontSize:'0.875rem',display:'flex',alignItems:'center',gap:'0.375rem',boxShadow:'0 2px 8px rgba(212,175,55,0.25)'}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo Egreso</button>
     </div>
-  );
-};
 
+    {/* Resumen Cards */}
+    <div style={{display:'grid',gridTemplateColumns:mb?'repeat(2,1fr)':'repeat(3,1fr)',gap:'0.75rem',marginBottom:'1.25rem'}}>
+      <div style={{background:'#fefce8',padding:'1.125rem',borderRadius:'14px',border:'1px solid rgba(202,138,4,0.15)'}}><p style={{color:'#ca8a04',fontSize:'0.65rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'0.25rem'}}>Gasto Taller</p><p style={{fontSize:'1.5rem',fontWeight:700,color:'#ca8a04'}}>{formatMonto(resumen.gasto_taller)}</p></div>
+      <div style={{background:'#fef2f2',padding:'1.125rem',borderRadius:'14px',border:'1px solid rgba(220,38,38,0.15)'}}><p style={{color:'#dc2626',fontSize:'0.65rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'0.25rem'}}>Gasto Personal</p><p style={{fontSize:'1.5rem',fontWeight:700,color:'#dc2626'}}>{formatMonto(gastoPersonalTotal)}</p></div>
+      <div style={{background:'#1f2937',padding:'1.125rem',borderRadius:'14px'}}><p style={{color:'#d4af37',fontSize:'0.65rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'0.25rem'}}>Total</p><p style={{fontSize:'1.5rem',fontWeight:700,color:'#d4af37'}}>{formatMonto(resumen.total)}</p></div>
+    </div>
+
+    {/* Filters */}
+    <div style={{background:'white',borderRadius:'12px',border:'1px solid #f1f5f9',padding:'0.75rem 1rem',marginBottom:'0.75rem',display:'flex',gap:'0.5rem',flexWrap:'wrap',alignItems:'center'}}>
+      <select value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)} style={{padding:'0.5rem 0.75rem',border:'1px solid #e5e7eb',borderRadius:'10px',fontSize:'0.875rem',background:'white',minWidth:150}}><option value="">Todos los tipos</option><option value="gasto_taller">Gasto Taller</option><option value="gasto_personal">Gasto Personal</option></select>
+      <select value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)} style={{padding:'0.5rem 0.75rem',border:'1px solid #e5e7eb',borderRadius:'10px',fontSize:'0.875rem',background:'white',minWidth:150}}><option value="">Todos los estados</option><option value="pendiente">Pendiente</option><option value="cancelado">Cancelado</option></select>
+    </div>
+
+    {/* Table */}
+    <div style={{background:'white',borderRadius:'12px',border:'1px solid #f1f5f9',overflow:'hidden'}}>
+      <ResponsiveTable<any> columns={[
+        {key:'tipo',label:'Tipo',render:(e:any)=>tipoBadge(e.tipo)},
+        {key:'monto',label:'Monto',align:'right',render:(e:any)=><span style={{fontWeight:600,color:'#dc2626'}}>{formatMonto(e.monto)}</span>},
+        {key:'descripcion',label:'Descripción',render:(e:any)=><span style={{color:'#64748b',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'} as React.CSSProperties}>{e.descripcion||'—'}</span>},
+        {key:'beneficiario',label:'Beneficiario',render:(e:any)=>e.beneficiario||e.profesor_nombre||'—'},
+        {key:'fecha',label:'Fecha',render:(e:any)=><span style={{color:'#64748b',fontSize:'0.8125rem'}}>{new Date(e.fecha).toLocaleDateString('es-PE',{day:'numeric',month:'short',year:'numeric'})}</span>},
+        {key:'estado',label:'Estado',align:'center',render:(e:any)=><span style={{padding:'0.2rem 0.55rem',borderRadius:'9999px',fontSize:'0.7rem',fontWeight:600,background:e.estado==='cancelado'?'#ecfdf5':'#fef3c7',color:e.estado==='cancelado'?'#059669':'#d97706'}}>{e.estado==='cancelado'?'Cancelado':'Pendiente'}</span>},
+      ]} data={loading?[]:filteredEgresos} keyField="id"
+      actions={(e:any)=>(<><button onClick={()=>abrirEditar(e)} className="touch-target" style={{background:'none',border:'none',color:'#d4af37',cursor:'pointer',fontSize:'0.8125rem',fontWeight:500,padding:'0.35rem 0.5rem'}}>Editar</button><button onClick={()=>eliminar(e.id)} className="touch-target" style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:'0.8125rem',fontWeight:500,padding:'0.35rem 0.5rem'}}>Eliminar</button></>)}
+      emptyMessage={loading?'Cargando...':'No hay egresos'}/>
+      {tp>1&&<div style={{borderTop:'1px solid #f3f4f6'}}><Pagination currentPage={page} totalPages={tp} totalCount={tc} onPageChange={p=>setPage(p)}/></div>}
+    </div>
+
+    {/* Modal */}
+    {modalOpen&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:50}}><div style={{background:'white',borderRadius:'16px',width:'100%',maxWidth:'480px',maxHeight:'90vh',overflow:'auto',boxShadow:'0 20px 60px rgba(0,0,0,0.15)'}}><div style={{padding:'1.25rem 1.5rem',borderBottom:'1px solid #f3f4f6',display:'flex',justifyContent:'space-between',alignItems:'center'}}><h2 style={{fontSize:'1.125rem',fontWeight:700,color:'#0f172a',margin:0}}>{egresoEditando?'Editar Egreso':'Nuevo Egreso'}</h2><button onClick={()=>{setModalOpen(false);setEgresoEditando(null)}} style={{width:32,height:32,borderRadius:'50%',border:'none',background:'#f3f4f6',color:'#6b7280',fontSize:'1.25rem',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button></div><form onSubmit={guardar} style={{padding:'1.5rem'}}>
+      <div style={{marginBottom:'0.75rem'}}><label style={labelStyle}>Tipo</label><select value={formTipo} onChange={e=>setFormTipo(e.target.value)} required style={inputStyle}><option value="gasto_taller">Gasto del Taller</option><option value="gasto_personal">Gasto de Personal</option></select></div>
+      <div style={{marginBottom:'0.75rem'}}><label style={labelStyle}>Monto</label><input type="number" step="0.01" value={formMonto} onChange={e=>setFormMonto(e.target.value)} required style={inputStyle}/></div>
+      <div style={{marginBottom:'0.75rem'}}><label style={labelStyle}>Descripción</label><input value={formDesc} onChange={e=>setFormDesc(e.target.value)} style={inputStyle}/></div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem',marginBottom:'0.75rem'}}><div><label style={labelStyle}>Fecha</label><input type="date" value={formFecha} onChange={e=>setFormFecha(e.target.value)} required style={inputStyle}/></div><div><label style={labelStyle}>Método de Pago</label><select value={formMetodo} onChange={e=>setFormMetodo(e.target.value)} required style={inputStyle}><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="yape">Yape</option><option value="plin">Plin</option></select></div></div>
+      {formTipo==='gasto_taller'&&<div style={{marginBottom:'0.75rem'}}><label style={labelStyle}>Categoría</label><input value={formCat} onChange={e=>setFormCat(e.target.value)} placeholder="Ej: materiales, equipos" style={inputStyle}/></div>}
+      {formTipo==='gasto_personal'&&<div style={{marginBottom:'0.75rem'}}><label style={labelStyle}>Profesor</label><select value={formProf??''} onChange={e=>setFormProf(e.target.value?Number(e.target.value):null)} style={inputStyle}><option value="">Sin profesor asociado</option>{profesores.map(p=><option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>)}</select></div>}
+      {formTipo==='gasto_taller'&&<div style={{marginBottom:'0.75rem'}}><label style={labelStyle}>Beneficiario</label><input value={formBenef} onChange={e=>setFormBenef(e.target.value)} style={inputStyle}/></div>}
+      <div style={{marginBottom:'1rem'}}><label style={labelStyle}>Estado</label><select value={formEst} onChange={e=>setFormEst(e.target.value)} required style={inputStyle}><option value="pendiente">Pendiente</option><option value="cancelado">Cancelado</option></select></div>
+      <div style={{display:'flex',gap:'0.75rem'}}><button type="button" onClick={()=>{setModalOpen(false);setEgresoEditando(null)}} style={{flex:1,padding:'0.625rem',border:'1px solid #e5e7eb',borderRadius:'10px',background:'white',color:'#374151',fontWeight:500,cursor:'pointer',fontSize:'0.875rem'}}>Cancelar</button><button type="submit" disabled={guardando} style={{flex:1,padding:'0.625rem',border:'none',borderRadius:'10px',background:guardando?'#e5e7eb':'#d4af37',color:guardando?'#9ca3af':'#0a0a0a',fontWeight:600,cursor:guardando?'not-allowed':'pointer',fontSize:'0.875rem'}}>{guardando?'Guardando...':'Guardar'}</button></div>
+    </form></div></div>)}
+  </div>);
+};
 export default EgresosPage;

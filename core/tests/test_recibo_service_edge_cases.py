@@ -209,6 +209,7 @@ class TestActualizarPreciosMatriculas(TestCase):
         ReciboService._actualizar_precios_matriculas(recibo)
 
         matricula.refresh_from_db()
-        # El precio_total de la matrícula ahora debería ser el del ReciboMatricula
-        # (este es el comportamiento actual, que puede o no ser correcto)
-        self.assertEqual(matricula.precio_total, Decimal('150.00'))
+        # Solo ReciboMatricula.monto cambia; matricula.precio_total conserva su valor original
+        self.assertEqual(matricula.precio_total, Decimal('200.00'))
+        rm = ReciboMatricula.objects.get(recibo=recibo)
+        self.assertEqual(rm.monto, Decimal('150.00'))

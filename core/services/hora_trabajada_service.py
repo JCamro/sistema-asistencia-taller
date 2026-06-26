@@ -1,8 +1,7 @@
 """
 Servicio para la lógica de negocio de Horas Trabajadas.
 
-Maneja la generación automática desde asistencias, creación manual,
-y la máquina de estados para aprobación/rechazo.
+Maneja la generación automática desde asistencias (vía señal) y creación manual.
 """
 from datetime import date
 from decimal import Decimal
@@ -301,22 +300,20 @@ class HoraTrabajadaService:
                 tipo='clase_regular',
             ).delete()
 
-            # 2. Contar asistencias regulares (excluye recuperación) de TODOS los horarios
+            # 2. Contar asistencias (incluye recuperaciones) de TODOS los horarios
             num_alumnos = Asistencia.objects.filter(
                 profesor_id=profesor_id,
                 horario_id__in=horario_ids_overlap,
                 fecha=fecha,
                 estado='asistio',
-                es_recuperacion=False,
             ).count()
 
-            # 3. Obtener asistentes regulares para cálculo de valor generado
+            # 3. Obtener asistentes (incluye recuperaciones) para cálculo de valor generado
             asistentes = Asistencia.objects.filter(
                 profesor_id=profesor_id,
                 horario_id__in=horario_ids_overlap,
                 fecha=fecha,
                 estado='asistio',
-                es_recuperacion=False,
             ).select_related('matricula')
 
             # 4. Calcular montos usando metadatos del representativo
@@ -572,11 +569,11 @@ class HoraTrabajadaService:
         Crea un registro manual de hora trabajada.
 
         Valida:
-        - tipo != 'clase_regular'
         - Profesor activo
         - Fecha no futura
         - horas_trabajadas > 0
-        - horario nullable solo para hora_extra
+        - horario obligatorio (siempre 'clase_regular')
+        - El profesor corresponde al horario
 
         Args:
             data: Diccionario con los datos del registro
@@ -587,13 +584,8 @@ class HoraTrabajadaService:
         Raises:
             ValueError: Si alguna validación falla
         """
-        tipo = data.get('tipo')
-
-        if tipo != 'hora_extra' and not data.get('horario'):
-            raise ValueError("El horario es obligatorio para este tipo de registro.")
-
-        if tipo == 'hora_extra' and data.get('horario'):
-            raise ValueError("Hora extra no debe tener horario asociado.")
+        if not data.get('horario'):
+            raise ValueError("El horario es obligatorio.")
 
         profesor_value = data.get('profesor')
         # DRF validated_data pasa la instancia del FK, no el ID
@@ -620,7 +612,7 @@ class HoraTrabajadaService:
         # Convertir horario de ID a instancia si es necesario
         horario_value = data.get('horario')
         if horario_value is None:
-            horario = None
+            raise ValueError("El horario es obligatorio.")
         elif isinstance(horario_value, Horario):
             horario = horario_value
         else:
@@ -628,6 +620,12 @@ class HoraTrabajadaService:
                 horario = Horario.objects.get(id=horario_value)
             except Horario.DoesNotExist:
                 raise ValueError("Horario no encontrado.")
+
+        # Validar que el profesor corresponda al horario
+        if horario.profesor_id != profesor.id:
+            raise ValueError(
+                f"El horario pertenece a {horario.profesor.nombre}, no a {profesor.nombre}."
+            )
 
         fecha = data.get('fecha')
         if fecha and fecha > date.today():
@@ -639,24 +637,10 @@ class HoraTrabajadaService:
 
         config_snapshot = cls._get_config_snapshot()
 
-        # Auto-calcular montos para clase_regular si se proporcionan horario y num_alumnos
-        if tipo == 'clase_regular' and horario:
-            num_alumnos = data.get('num_alumnos', 0)
-            horario_meta = {
-                'tipo_pago': horario.tipo_pago,
-                'monto_fijo': horario.monto_fijo or Decimal('0.00'),
-            }
-            montos = cls._calcular_montos_para_clase(
-                num_alumnos, [], horario_meta, config_snapshot
-            )
-            data['valor_generado'] = data.get('valor_generado', montos['valor_generado'])
-            data['monto_base'] = data.get('monto_base', montos['monto_base'])
-            data['monto_adicional'] = data.get('monto_adicional', montos['monto_adicional'])
-            data['monto_profesor'] = data.get('monto_profesor', montos['monto_profesor'])
-            data['ganancia_taller'] = data.get(
-                'ganancia_taller',
-                montos['valor_generado'] - montos['monto_profesor']
-            )
+        # Monto manual: el admin decide el valor
+        monto_profesor = data.get('monto_profesor')
+        if monto_profesor is None or monto_profesor <= 0:
+            raise ValueError("El monto del profesor es obligatorio para registros manuales.")
 
         try:
             ht = HoraTrabajada.objects.create(
@@ -664,15 +648,15 @@ class HoraTrabajadaService:
                 ciclo=ciclo,
                 horario=horario,
                 fecha=fecha,
-                tipo=tipo,
+                tipo='clase_regular',
                 horas_trabajadas=horas_trabajadas,
-                estado='pendiente',
-                num_alumnos=data.get('num_alumnos', 0),
-                valor_generado=data.get('valor_generado', Decimal('0.00')),
-                monto_base=data.get('monto_base', Decimal('0.00')),
-                monto_adicional=data.get('monto_adicional', Decimal('0.00')),
-                monto_profesor=data.get('monto_profesor', Decimal('0.00')),
-                ganancia_taller=data.get('ganancia_taller', Decimal('0.00')),
+                estado='aprobada',
+                num_alumnos=0,
+                valor_generado=monto_profesor,
+                monto_base=Decimal('0.00'),
+                monto_adicional=Decimal('0.00'),
+                monto_profesor=monto_profesor,
+                ganancia_taller=Decimal('0.00'),
                 config_snapshot=config_snapshot,
                 observacion=data.get('observacion', ''),
                 created_from='admin_manual',
@@ -684,61 +668,3 @@ class HoraTrabajadaService:
             )
 
         return ht
-
-    @classmethod
-    @transaction.atomic
-    def aprobar(cls, instance: HoraTrabajada) -> HoraTrabajada:
-        """
-        Aprueba un registro pendiente.
-
-        State machine: pendiente → aprobada
-        No permite transiciones inversas.
-        Marca el registro como inmutable después de la transición.
-
-        Args:
-            instance: Instancia de HoraTrabajada
-
-        Returns:
-            HoraTrabajada: Instancia actualizada
-
-        Raises:
-            ValueError: Si el estado no es 'pendiente'
-        """
-        if instance.estado != 'pendiente':
-            raise ValueError(
-                f"Solo se pueden aprobar registros pendientes. "
-                f"Estado actual: {instance.get_estado_display()}"
-            )
-
-        instance.estado = 'aprobada'
-        instance.save()
-        return instance
-
-    @classmethod
-    @transaction.atomic
-    def rechazar(cls, instance: HoraTrabajada) -> HoraTrabajada:
-        """
-        Rechaza un registro pendiente.
-
-        State machine: pendiente → rechazada
-        No permite transiciones inversas.
-        Marca el registro como inmutable después de la transición.
-
-        Args:
-            instance: Instancia de HoraTrabajada
-
-        Returns:
-            HoraTrabajada: Instancia actualizada
-
-        Raises:
-            ValueError: Si el estado no es 'pendiente'
-        """
-        if instance.estado != 'pendiente':
-            raise ValueError(
-                f"Solo se pueden rechazar registros pendientes. "
-                f"Estado actual: {instance.get_estado_display()}"
-            )
-
-        instance.estado = 'rechazada'
-        instance.save()
-        return instance

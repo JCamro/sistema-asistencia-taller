@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from decimal import Decimal
 from ..models import Egreso, Profesor
 from ..serializer_helpers import get_profesor_nombre
 
@@ -19,6 +20,18 @@ class EgresoSerializer(serializers.ModelSerializer):
             'estado', 'estado_display', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+    def validate_monto(self, value):
+        if value <= Decimal('0'):
+            raise serializers.ValidationError('El monto debe ser mayor a 0.')
+        return value
+
+    def validate(self, data):
+        if data.get('tipo') == 'pago_profesor' and not data.get('profesor'):
+            raise serializers.ValidationError({
+                'profesor': 'El profesor es obligatorio para pagos a profesor.'
+            })
+        return data
 
     def get_profesor_nombre(self, obj):
         return get_profesor_nombre(obj)

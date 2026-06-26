@@ -113,6 +113,22 @@ class MatriculaViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         return super().create(request, *args, **kwargs)
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        from ..models import ReciboMatricula
+        vinculos = ReciboMatricula.objects.filter(matricula=instance).select_related('recibo')
+        activos = [v for v in vinculos if v.recibo.estado != 'anulado']
+        if activos:
+            return Response(
+                {'detail': 'No se puede eliminar esta matrícula porque tiene recibos activos asociados. Eliminá o anulá primero los recibos vinculados.'},
+                status=status.HTTP_409_CONFLICT
+            )
+        # All linked recibos are anulado — delete links then matricula
+        with transaction.atomic():
+            vinculos.delete()
+            self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=True, methods=['post'], url_path='traspasar')
     def traspasar(self, request, pk=None):
         matricula_origen = self.get_object()
