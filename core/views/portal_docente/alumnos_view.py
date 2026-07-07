@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django.db.models import Q, Prefetch, Exists, OuterRef, Subquery, Max
 
 from core.models import Alumno, MatriculaHorario, Matricula, Asistencia
-from core.authentication import ProfesorJWTAuthentication
+from core.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 from core.views.pagination import StandardResultsSetPagination
 
 
@@ -32,6 +32,7 @@ class ProfesorAlumnosCartillaView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, ciclo_id):
+        get_profesor_for_ciclo(request.user.dni, ciclo_id)  # validate ciclo active
         profesor_id = request.user.id
         search = request.query_params.get('search', '').strip()
         taller_id = request.query_params.get('taller_id')

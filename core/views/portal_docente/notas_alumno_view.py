@@ -3,9 +3,9 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.models import NotaAlumno, Horario, Ciclo
+from core.models import NotaAlumno, Horario
 from core.serializers.portal_docente.serializers import NotaAlumnoSerializer
-from core.authentication import ProfesorJWTAuthentication
+from core.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 
 
 class ProfesorNotasAlumnoView(APIView):
@@ -24,6 +24,7 @@ class ProfesorNotasAlumnoView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, ciclo_id):
+        get_profesor_for_ciclo(request.user.dni, ciclo_id)  # validate ciclo active
         profesor_id = request.user.id
 
         queryset = NotaAlumno.objects.filter(
@@ -51,16 +52,8 @@ class ProfesorNotasAlumnoView(APIView):
         )
 
     def post(self, request, ciclo_id):
+        get_profesor_for_ciclo(request.user.dni, ciclo_id)  # validate ciclo active
         profesor_id = request.user.id
-
-        # Validate ciclo exists
-        try:
-            Ciclo.objects.get(id=ciclo_id)
-        except Ciclo.DoesNotExist:
-            return Response(
-                {"detail": "Ciclo no encontrado"},
-                status=status.HTTP_404_NOT_FOUND
-            )
 
         serializer = NotaAlumnoSerializer(
             data=request.data,
@@ -131,6 +124,7 @@ class ProfesorNotaAlumnoDetailView(APIView):
             return None
 
     def get(self, request, ciclo_id, nota_id):
+        get_profesor_for_ciclo(request.user.dni, ciclo_id)  # validate ciclo active
         nota = self._get_nota(nota_id, request.user.id, ciclo_id)
         if not nota:
             return Response(
@@ -140,6 +134,7 @@ class ProfesorNotaAlumnoDetailView(APIView):
         return Response(NotaAlumnoSerializer(nota).data)
 
     def put(self, request, ciclo_id, nota_id):
+        get_profesor_for_ciclo(request.user.dni, ciclo_id)  # validate ciclo active
         nota = self._get_nota(nota_id, request.user.id, ciclo_id)
         if not nota:
             return Response(
@@ -183,6 +178,7 @@ class ProfesorNotaAlumnoDetailView(APIView):
         return Response(NotaAlumnoSerializer(nota).data)
 
     def delete(self, request, ciclo_id, nota_id):
+        get_profesor_for_ciclo(request.user.dni, ciclo_id)  # validate ciclo active
         nota = self._get_nota(nota_id, request.user.id, ciclo_id)
         if not nota:
             return Response(

@@ -3,9 +3,9 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.models import NotaDia, Ciclo
+from core.models import NotaDia
 from core.serializers.portal_docente.serializers import NotaDiaSerializer
-from core.authentication import ProfesorJWTAuthentication
+from core.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 
 
 class ProfesorNotasDiaView(APIView):
@@ -22,6 +22,7 @@ class ProfesorNotasDiaView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, ciclo_id):
+        get_profesor_for_ciclo(request.user.dni, ciclo_id)  # validate ciclo active
         profesor_id = request.user.id
 
         queryset = NotaDia.objects.filter(
@@ -39,16 +40,8 @@ class ProfesorNotasDiaView(APIView):
         )
 
     def post(self, request, ciclo_id):
+        get_profesor_for_ciclo(request.user.dni, ciclo_id)  # validate ciclo active
         profesor_id = request.user.id
-
-        # Validate ciclo exists
-        try:
-            Ciclo.objects.get(id=ciclo_id)
-        except Ciclo.DoesNotExist:
-            return Response(
-                {"detail": "Ciclo no encontrado"},
-                status=status.HTTP_404_NOT_FOUND
-            )
 
         serializer = NotaDiaSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -97,6 +90,7 @@ class ProfesorNotaDiaDetailView(APIView):
             return None
 
     def get(self, request, ciclo_id, nota_id):
+        get_profesor_for_ciclo(request.user.dni, ciclo_id)  # validate ciclo active
         nota = self._get_nota(nota_id, request.user.id, ciclo_id)
         if not nota:
             return Response(
@@ -106,6 +100,7 @@ class ProfesorNotaDiaDetailView(APIView):
         return Response(NotaDiaSerializer(nota).data)
 
     def put(self, request, ciclo_id, nota_id):
+        get_profesor_for_ciclo(request.user.dni, ciclo_id)  # validate ciclo active
         nota = self._get_nota(nota_id, request.user.id, ciclo_id)
         if not nota:
             return Response(
@@ -148,6 +143,7 @@ class ProfesorNotaDiaDetailView(APIView):
         return Response(NotaDiaSerializer(nota).data)
 
     def delete(self, request, ciclo_id, nota_id):
+        get_profesor_for_ciclo(request.user.dni, ciclo_id)  # validate ciclo active
         nota = self._get_nota(nota_id, request.user.id, ciclo_id)
         if not nota:
             return Response(

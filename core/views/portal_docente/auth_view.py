@@ -56,7 +56,8 @@ class ProfesorLoginView(APIView):
         # instead of going through Horarios, so newly registered teachers
         # without assigned schedules still see their ciclo.
         ciclos = Ciclo.objects.filter(
-            profesores__in=profesores_qs
+            profesores__in=profesores_qs,
+            activo=True,
         ).distinct()
 
         return Response({

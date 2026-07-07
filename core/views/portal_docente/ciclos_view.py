@@ -11,7 +11,7 @@ class ProfesorCiclosView(APIView):
     """
     GET /api/portal-docente/ciclos/
 
-    Returns all cycles where the authenticated professor has horarios.
+    Returns active cycles where the authenticated professor has horarios.
     """
     authentication_classes = [ProfesorJWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -20,7 +20,8 @@ class ProfesorCiclosView(APIView):
         profesor_id = request.user.id
 
         ciclos = Ciclo.objects.filter(
-            horarios__profesor_id=profesor_id
+            horarios__profesor_id=profesor_id,
+            activo=True,
         ).distinct().order_by('-fecha_inicio')
 
         return Response(

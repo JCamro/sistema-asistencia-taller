@@ -107,13 +107,18 @@ def get_profesor_for_ciclo(dni, ciclo_id):
     gets a different profesor_id per cycle. This helper resolves the
     correct one at request time instead of trusting the JWT-locked ID.
 
+    Also validates that the ciclo is active — raises 404 if inactive.
+
     Returns:
         int — the resolved profesor_id
 
     Raises:
-        Http404 — if no Profesor record exists for (dni, ciclo_id)
+        Http404 — if the ciclo is inactive or no Profesor record exists for (dni, ciclo_id)
     """
-    from core.models import Profesor
+    from core.models import Profesor, Ciclo
+
+    if not Ciclo.objects.filter(id=ciclo_id, activo=True).exists():
+        raise Http404('Ciclo no encontrado o inactivo')
 
     try:
         profesor = Profesor.objects.get(dni=dni, ciclo_id=ciclo_id, activo=True)

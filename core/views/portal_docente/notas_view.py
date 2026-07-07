@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.models import NotaClase, Horario, Ciclo
+from core.models import NotaClase, Horario
 from core.serializers.portal_docente.serializers import NotaClaseSerializer
 from core.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 
@@ -46,15 +46,6 @@ class ProfesorNotasView(APIView):
 
     def post(self, request, ciclo_id):
         profesor_id = get_profesor_for_ciclo(request.user.dni, ciclo_id)
-
-        # Validate ciclo exists
-        try:
-            Ciclo.objects.get(id=ciclo_id)
-        except Ciclo.DoesNotExist:
-            return Response(
-                {"detail": "Ciclo no encontrado"},
-                status=status.HTTP_404_NOT_FOUND
-            )
 
         serializer = NotaClaseSerializer(
             data=request.data,

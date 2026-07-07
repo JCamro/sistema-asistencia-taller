@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from core.models.hora_trabajada import HoraTrabajada
 from core.serializers.portal_docente.serializers import HoraTrabajadaSerializer
-from core.authentication import ProfesorJWTAuthentication
+from core.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 
 
 class ProfesorHorasTrabajadasView(APIView):
@@ -25,6 +25,7 @@ class ProfesorHorasTrabajadasView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, ciclo_id):
+        get_profesor_for_ciclo(request.user.dni, ciclo_id)  # validate ciclo active
         profesor_id = request.user.id
 
         queryset = HoraTrabajada.objects.filter(
