@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, memo, useMemo, useRef } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import { ResponsiveTable } from '../components/ui/ResponsiveTable';
@@ -121,8 +121,6 @@ function RecibosPage() {
   const [search, setSearch] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [filtroPreset, setFiltroPreset] = useState('todos');
-  const [fechaDesde, setFechaDesde] = useState('');
-  const [fechaHasta, setFechaHasta] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<ReciboFormData>(initialFormData);
@@ -219,17 +217,10 @@ function RecibosPage() {
       const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
       const inicioStr = `${inicioMes.getFullYear()}-${String(inicioMes.getMonth() + 1).padStart(2, '0')}-${String(inicioMes.getDate()).padStart(2, '0')}`;
       resultado = resultado.filter(r => r.fecha_emision >= inicioStr);
-    } else if (filtroPreset === 'personalizado' && fechaDesde) {
-      resultado = resultado.filter(r => {
-        if (fechaHasta) {
-          return r.fecha_emision >= fechaDesde && r.fecha_emision <= fechaHasta;
-        }
-        return r.fecha_emision >= fechaDesde;
-      });
     }
 
     return resultado;
-  }, [recibos, search, filtroEstado, filtroPreset, fechaDesde, fechaHasta]);
+  }, [recibos, search, filtroEstado, filtroPreset]);
 
   const getAlumnosDisplay = (recibo: Recibo) => {
     if (recibo.alumnos_nombres && recibo.alumnos_nombres.length > 1) {
@@ -767,7 +758,7 @@ function RecibosPage() {
                 {editingId && formData.estado !== 'anulado' && (
                   <button type="button" onClick={() => setFormData(prev => ({ ...prev, estado: 'anulado' }))} style={{ padding: '0.75rem 1.5rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', fontWeight: 500, cursor: 'pointer', color: '#dc2626', fontSize: '0.875rem' }}>Anular</button>
                 )}
-                <button type="submit" disabled={saving || (!editingId && formData.matricula_ids.length === 0)} style={{ marginLeft: 'auto', padding: '0.75rem 2rem', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem', color: 'white', background: (saving || (!editingId && formData.matricula_ids.length === 0)) ? '#94a3b8' : 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: (saving || (!editingId && formData.matricula_ids.length === 0)) ? 'none' : '0 2px 8px rgba(20,184,166,0.3)', cursor: (saving || (!editingId && formData.matricula_ids.length === 0)) ? 'not-allowed' : 'pointer' }}>{saving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Crear recibo'}</button>
+                <button type="submit" disabled={saving || (!editingId && formData.matricula_ids.length === 0)} style={{ marginLeft: 'auto', padding: '0.75rem 2rem', border: 'none', borderRadius: '10px', fontWeight: 600, fontSize: '0.875rem', color: 'white', cursor: (saving || (!editingId && formData.matricula_ids.length === 0)) ? 'not-allowed' : 'pointer', background: (saving || (!editingId && formData.matricula_ids.length === 0)) ? '#94a3b8' : 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: (saving || (!editingId && formData.matricula_ids.length === 0)) ? 'none' : '0 2px 8px rgba(20,184,166,0.3)' }}>{saving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Crear recibo'}</button>
               </div>
             </form>
           </div>

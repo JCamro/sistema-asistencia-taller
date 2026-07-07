@@ -233,6 +233,7 @@ export interface ResumenFinanzas {
 }
 
 export interface ResumenMensual {
+  año: number;
   mes: number;
   nombre: string;
   ingresos: number;

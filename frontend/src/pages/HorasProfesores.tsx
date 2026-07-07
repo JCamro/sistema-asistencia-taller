@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
 import { ResponsiveTable } from '../components/ui/ResponsiveTable';
@@ -48,10 +48,8 @@ function HorasProfesoresPage() {
   const [horas, setHoras] = useState<any[]>([]);
   const [hTalleres, setHTalleres] = useState<any[]>([]);
   const [hProfesores, setHProfesores] = useState<any[]>([]);
-  const [hHorarios, setHHorarios] = useState<any[]>([]);
   const [hLoading, setHLoading] = useState(true);
   const [hPage, setHPage] = useState(1);
-  const [hTotal, setHTotal] = useState(0);
   const [hTotalPages, setHTotalPages] = useState(1);
   const [hTallerId, setHTallerId] = useState<number | string>('');
   const getLimaToday = () => {
@@ -125,7 +123,6 @@ function HorasProfesoresPage() {
       const hData = await horasRes.json();
       const results = hData.results ?? hData;
       setHoras(results);
-      setHTotal(hData.count ?? 0);
       setHTotalPages(Math.ceil((hData.count ?? 0) / 20) || 1);
       const tData = await talleresRes.json();
       setHTalleres(tData.results ?? tData ?? []);
@@ -143,7 +140,7 @@ function HorasProfesoresPage() {
     if (!formTallerId || !cicloActual) {
       setFormHorarios([]);
       setHFormHorario(null);
-      setHFormProf('');
+      setHFormProf(null);
       return;
     }
     const token = localStorage.getItem('access_token');
@@ -461,7 +458,7 @@ function HorasProfesoresPage() {
           {/* Detail modal */}
           {selectedPago && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-              <div style={{ background: 'white', borderRadius: '12px', maxWidth: '1100px', margin: '0 auto', maxWidth: '950px', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ background: 'white', borderRadius: '12px', margin: '0 auto', maxWidth: '950px', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 {/* Header */}
                 <div style={{ padding: '1.25rem 1.5rem', background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
@@ -572,7 +569,7 @@ function HorasProfesoresPage() {
       {/* ── Horas modal (create/edit) ── */}
       {hModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', maxWidth: '1100px', margin: '0 auto', maxWidth: '480px', maxHeight: '90vh', overflow: 'auto' }}>
+          <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', margin: '0 auto', maxWidth: '480px', maxHeight: '90vh', overflow: 'auto' }}>
             <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem' }}>{hEditando ? 'Editar Hora' : 'Nueva Hora Trabajada'}</h2>
             <form onSubmit={hEditando ? handleHEditar : handleHCrear} style={{ display: 'grid', gap: '0.75rem' }}>
               <div>

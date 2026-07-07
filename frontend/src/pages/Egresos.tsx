@@ -46,7 +46,6 @@ const EgresosPage = () => {
     return true;
   });
 
-  const tipoLabel = (t: string) => t==='gasto_taller'?'Gasto Taller':(t==='gasto_personal'||t==='pago_profesor')?'Gasto Personal':t;
   const tipoBadge = (t: string) => { const ip = t==='gasto_personal'||t==='pago_profesor'; return <span style={{ padding:'0.2rem 0.55rem',borderRadius:'5px',fontSize:'0.75rem',fontWeight:500,background:ip?'#fef2f2':'#fefce8',color:ip?'#dc2626':'#ca8a04',whiteSpace:'nowrap' }}>{ip?'Profesor':'Taller'}</span> };
 
   const resetForm = () => { setFormTipo('gasto_taller'); setFormMonto(''); setFormDesc(''); setFormFecha(formToday); setFormMetodo('efectivo'); setFormCat(''); setFormBenef(''); setFormProf(null); setFormEst('pendiente') };
