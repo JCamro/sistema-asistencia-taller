@@ -366,13 +366,10 @@ export const createRecibo = (data: Partial<Recibo>) => api.post('/recibos/', dat
 export const marcarReciboPagado = (id: number, monto?: number) => 
   api.patch(`/recibos/${id}/marcar_pagado/`, { monto });
 
-// Pagos Profesores
-export const getPagosProfesores = () => api.get<PagoProfesor[]>('/pagos-profesores/');
 export const calcularPagosProfesores = (cicloId: number, fechaInicio: string, fechaFin: string) => 
   api.post('/pagos-profesores/calcular-periodo/', { ciclo_id: cicloId, fecha_inicio: fechaInicio, fecha_fin: fechaFin });
 
 // Reportes
-export const getResumenCiclo = (id: number) => api.get(`/ciclos/${id}/resumen/`);
 export const getResumenFinanzas = (id: number) => api.get<ResumenFinanzas>(`/ciclos/${id}/resumen/`);
 export const getResumenMensual = (id: number) => api.get<ResumenMensual[]>(`/ciclos/${id}/resumen-mensual/`);
 

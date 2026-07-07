@@ -2,12 +2,11 @@
 Vista de configuración inicial para deploy.
 Permite crear el primer superusuario y usuario de la app cuando no existen usuarios.
 """
-from django.shortcuts import render, redirect
+from django.shortcuts import render
 from django.views import View
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
 from django.contrib import messages
-from django.utils import timezone
 from django.db import transaction
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
@@ -156,27 +155,3 @@ class SetupView(View):
                 'app_nombre': app_nombre,
                 'app_apellido': app_apellido,
             })
-
-
-class SetupBlockedView(View):
-    """Vista mostrada cuando el setup ya fue completado."""
-    
-    template_name = 'setup_blocked.html'
-    
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super().dispatch(*args, **kwargs)
-    
-    def get(self, request):
-        return render(request, self.template_name, {
-            'message': 'El sistema ya ha sido configurado. Accede al admin para gestionar usuarios.'
-        }, status=403)
-
-
-class SetupSuccessView(View):
-    """Vista mostrada después de completar el setup."""
-    
-    template_name = 'setup_success.html'
-    
-    def get(self, request):
-        return render(request, self.template_name)

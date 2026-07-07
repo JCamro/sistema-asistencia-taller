@@ -8,7 +8,7 @@ from .matricula_horario_view import MatriculaHorarioViewSet
 from .asistencia_view import AsistenciaViewSet
 from .recibo_view import ReciboViewSet
 from .ciclo_view import CicloViewSet
-from .configuracion_view import ConfiguracionView, ConfiguracionViewSet
+from .configuracion_view import ConfiguracionView
 from .pago_profesor_view import PagoProfesorViewSet, calcular_pago_profesor, detalle_clase_pago, resumen_ciclo, resumen_mensual_ciclo
 from .dashboard_view import dashboard_kpis, dashboard_ingresos
 from .precio_paquete_view import PrecioPaqueteViewSet

@@ -30,7 +30,3 @@ def get_profesor_nombre(obj, attr='profesor'):
         return None
     return f"{profesor.apellido}, {profesor.nombre}"
 
-
-def format_nombre(apellido, nombre):
-    """Retorna 'apellido, nombre' dados los dos strings."""
-    return f"{apellido}, {nombre}"

@@ -9,7 +9,7 @@ from .asistencia import AsistenciaSerializer, AsistenciaListSerializer
 from .recibo import ReciboSerializer, ReciboListSerializer, CalcularPrecioSerializer
 from .pago_profesor import PagoProfesorSerializer, PagoProfesorListSerializer, PagoProfesorDetalleSerializer
 from .configuracion import ConfiguracionSerializer
-from .traspaso import TraspasoSerializer, HistorialTraspasoSerializer
+from .traspaso import TraspasoSerializer
 from .precio_paquete import PrecioPaqueteSerializer
 from .egreso import EgresoSerializer, EgresoListSerializer
 from .hora_trabajada import HoraTrabajadaListSerializer, HoraTrabajadaDetailSerializer, HoraTrabajadaCreateUpdateSerializer

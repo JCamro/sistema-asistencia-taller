@@ -10,6 +10,3 @@ export const getApiBaseUrl = (): string => {
   // Vite proxy reenviará /api -> localhost:8000
   return '/api';
 };
-
-// Para compatibilidad con código existente
-export const getApiUrl = getApiBaseUrl;
