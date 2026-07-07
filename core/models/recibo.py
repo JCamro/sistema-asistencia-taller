@@ -2,12 +2,6 @@ from django.db import models
 
 
 class Recibo(models.Model):
-    ESTADO = [
-        ('pendiente', 'Pendiente'),
-        ('pagado', 'Pagado'),
-        ('anulado', 'Anulado'),
-    ]
-
     PAQUETE_CHOICES = [
         ('individual', 'Individual'),
         ('combo_musical_12', 'Combo Musical 12+12'),
@@ -24,10 +18,25 @@ class Recibo(models.Model):
         ('intensivo_taller', 'Intensivo Taller'),
     ]
 
+    METODO_PAGO = [
+        ('efectivo', 'Efectivo'),
+        ('transferencia', 'Transferencia'),
+        ('tarjeta', 'Tarjeta'),
+        ('yape', 'Yape'),
+        ('plin', 'Plin'),
+        ('otro', 'Otro'),
+    ]
+
+    ESTADO = [
+        ('pendiente', 'Pendiente'),
+        ('pagado', 'Pagado'),
+        ('anulado', 'Anulado'),
+    ]
+
     numero = models.CharField(max_length=20, unique=True)
     alumno = models.ForeignKey(
         'Alumno',
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='recibos',
         null=True,
         blank=True,
@@ -35,7 +44,7 @@ class Recibo(models.Model):
     )
     ciclo = models.ForeignKey(
         'Ciclo',
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='recibos'
     )
     fecha_emision = models.DateField()
@@ -63,6 +72,7 @@ class Recibo(models.Model):
         default=False,
         verbose_name='¿Precio fue editado manualmente?'
     )
+    metodo_pago = models.CharField(max_length=20, choices=METODO_PAGO, default='efectivo')
     estado = models.CharField(max_length=20, choices=ESTADO, default='pendiente')
     observacion = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

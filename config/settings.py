@@ -160,6 +160,7 @@ REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
     'user': '20/minute',
     'anon': '3/minute',
     'student_login': '20/hour',
+    'docente_login': '20/hour',
 }
 
 # CORS Configuration

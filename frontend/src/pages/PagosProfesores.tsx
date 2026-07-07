@@ -75,6 +75,7 @@ function PagosProfesoresPage() {
   const [resultados, setResultados] = useState<ResultadoPago[]>([]);
   const [loading, setLoading] = useState(false);
   const [calculando, setCalculando] = useState(false);
+  const [regenerando, setRegenerando] = useState(false);
   const [selectedPago, setSelectedPago] = useState<ResultadoPago | null>(null);
   const [detalles, setDetalles] = useState<DetalleClase[]>([]);
   const [loadingDetalles, setLoadingDetalles] = useState(false);
@@ -127,6 +128,42 @@ function PagosProfesoresPage() {
       fetchPagos();
     }
   }, [cicloActual, isCicloLoading, fetchPagos]);
+
+  const handleRegenerarHoras = async () => {
+    if (!cicloActual) return;
+    if (!fechaInicio || !fechaFin) {
+      showToast('Seleccione fecha de inicio y fin', 'warning');
+      return;
+    }
+    setRegenerando(true);
+    const token = localStorage.getItem('access_token');
+    try {
+      const res = await fetch(`${apiBase}/api/horas-trabajadas/generar/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          ciclo_id: cicloActual.id,
+          fecha_inicio: fechaInicio,
+          fecha_fin: fechaFin,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(JSON.stringify(err));
+      }
+      const data = await res.json();
+      const creados = data.creados || 0;
+      const actualizados = data.actualizados || 0;
+      showToast(`Horas generadas: ${creados} creadas, ${actualizados} actualizadas`, 'success');
+      // Luego de regenerar, recalcular pagos automáticamente
+      await handleCalcular();
+    } catch (err) {
+      console.error('Error:', err);
+      showApiError(err);
+    } finally {
+      setRegenerando(false);
+    }
+  };
 
   const handleCalcular = async () => {
     if (!cicloActual) return;
@@ -267,8 +304,25 @@ function PagosProfesoresPage() {
           />
         </div>
         <button
+          onClick={handleRegenerarHoras}
+          disabled={regenerando || !cicloActual}
+          title="Regenera las horas trabajadas desde las asistencias antes de calcular"
+          style={{
+            padding: '0.625rem 1.25rem',
+            background: regenerando ? '#fcd34d' : '#f59e0b',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontWeight: '600',
+            fontSize: '0.875rem',
+            cursor: regenerando ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {regenerando ? 'Generando...' : 'Regenerar Horas'}
+        </button>
+        <button
           onClick={handleCalcular}
-          disabled={calculando || !cicloActual}
+          disabled={calculando || regenerando || !cicloActual}
           style={{
             padding: '0.625rem 1.25rem',
             background: calculando ? '#93c5fc' : '#6366f1',
@@ -277,7 +331,7 @@ function PagosProfesoresPage() {
             borderRadius: '8px',
             fontWeight: '600',
             fontSize: '0.875rem',
-            cursor: calculando ? 'not-allowed' : 'pointer',
+            cursor: (calculando || regenerando) ? 'not-allowed' : 'pointer',
           }}
         >
           {calculando ? 'Calculando...' : 'Calcular Pagos'}

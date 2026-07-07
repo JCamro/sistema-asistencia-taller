@@ -9,7 +9,7 @@ class ReciboMatricula(models.Model):
     )
     matricula = models.ForeignKey(
         'Matricula',
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='recibos'
     )
     monto = models.DecimalField(max_digits=10, decimal_places=2)

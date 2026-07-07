@@ -12,11 +12,12 @@ import HorariosPage from './pages/Horarios';
 import MatriculasPage from './pages/Matriculas';
 import AsistenciasPage from './pages/Asistencias';
 import RecibosPage from './pages/Recibos';
-import PagosProfesoresPage from './pages/PagosProfesores';
+import PagosProfesoresPage from './pages/HorasProfesores';
 import EgresosPage from './pages/Egresos';
 import FinanzasPage from './pages/Finanzas';
 import ConfiguracionPreciosPage from './pages/ConfiguracionPrecios';
 import CalculadoraPreciosPage from './pages/CalculadoraPrecios';
+import HorasTrabajadasPage from './pages/HorasTrabajadas';
 
 const Loading = memo(function Loading() {
   return (
@@ -81,14 +82,16 @@ function Sidebar({ cicloNombre, abierto, onToggle }: { cicloNombre: string, abie
     { to: '/asistencias', label: 'Asistencias', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
     { to: '/recibos', label: 'Recibos', icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z' },
     { to: '/egresos', label: 'Egresos', icon: 'M3 3h18v18H3V3zm3 9h12v6H6v-6zm3-6v4h12V6H6z' },
+    { to: '/pagos-profesores', label: 'Horas Profesores', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
     { to: '/finanzas', label: 'Finanzas', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
-    { to: '/pagos-profesores', label: 'Pagos Profesores', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
   ];
 
   const secciones = [
     { titulo: 'Gestión', items: navItems.slice(0, 4) },
     { titulo: 'Operaciones', items: navItems.slice(4, 7) },
-    { titulo: 'Finanzas', items: navItems.slice(7, 11) },
+    { titulo: 'Caja', items: navItems.slice(7, 9) },
+    { titulo: 'Nómina', items: navItems.slice(9, 10) },
+    { titulo: 'Resumen', items: navItems.slice(10, 11) },
   ];
 
   return (
@@ -280,87 +283,23 @@ function MenuOpciones({ onEditar, onEliminar }: { onEditar: () => void, onElimin
     <div style={{ position: 'relative' }}>
       <button
         onClick={(e) => { e.stopPropagation(); setAbierto(!abierto); }}
-        style={{
-          width: '32px',
-          height: '32px',
-          borderRadius: '6px',
-          border: 'none',
-          background: '#f3f4f6',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '1.25rem',
-          color: '#6b7280'
-        }}
-      >
-        ⋮
-      </button>
-      {abierto && (
-        <>
-          <div 
-            onClick={(e) => { e.stopPropagation(); setAbierto(false); }}
-            style={{ position: 'fixed', inset: 0, zIndex: 10 }}
-          />
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'absolute',
-              right: 0,
-              top: '100%',
-              marginTop: '4px',
-              background: 'white',
-              borderRadius: '8px',
-              boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-              border: '1px solid #e5e7eb',
-              minWidth: '140px',
-              zIndex: 20,
-              overflow: 'hidden'
-            }}
-          >
-            <button
-              onClick={() => { setAbierto(false); onEditar(); }}
-              style={{
-                width: '100%',
-                padding: '0.625rem 1rem',
-                border: 'none',
-                background: 'none',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                color: '#374151',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#f9fafb')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
-            >
-              ✏️ Editar
-            </button>
-            <button
-              onClick={() => { setAbierto(false); onEliminar(); }}
-              style={{
-                width: '100%',
-                padding: '0.625rem 1rem',
-                border: 'none',
-                background: 'none',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                color: '#dc2626',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#fef2f2')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
-            >
-              🗑️ Eliminar
-            </button>
-          </div>
-        </>
-      )}
+        style={{ width:'32px',height:'32px',borderRadius:'8px',border:'1px solid rgba(255,255,255,0.08)',background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#888',fontSize:'1.25rem',transition:'all 0.15s' }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#d4af37'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#888'; }}
+      >⋮</button>
+      {abierto && (<>
+        <div onClick={(e) => { e.stopPropagation(); setAbierto(false); }} style={{ position:'fixed',inset:0,zIndex:10 }}/>
+        <div onClick={e => e.stopPropagation()} style={{ position:'absolute',right:0,top:'100%',marginTop:'4px',background:'#1c1c1c',borderRadius:'10px',boxShadow:'0 10px 30px rgba(0,0,0,0.5)',border:'1px solid rgba(255,255,255,0.08)',minWidth:'150px',zIndex:20,overflow:'hidden' }}>
+          <button onClick={() => { setAbierto(false); onEditar(); }} style={{ width:'100%',padding:'0.6rem 1rem',border:'none',background:'none',textAlign:'left',cursor:'pointer',fontSize:'0.8125rem',color:'#ccc',display:'flex',alignItems:'center',gap:'0.5rem',transition:'background 0.1s' }}
+            onMouseEnter={e => e.currentTarget.style.background='rgba(212,175,55,0.08)'} onMouseLeave={e => e.currentTarget.style.background='none'}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar
+          </button>
+          <button onClick={() => { setAbierto(false); onEliminar(); }} style={{ width:'100%',padding:'0.6rem 1rem',border:'none',background:'none',textAlign:'left',cursor:'pointer',fontSize:'0.8125rem',color:'#ef4444',display:'flex',alignItems:'center',gap:'0.5rem',transition:'background 0.1s' }}
+            onMouseEnter={e => e.currentTarget.style.background='rgba(239,68,68,0.08)'} onMouseLeave={e => e.currentTarget.style.background='none'}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> Eliminar
+          </button>
+        </div>
+      </>)}
     </div>
   );
 }
@@ -526,103 +465,82 @@ function SeleccionCiclos() {
       <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
         <img 
           src="/logo-taller.png" 
-          alt="Logo Taller de Música Elguera"
-          style={{ width: '80px', height: '80px', borderRadius: '20px', margin: '0 auto 1.5rem', objectFit: 'contain', boxShadow: '0 8px 24px rgba(212, 175, 55, 0.35)' }}
+          alt="Logo"
+          style={{ width: '72px', height: '72px', borderRadius: '18px', margin: '0 auto 1.25rem', objectFit: 'contain', boxShadow: '0 8px 32px rgba(212, 175, 55, 0.4)' }}
         />
-        <h1 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#d4af37', fontFamily: "'Inter', sans-serif" }}>Taller de Música Elguera</h1>
-        <p style={{ fontSize: '1rem', color: '#a1a1a1', letterSpacing: '0.05em' }}>Selecciona un ciclo para continuar</p>
+        <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#d4af37', margin: 0, letterSpacing: '-0.02em' }}>Taller de Música Elguera</h1>
+        <p style={{ fontSize: '0.9375rem', color: '#888', marginTop: '0.5rem' }}>Seleccioná un ciclo para continuar</p>
       </div>
       
       {(mostrarForm || mostrarEditar) && (
-        <form onSubmit={mostrarEditar ? handleGuardarEdicion : handleCrear} style={{ background: '#1c1c1c', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid rgba(212, 175, 55, 0.15)', width: '100%', maxWidth: '600px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
-          <h3 style={{ marginBottom: '1rem', fontWeight: '600', color: '#d4af37', fontFamily: "'Inter', sans-serif" }}>{mostrarEditar ? 'Editar ciclo' : 'Crear nuevo ciclo'}</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#a1a1a1' }}>Nombre</label>
-              <input type="text" placeholder="Ej: Ciclo Anual 2026" value={nombre} onChange={e => setNombre(e.target.value)} required style={{ width: '100%', padding: '0.625rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#a1a1a1' }}>Tipo</label>
-              <select value={tipo} onChange={e => setTipo(e.target.value)} style={{ width: '100%', padding: '0.625rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }}>
-                <option value="anual">Anual</option>
-                <option value="verano">Verano</option>
-                <option value="otro">Otro</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#a1a1a1' }}>Fecha inicio</label>
-              <input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} required style={{ width: '100%', padding: '0.625rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: '#a1a1a1' }}>Fecha fin</label>
-              <input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} required style={{ width: '100%', padding: '0.625rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff' }} />
-            </div>
-            {mostrarEditar && (
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#a1a1a1', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={activo} onChange={e => setActivo(e.target.checked)} style={{ width: '16px', height: '16px', accentColor: '#d4af37' }} />
-                  Ciclo activo
-                </label>
+        <div style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '16px', marginBottom: '2rem', border: '1px solid rgba(212,175,55,0.12)', width: '100%', maxWidth: '600px', boxShadow: '0 12px 40px rgba(0,0,0,0.5)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <h3 style={{ fontWeight: 600, fontSize: '1rem', color: '#d4af37', margin: 0 }}>{mostrarEditar ? 'Editar ciclo' : 'Crear nuevo ciclo'}</h3>
+            <button type="button" onClick={() => { setMostrarForm(false); setMostrarEditar(false); setCicloEditando(null); }} style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.05)', color: '#888', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+          </div>
+          <form onSubmit={mostrarEditar ? handleGuardarEdicion : handleCrear}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.7rem', fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Nombre</label>
+                <input type="text" placeholder="Ej: Ciclo Anual 2026" value={nombre} onChange={e => setNombre(e.target.value)} required style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid rgba(212,175,55,0.12)', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.875rem' }} />
               </div>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-            <button type="submit" disabled={guardando} style={{ padding: '0.625rem 1.5rem', background: 'linear-gradient(135deg, #d4af37 0%, #b8962e 100%)', color: '#0a0a0a', border: 'none', borderRadius: '8px', cursor: guardando ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
-              {guardando ? 'Guardando...' : 'Guardar'}
-            </button>
-            <button type="button" onClick={() => { setMostrarForm(false); setMostrarEditar(false); setCicloEditando(null); }} style={{ padding: '0.625rem 1.5rem', background: 'rgba(255,255,255,0.05)', color: '#a1a1a1', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', cursor: 'pointer', fontWeight: 500 }}>
-              Cancelar
-            </button>
-          </div>
-        </form>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.7rem', fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Tipo</label>
+                <select value={tipo} onChange={e => setTipo(e.target.value)} style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid rgba(212,175,55,0.12)', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.875rem' }}>
+                  <option value="anual">Anual</option>
+                  <option value="verano">Verano</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.7rem', fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Fecha inicio</label>
+                <input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} required style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid rgba(212,175,55,0.12)', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.875rem' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.7rem', fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Fecha fin</label>
+                <input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} required style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid rgba(212,175,55,0.12)', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.875rem' }} />
+              </div>
+              {mostrarEditar && (
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', color: '#aaa', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={activo} onChange={e => setActivo(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#d4af37' }} /> Ciclo activo
+                  </label>
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button type="submit" disabled={guardando} style={{ flex: 1, padding: '0.625rem', background: guardando ? 'rgba(212,175,55,0.3)' : 'linear-gradient(135deg, #d4af37, #b8962e)', color: '#0a0a0a', border: 'none', borderRadius: '10px', cursor: guardando ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.875rem' }}>{guardando ? 'Guardando...' : 'Guardar'}</button>
+              <button type="button" onClick={() => { setMostrarForm(false); setMostrarEditar(false); setCicloEditando(null); }} style={{ flex: 1, padding: '0.625rem', background: 'transparent', color: '#888', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>Cancelar</button>
+            </div>
+          </form>
+        </div>
       )}
       
       {ciclos.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '3rem', background: 'rgba(28, 28, 28, 0.8)', borderRadius: '16px', border: '2px dashed rgba(212, 175, 55, 0.3)', maxWidth: '400px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
-          <div style={{ width: '64px', height: '64px', background: 'rgba(212, 175, 55, 0.1)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
+        <div style={{ textAlign: 'center', padding: '3.5rem 2rem', background: 'rgba(28,28,28,0.6)', borderRadius: '20px', border: '2px dashed rgba(212,175,55,0.2)', maxWidth: '420px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+          <div style={{ width: 64, height: 64, background: 'rgba(212,175,55,0.08)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="1.5"><path d="M12 5v14M5 12h14"/></svg>
           </div>
-          <p style={{ color: '#a1a1a1', marginBottom: '1.25rem' }}>No hay ciclos creados</p>
-          <button onClick={abrirFormulario} style={{ padding: '0.75rem 1.5rem', background: 'linear-gradient(135deg, #d4af37 0%, #b8962e 100%)', color: '#0a0a0a', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, boxShadow: '0 4px 12px rgba(212, 175, 55, 0.3)' }}>
-            Crear primer ciclo
-          </button>
+          <p style={{ color: '#888', marginBottom: '1.5rem', fontSize: '0.9375rem' }}>No hay ciclos creados</p>
+          <button onClick={abrirFormulario} style={{ padding: '0.7rem 1.5rem', background: 'linear-gradient(135deg,#d4af37,#b8962e)', color: '#0a0a0a', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}>Crear primer ciclo</button>
         </div>
       ) : (
         <>
           <div style={{ width: '100%', maxWidth: '600px' }}>
             {/* Search and Sort Controls */}
-            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', alignItems: 'center' }}>
-              <input
-                type="text"
-                placeholder="Buscar por nombre..."
-                value={busquedaCiclo}
-                onChange={e => setBusquedaCiclo(e.target.value)}
-                style={{ flex: 1, padding: '0.625rem 1rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', color: '#ffffff', fontSize: '0.875rem' }}
-              />
-              <div style={{ display: 'flex', gap: '0.25rem' }}>
-                <button
-                  onClick={() => setOrdenCiclo('nombre')}
-                  title="Ordenar A-Z"
-                  style={{ padding: '0.5rem 0.75rem', background: ordenCiclo === 'nombre' ? 'rgba(212, 175, 55, 0.2)' : 'rgba(255,255,255,0.05)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '6px', cursor: 'pointer', color: ordenCiclo === 'nombre' ? '#d4af37' : '#a1a1a1', fontSize: '0.875rem' }}
-                >
-                  A-Z
-                </button>
-                <button
-                  onClick={() => setOrdenCiclo('fecha_nueva')}
-                  title="Más reciente primero"
-                  style={{ padding: '0.5rem 0.75rem', background: ordenCiclo === 'fecha_nueva' ? 'rgba(212, 175, 55, 0.2)' : 'rgba(255,255,255,0.05)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '6px', cursor: 'pointer', color: ordenCiclo === 'fecha_nueva' ? '#d4af37' : '#a1a1a1', fontSize: '0.875rem' }}
-                >
-                  ↓ Fecha
-                </button>
-                <button
-                  onClick={() => setOrdenCiclo('fecha_vieja')}
-                  title="Más antigua primero"
-                  style={{ padding: '0.5rem 0.75rem', background: ordenCiclo === 'fecha_vieja' ? 'rgba(212, 175, 55, 0.2)' : 'rgba(255,255,255,0.05)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '6px', cursor: 'pointer', color: ordenCiclo === 'fecha_vieja' ? '#d4af37' : '#a1a1a1', fontSize: '0.875rem' }}
-                >
-                  ↑ Fecha
-                </button>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', alignItems: 'center' }}>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <svg style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" placeholder="Buscar ciclo..." value={busquedaCiclo} onChange={e => setBusquedaCiclo(e.target.value)}
+                  style={{ width: '100%', padding: '0.6rem 1rem 0.6rem 2.5rem', border: '1px solid rgba(212,175,55,0.15)', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.875rem' }} />
+              </div>
+              <div style={{ display: 'flex', gap: '0.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(212,175,55,0.1)', overflow: 'hidden' }}>
+                {[{key:'nombre',label:'A-Z'},{key:'fecha_nueva',label:'↓ Nuevo'},{key:'fecha_vieja',label:'↑ Viejo'}].map(o => (
+                  <button key={o.key} onClick={() => setOrdenCiclo(o.key as any)}
+                    style={{ padding: '0.5rem 0.7rem', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: ordenCiclo===o.key?600:400,
+                      background: ordenCiclo===o.key?'rgba(212,175,55,0.15)':'transparent', color: ordenCiclo===o.key?'#d4af37':'#666', transition: 'all 0.15s' }}
+                  >{o.label}</button>
+                ))}
               </div>
             </div>
 
@@ -634,13 +552,15 @@ function SeleccionCiclos() {
                 onClick={() => handleSeleccionar(ciclo)}
                 style={{ 
                   background: cicloActual?.id === ciclo.id ? 'linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(28, 28, 28, 0.9) 100%)' : '#1c1c1c', 
-                  padding: '1.5rem', 
-                  borderRadius: '12px', 
-                  border: cicloActual?.id === ciclo.id ? '2px solid #d4af37' : '1px solid rgba(255,255,255,0.08)',
+                  padding: '1.25rem 1.5rem', 
+                  borderRadius: '14px', 
+                  border: cicloActual?.id === ciclo.id ? '1.5px solid rgba(212,175,55,0.5)' : '1px solid rgba(255,255,255,0.06)',
                   cursor: 'pointer',
-                  transition: 'all 0.25s ease',
-                  boxShadow: cicloActual?.id === ciclo.id ? '0 0 24px rgba(212, 175, 55, 0.2), 0 8px 24px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.2)'
+                  transition: 'all 0.2s ease',
+                  boxShadow: cicloActual?.id === ciclo.id ? '0 0 24px rgba(212, 175, 55, 0.15), 0 4px 16px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.2)'
                 }}
+                onMouseEnter={e => { if (cicloActual?.id !== ciclo.id) { e.currentTarget.style.borderColor = 'rgba(212,175,55,0.3)'; e.currentTarget.style.background = '#1e1e1e'; } }}
+                onMouseLeave={e => { if (cicloActual?.id !== ciclo.id) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.background = '#1c1c1c'; } }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -671,7 +591,9 @@ function SeleccionCiclos() {
           </div>
           <button 
             onClick={abrirFormulario}
-            style={{ marginTop: '1rem', padding: '1.25rem', background: 'transparent', border: '2px dashed rgba(212, 175, 55, 0.25)', borderRadius: '12px', cursor: 'pointer', color: '#a1a1a1', fontSize: '0.9375rem', fontWeight: 500, transition: 'all 0.2s ease', width: '100%', maxWidth: '600px' }}
+            style={{ marginTop: '1rem', padding: '1rem', background: 'transparent', border: '2px dashed rgba(212, 175, 55, 0.2)', borderRadius: '12px', cursor: 'pointer', color: '#888', fontSize: '0.875rem', fontWeight: 500, transition: 'all 0.2s ease', width: '100%', maxWidth: '600px' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#d4af37'; e.currentTarget.style.color = '#d4af37'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(212,175,55,0.2)'; e.currentTarget.style.color = '#888'; }}
           >
             + Crear nuevo ciclo
           </button>
@@ -860,6 +782,7 @@ export default function App() {
           <Route path="/matriculas" element={<ProtectedRoute><DashboardLayoutMemo><MatriculasPage /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/asistencias" element={<ProtectedRoute><DashboardLayoutMemo><AsistenciasPage /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/recibos" element={<ProtectedRoute><DashboardLayoutMemo><RecibosPage /></DashboardLayoutMemo></ProtectedRoute>} />
+          <Route path="/horas-trabajadas" element={<ProtectedRoute><DashboardLayoutMemo><HorasTrabajadasPage /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/egresos" element={<ProtectedRoute><DashboardLayoutMemo><EgresosPage /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/finanzas" element={<ProtectedRoute><DashboardLayoutMemo><FinanzasPage /></DashboardLayoutMemo></ProtectedRoute>} />
           <Route path="/pagos-profesores" element={<ProtectedRoute><DashboardLayoutMemo><PagosProfesoresPage /></DashboardLayoutMemo></ProtectedRoute>} />

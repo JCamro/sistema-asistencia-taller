@@ -139,6 +139,12 @@ export interface Recibo {
   monto_pagado: number;
   saldo_pendiente: number;
   estado: string;
+  metodo_pago?: string;
+  paquete_aplicado?: string;
+  paquete_display?: string;
+  precio_editado?: boolean;
+  descuento?: number;
+  monto_bruto?: number;
 }
 
 export interface PagoProfesor {
@@ -227,6 +233,7 @@ export interface ResumenFinanzas {
 }
 
 export interface ResumenMensual {
+  año: number;
   mes: number;
   nombre: string;
   ingresos: number;
@@ -350,8 +357,10 @@ export const createAsistencia = (data: Partial<Asistencia>) => api.post('/asiste
 export const updateAsistencia = (id: number, data: Partial<Asistencia>) => api.patch(`/asistencias/${id}/`, data);
 
 // Recibos
-export const getRecibos = (cicloId?: number) =>
-  cicloId ? api.get<Recibo[]>(`/ciclos/${cicloId}/recibos/`) : api.get<Recibo[]>('/recibos/');
+export const getRecibos = (cicloId?: number, params?: string) => {
+  const query = params ? `?${params}` : '';
+  return cicloId ? api.get<PaginatedResponse<Recibo>>(`/ciclos/${cicloId}/recibos/${query}`) : api.get<PaginatedResponse<Recibo>>(`/recibos/${query}`);
+};
 export const getRecibo = (id: number) => api.get<Recibo>(`/recibos/${id}/`);
 export const createRecibo = (data: Partial<Recibo>) => api.post('/recibos/', data);
 export const marcarReciboPagado = (id: number, monto?: number) => 
@@ -383,9 +392,62 @@ export const createPrecio = (data: Partial<PrecioPaquete>) => api.post('/precios
 export const updatePrecio = (id: number, data: Partial<PrecioPaquete>) => api.patch(`/precios/${id}/`, data);
 export const deletePrecio = (id: number) => api.delete(`/precios/${id}/`);
 
+// HoraTrabajada
+export interface HoraTrabajada {
+  id: number;
+  profesor: number;
+  profesor_nombre: string;
+  ciclo: number;
+  ciclo_nombre: string;
+  horario: number | null;
+  fecha: string;
+  tipo: string;
+  tipo_display: string;
+  horas_trabajadas: number;
+  estado: string;
+  estado_display: string;
+  created_from: string;
+  created_from_display: string;
+  num_alumnos: number;
+  valor_generado: number | string;
+  monto_profesor: number | string;
+}
+
+export interface HoraTrabajadaDetail extends HoraTrabajada {
+  horario_info: string | null;
+  monto_base: number | string;
+  monto_adicional: number | string;
+  ganancia_taller: number | string;
+  config_snapshot: Record<string, unknown> | null;
+  observacion: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const getHorasTrabajadas = (cicloId?: number, params?: string) => {
+  const query = params ? `?${params}` : '';
+  return cicloId
+    ? api.get<PaginatedResponse<HoraTrabajada>>(`/ciclos/${cicloId}/horas-trabajadas/${query}`)
+    : api.get<PaginatedResponse<HoraTrabajada>>(`/horas-trabajadas/${query}`);
+};
+
+export const getHoraTrabajada = (id: number) =>
+  api.get<HoraTrabajadaDetail>(`/horas-trabajadas/${id}/`);
+
+export const createHoraTrabajada = (data: Partial<HoraTrabajadaDetail>) =>
+  api.post<HoraTrabajadaDetail>('/horas-trabajadas/', data);
+
+export const deleteHoraTrabajada = (id: number) =>
+  api.delete(`/horas-trabajadas/${id}/`);
+
+export const updateHoraTrabajada = (id: number, data: Partial<HoraTrabajadaDetail>) =>
+  api.patch<HoraTrabajadaDetail>(`/horas-trabajadas/${id}/`, data);
+
 // Egresos
-export const getEgresos = (cicloId?: number) =>
-  cicloId ? api.get<Egreso[]>(`/ciclos/${cicloId}/egresos/`) : api.get<Egreso[]>('/egresos/');
+export const getEgresos = (cicloId?: number, params?: string) => {
+  const query = params ? `?${params}` : '';
+  return cicloId ? api.get<PaginatedResponse<Egreso>>(`/ciclos/${cicloId}/egresos/${query}`) : api.get<PaginatedResponse<Egreso>>(`/egresos/${query}`);
+};
 export const getEgreso = (id: number) => api.get<Egreso>(`/egresos/${id}/`);
 export const createEgreso = (data: Partial<Egreso>, cicloId?: number) => 
   cicloId ? api.post(`/ciclos/${cicloId}/egresos/`, data) : api.post('/egresos/', data);

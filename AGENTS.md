@@ -304,7 +304,7 @@ gunicorn config.asgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4
 ### Enrollment & Attendance
 - **Matricula**: `alumno`, `taller`, `sesiones_contratadas`, `precio_total`, `precio_por_sesion`, `concluida`, `metodo_pago`, `fecha_matricula` (DateTimeField, used for attendance date validation)
 - **MatriculaHorario**: `matricula`, `horario` (junction: which schedule a student attends)
-- **Asistencia**: `matricula`, `horario`, `fecha`, `hora`, `estado` (presente/ausente/tardanza)
+- **Asistencia**: `matricula`, `horario`, `fecha`, `hora`, `estado` (asistio/falta/falta_grave)
   - **Indexes**: `db_index=True` on `fecha` and `estado`; composite index on `(horario, fecha)`
   - **Date validation**: `por_horario` excludes matrículas with `fecha_matricula > fecha` (can't register attendance before enrollment)
   - **Recovery**: `recuperables` accepts optional `?fecha=` param — when provided, regulars enrolled after that date remain eligible for recovery

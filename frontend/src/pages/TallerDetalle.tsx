@@ -6,72 +6,39 @@ import ConfirmModal from '../components/ui/ConfirmModal';
 import { getApiBaseUrl } from '../utils/api';
 import { useWindowWidth } from '../hooks/useWindowWidth';
 
-interface Taller {
-  id: number;
-  nombre: string;
-  descripcion: string;
-  activo: boolean;
-}
-
-interface Profesor {
-  id: number;
-  nombre: string;
-  apellido: string;
-  activo: boolean;
-}
-
+interface Taller { id: number; nombre: string; descripcion: string; activo: boolean; }
+interface Profesor { id: number; nombre: string; apellido: string; activo: boolean; }
 interface Horario {
-  id: number;
-  taller: number;
-  taller_nombre?: string;
-  profesor: number;
-  profesor_nombre: string;
-  dia_semana: number;
-  hora_inicio: string;
-  hora_fin: string;
-  cupo_maximo: number;
-  cupo_disponible: number;
-  ocupacion: number;
-  activo: boolean;
-  alumnos: { id: number; nombre: string; apellido: string; edad: number | null }[];
-  tipo_pago?: 'dinamico' | 'fijo';
-  monto_fijo?: number | null;
+  id: number; taller: number; profesor: number; profesor_nombre: string; dia_semana: number;
+  hora_inicio: string; hora_fin: string; cupo_maximo: number; cupo_disponible: number;
+  ocupacion: number; activo: boolean; alumnos: { id: number; nombre: string; apellido: string; edad: number | null }[];
+  tipo_pago?: 'dinamico' | 'fijo'; monto_fijo?: number | null;
 }
-
-interface HorarioFormData {
-  dia_semana: number;
-  hora_inicio: string;
-  profesor: number | '';
-  cupo_maximo: number;
-}
+interface HorarioFormData { dia_semana: number; hora_inicio: string; profesor: number | ''; cupo_maximo: number; }
 
 const HORAS = Array.from({ length: 14 }, (_, i) => i + 8);
 const DIAS = [
-  { value: 0, label: 'Lunes' },
-  { value: 1, label: 'Martes' },
-  { value: 2, label: 'Miércoles' },
-  { value: 3, label: 'Jueves' },
-  { value: 4, label: 'Viernes' },
-  { value: 5, label: 'Sábado' },
-  { value: 6, label: 'Domingo' },
+  { value: 0, label: 'Lunes' }, { value: 1, label: 'Martes' }, { value: 2, label: 'Miércoles' },
+  { value: 3, label: 'Jueves' }, { value: 4, label: 'Viernes' }, { value: 5, label: 'Sábado' }, { value: 6, label: 'Domingo' },
 ];
+const ls: React.CSSProperties = { display:'block',fontSize:'0.6875rem',fontWeight:500,color:'#94a3b8',marginBottom:'0.2rem',textTransform:'uppercase',letterSpacing:'0.04em' };
+const is: React.CSSProperties = { width:'100%',padding:'0.5rem 0.75rem',border:'1px solid #e5e7eb',borderRadius:'10px',fontSize:'0.875rem' };
+const getHoraLabel = (h: number) => `${h.toString().padStart(2, '0')}:00`;
+const normalizarHora = (h: string) => { const p = h.split(':'); return `${(parseInt(p[0]) || 0).toString().padStart(2, '0')}:${p[1]?.substring(0, 2) || '00'}`; };
 
 function TallerDetalle() {
-  const navigate = useNavigate();
-  const { tallerId } = useParams<{ tallerId: string }>();
+  const n = useNavigate(); const { tallerId } = useParams<{ tallerId: string }>();
   const { cicloActual, isLoading: isCicloLoading } = useCiclo();
   const { showToast, showApiError } = useToast();
-  const apiBase = getApiBaseUrl();
-  const windowWidth = useWindowWidth();
-  const isMobile = windowWidth < 768;
-  
+  const apiBase = getApiBaseUrl(); const ww = useWindowWidth(); const mb = ww < 768;
+
   const [taller, setTaller] = useState<Taller | null>(null);
   const [horarios, setHorarios] = useState<Horario[]>([]);
   const [profesores, setProfesores] = useState<Profesor[]>([]);
   const [loading, setLoading] = useState(true);
   const [panelEstado, setPanelEstado] = useState<'vacio' | 'detalle' | 'crear'>('vacio');
   const [horarioSeleccionado, setHorarioSeleccionado] = useState<Horario | null>(null);
-  const [, setCeldaSeleccionada] = useState<{ dia: number; hora: string } | null>(null);
+  const [celdaSeleccionada, setCeldaSeleccionada] = useState<{ dia: number; hora: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editandoProfesor, setEditandoProfesor] = useState(false);
@@ -84,767 +51,163 @@ function TallerDetalle() {
   const [editandoCupo, setEditandoCupo] = useState(false);
   const [cupoEditado, setCupoEditado] = useState<string>('');
   const [guardandoCupo, setGuardandoCupo] = useState(false);
-  const [formData, setFormData] = useState<HorarioFormData>({
-    dia_semana: 0,
-    hora_inicio: '',
-    profesor: '',
-    cupo_maximo: 10,
-  });
+  const [crearTipoPago, setCrearTipoPago] = useState<'dinamico' | 'fijo'>('dinamico');
+  const [crearMontoFijo, setCrearMontoFijo] = useState('');
+  const [formData, setFormData] = useState<HorarioFormData>({ dia_semana: 0, hora_inicio: '', profesor: '', cupo_maximo: 10 });
 
   const fetchData = useCallback(async () => {
-    if (isCicloLoading) return;
-    if (!cicloActual || !tallerId) {
-      setLoading(false);
-      return;
-    }
+    if (isCicloLoading || !cicloActual || !tallerId) { setLoading(false); return; }
     const token = localStorage.getItem('access_token');
     try {
-      const [tallerRes, horariosRes, profesoresRes] = await Promise.all([
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/${tallerId}/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${apiBase}/api/horarios/?taller=${tallerId}&page_size=100`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/profesores/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+      const [tr, hr, pr] = await Promise.all([
+        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/${tallerId}/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/api/horarios/?taller=${tallerId}&page_size=100`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/profesores/`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
-      
-      const parseJson = async (res: Response) => {
-        const text = await res.text();
-        try {
-          return JSON.parse(text);
-        } catch {
-          return { error: text, status: res.status };
-        }
-      };
-
-      const [tallerData, horariosData, profesoresData] = await Promise.all([
-        parseJson(tallerRes),
-        parseJson(horariosRes),
-        parseJson(profesoresRes),
-      ]);
-      
-      if (tallerData.error) {
-        console.error('Taller API error:', tallerData);
-      }
-      if (profesoresData.error) {
-        console.error('Profesores API error:', profesoresData);
-      }
-      
-      if (!tallerData.error) setTaller(tallerData);
-      if (!horariosData.error) {
-        const todosHorarios = horariosData.results || horariosData;
-        const horariosFiltrados = todosHorarios.filter((h: Horario) => h.activo);
-        setHorarios(horariosFiltrados);
-      }
-      if (!profesoresData.error) setProfesores((profesoresData.results || profesoresData).filter((p: Profesor) => p.activo));
-    } catch (err) {
-      console.error('Error:', err);
-    } finally {
-      setLoading(false);
-    }
+      const parse = async (r: Response) => { try { return JSON.parse(await r.text()); } catch { return { error: true }; } };
+      const [tD, hD, pD] = await Promise.all([parse(tr), parse(hr), parse(pr)]);
+      if (!tD.error) setTaller(tD);
+      if (!hD.error) setHorarios((hD.results || hD).filter((h: Horario) => h.activo));
+      if (!pD.error) setProfesores((pD.results || pD).filter((p: Profesor) => p.activo));
+    } catch { /* silent */ } finally { setLoading(false); }
   }, [cicloActual, tallerId, isCicloLoading]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const normalizarHora = (hora: string) => {
-    if (!hora) return '00:00';
-    const partes = hora.split(':');
-    const horaNum = parseInt(partes[0]) || 0;
-    const min = partes.length > 1 ? (partes[1]?.substring(0, 2) || '00') : '00';
-    return `${horaNum.toString().padStart(2, '0')}:${min}`;
-  };
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const gridHorarios = useMemo(() => {
-    const grid: { [key: string]: Horario } = {};
-    horarios.forEach((h) => {
-      const horaRaw = h.hora_inicio;
-      const horaNormalizada = normalizarHora(horaRaw);
-      const diaNum = Number(h.dia_semana);
-      const key = `${diaNum}-${horaNormalizada}`;
-      grid[key] = h;
-    });
-    return grid;
+    const g: { [key: string]: Horario } = {};
+    horarios.forEach(h => { g[`${h.dia_semana}-${normalizarHora(h.hora_inicio)}`] = h; });
+    return g;
   }, [horarios]);
 
   const handleCeldaClick = (dia: number, hora: string) => {
     const key = `${dia}-${hora}`;
-    if (gridHorarios[key]) {
-      setHorarioSeleccionado(gridHorarios[key]);
-      setPanelEstado('detalle');
-      setEditandoPago(false);
-    } else {
-      setCeldaSeleccionada({ dia, hora });
-      setFormData({
-        dia_semana: dia,
-        hora_inicio: hora,
-        profesor: '',
-        cupo_maximo: 10,
-      });
-      setPanelEstado('crear');
-    }
+    if (gridHorarios[key]) { setHorarioSeleccionado(gridHorarios[key]); setPanelEstado('detalle'); setEditandoPago(false); setCeldaSeleccionada(null); }
+    else { setCeldaSeleccionada({ dia, hora }); setFormData({ dia_semana: dia, hora_inicio: hora, profesor: '', cupo_maximo: 10 }); setCrearTipoPago('dinamico'); setCrearMontoFijo(''); setPanelEstado('crear'); }
   };
 
   const handleCrearHorario = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!cicloActual || !tallerId || !formData.profesor) return;
-    setSaving(true);
-    const token = localStorage.getItem('access_token');
-    
-    const horaParts = formData.hora_inicio.split(':');
-    const horaFin = parseInt(horaParts[0]) + 1;
-    const horaFinStr = `${horaFin.toString().padStart(2, '0')}:${horaParts[1]}`;
-
+    e.preventDefault(); if (!cicloActual || !tallerId || !formData.profesor) return; setSaving(true);
+    const token = localStorage.getItem('access_token'); const hp = formData.hora_inicio.split(':');
     try {
-      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/horarios/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          taller: parseInt(tallerId),
-          profesor: formData.profesor,
-          dia_semana: formData.dia_semana,
-          hora_inicio: formData.hora_inicio,
-          hora_fin: horaFinStr,
-          activo: true,
-          cupo_maximo: formData.cupo_maximo,
-        }),
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(JSON.stringify(errorData));
-      }
-      
-      await fetchData();
-      setPanelEstado('vacio');
-      setCeldaSeleccionada(null);
-    } catch (err) {
-      console.error('Error:', err);
-      showApiError(err);
-    } finally {
-      setSaving(false);
-    }
+      const payload: Record<string, unknown> = { taller: parseInt(tallerId), profesor: formData.profesor, dia_semana: formData.dia_semana, hora_inicio: formData.hora_inicio, hora_fin: `${(parseInt(hp[0]) + 1).toString().padStart(2, '0')}:${hp[1]}`, activo: true, cupo_maximo: formData.cupo_maximo, tipo_pago: crearTipoPago };
+      if (crearTipoPago === 'fijo' && crearMontoFijo) payload.monto_fijo = parseFloat(crearMontoFijo);
+      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/horarios/`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+      if (!res.ok) throw new Error(JSON.stringify(await res.json()));
+      await fetchData(); setPanelEstado('vacio'); setCeldaSeleccionada(null);
+    } catch (err) { showApiError(err); } finally { setSaving(false); }
   };
 
   const handleEliminarHorario = () => {
     if (!horarioSeleccionado) return;
-    if ((horarioSeleccionado.ocupacion ?? 0) > 0) {
-      showToast('No se puede eliminar. Hay estudiantes matriculados en este horario.', 'warning');
-      return;
-    }
+    if ((horarioSeleccionado.ocupacion ?? 0) > 0) { showToast('No se puede eliminar. Hay estudiantes matriculados.', 'warning'); return; }
     setShowDeleteModal(true);
   };
-
   const confirmDeleteHorario = async () => {
     if (!horarioSeleccionado) return;
-    const token = localStorage.getItem('access_token');
-    try {
-      await fetch(`${apiBase}/api/horarios/${horarioSeleccionado.id}/`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      await fetchData();
-      setPanelEstado('vacio');
-      setHorarioSeleccionado(null);
-    } catch (err) {
-      console.error('Error:', err);
-      showApiError(err);
-    } finally {
-      setShowDeleteModal(false);
-    }
+    try { await fetch(`${apiBase}/api/horarios/${horarioSeleccionado.id}/`, { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }); await fetchData(); setPanelEstado('vacio'); setHorarioSeleccionado(null); }
+    catch (err) { showApiError(err); } finally { setShowDeleteModal(false); }
   };
 
-  const cancelDeleteHorario = () => {
-    setShowDeleteModal(false);
-  };
-
-  const handleCambiarProfesor = async () => {
-    if (!horarioSeleccionado || !nuevoProfesorId) return;
-    setGuardandoProfesor(true);
-    const token = localStorage.getItem('access_token');
-    try {
-      const res = await fetch(`${apiBase}/api/horarios/${horarioSeleccionado.id}/`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ profesor: nuevoProfesorId }),
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(JSON.stringify(errorData));
-      }
-      showToast('Profesor actualizado', 'success');
-      setEditandoProfesor(false);
-      await fetchData();
-      // Actualizar horario seleccionado con el nuevo profesor
-      const profesorNuevo = profesores.find(p => p.id === nuevoProfesorId);
-      if (profesorNuevo && horarioSeleccionado) {
-        setHorarioSeleccionado({
-          ...horarioSeleccionado,
-          profesor: nuevoProfesorId as number,
-          profesor_nombre: `${profesorNuevo.nombre} ${profesorNuevo.apellido}`,
-        });
-      }
-    } catch (err) {
-      console.error('Error:', err);
-      showApiError(err);
-    } finally {
-      setGuardandoProfesor(false);
-    }
-  };
-
-  const handleCambiarTipoPago = async () => {
+  const patchHorario = async (payload: Record<string, unknown>, label: string) => {
     if (!horarioSeleccionado) return;
-    setGuardandoPago(true);
-    const token = localStorage.getItem('access_token');
     try {
-      const payload: Record<string, unknown> = { tipo_pago: tipoPagoSeleccionado };
-      if (tipoPagoSeleccionado === 'fijo' && montoFijo) {
-        payload.monto_fijo = parseFloat(montoFijo);
-      }
-      const res = await fetch(`${apiBase}/api/horarios/${horarioSeleccionado.id}/`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(JSON.stringify(errorData));
-      }
-      showToast('Tipo de pago actualizado', 'success');
-      setEditandoPago(false);
+      const res = await fetch(`${apiBase}/api/horarios/${horarioSeleccionado.id}/`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('access_token')}` }, body: JSON.stringify(payload) });
+      if (!res.ok) throw new Error(JSON.stringify(await res.json()));
+      showToast(`${label} actualizado`, 'success');
+      setHorarioSeleccionado(prev => prev ? { ...prev, ...payload as any } : prev);
       await fetchData();
-      // Actualizar horario seleccionado
-      if (horarioSeleccionado) {
-        setHorarioSeleccionado({
-          ...horarioSeleccionado,
-          tipo_pago: tipoPagoSeleccionado,
-          monto_fijo: tipoPagoSeleccionado === 'fijo' ? parseFloat(montoFijo) : null,
-        });
-      }
-    } catch (err) {
-      console.error('Error:', err);
-      showApiError(err);
-    } finally {
-      setGuardandoPago(false);
-    }
+    } catch (err) { showApiError(err); }
   };
 
-  const handleGuardarCupo = async () => {
-    if (!horarioSeleccionado || !cupoEditado) return;
-    const nuevoCupo = parseInt(cupoEditado);
-    const ocupacionActual = horarioSeleccionado.ocupacion ?? 0;
-    
-    // Validar: no permitir disminuir a un valor menor a la ocupación actual
-    if (nuevoCupo < ocupacionActual) {
-      showToast(`No se puede reducir el cupo por debajo de ${ocupacionActual} alumno(s) matriculado(s)`, 'warning');
-      return;
-    }
-    
-    setGuardandoCupo(true);
-    const token = localStorage.getItem('access_token');
-    try {
-      const res = await fetch(`${apiBase}/api/horarios/${horarioSeleccionado.id}/`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ cupo_maximo: nuevoCupo }),
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(JSON.stringify(errorData));
-      }
-      showToast('Cupo actualizado', 'success');
-      setEditandoCupo(false);
-      await fetchData();
-      // Actualizar horario seleccionado
-      if (horarioSeleccionado) {
-        setHorarioSeleccionado({
-          ...horarioSeleccionado,
-          cupo_maximo: nuevoCupo,
-          cupo_disponible: nuevoCupo - ocupacionActual,
-        });
-      }
-    } catch (err) {
-      console.error('Error:', err);
-      showApiError(err);
-    } finally {
-      setGuardandoCupo(false);
-    }
-  };
+  if (isCicloLoading || loading) return <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'60vh',gap:'1rem'}}><div style={{width:40,height:40,border:'3px solid #f1f5f9',borderTop:'3px solid #d4af37',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/><p style={{color:'#94a3b8',fontSize:'0.875rem'}}>Cargando...</p><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
 
-  const getHoraLabel = (hora: number) => {
-    return `${hora.toString().padStart(2, '0')}:00`;
-  };
+  return (<div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+    <button onClick={() => n('/talleres')} style={{ display:'flex',alignItems:'center',gap:'0.375rem',padding:'0.4rem 0.75rem',border:'1px solid #e5e7eb',borderRadius:'10px',background:'white',color:'#64748b',fontSize:'0.8125rem',cursor:'pointer',marginBottom:'1rem' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg> Volver a Talleres</button>
+    <div style={{ marginBottom:'1.5rem' }}><div style={{ display:'flex',alignItems:'baseline',gap:'0.75rem',flexWrap:'wrap' }}><h1 style={{ fontSize:'1.625rem',fontWeight:700,color:'#0f172a',margin:0,letterSpacing:'-0.02em' }}>{taller?.nombre || '—'}</h1><span style={{ fontSize:'0.7rem',fontWeight:600,padding:'0.2rem 0.55rem',borderRadius:'9999px',background:taller?.activo?'#ecfdf5':'#f3f4f6',color:taller?.activo?'#059669':'#94a3b8' }}>{taller?.activo?'Activo':'Inactivo'}</span></div>{taller?.descripcion&&<p style={{ color:'#94a3b8',fontSize:'0.8125rem',margin:'0.25rem 0 0' }}>{taller.descripcion}</p>}<div style={{ height:3,width:48,background:'linear-gradient(90deg,#d4af37,#f0d878)',borderRadius:2,marginTop:'0.5rem' }}/></div>
 
-  if (isCicloLoading || loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-        <div style={{ width: '40px', height: '40px', border: '3px solid #e5e7eb', borderTop: '3px solid #6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
-
-  if (!cicloActual) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', padding: '2rem' }}>
-        <p style={{ color: '#6b7280', marginBottom: '1rem' }}>No hay un ciclo seleccionado.</p>
-        <button
-          onClick={() => navigate('/')}
-          style={{ padding: '0.5rem 1rem', background: '#6366f1', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-        >
-          Seleccionar ciclo
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 4rem)' }}>
-      <button
-        onClick={() => navigate('/talleres')}
-        style={{
-          alignSelf: 'flex-start',
-          marginBottom: '1rem',
-          padding: '0.5rem 1rem',
-          background: 'white',
-          border: '1px solid #d1d5db',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          color: '#374151',
-          fontSize: '0.875rem',
-        }}
-      >
-        ← Volver a Talleres
-      </button>
-
-      <div style={{ display: 'flex', gap: '1.5rem', flex: 1, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-        <div style={{ flex: isMobile ? '1 1 100%' : 7, minWidth: 0, width: isMobile ? '100%' : undefined }}>
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#111827', marginBottom: '0.5rem' }}>
-                  {taller?.nombre}
-                </h1>
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-                  {taller?.descripcion || 'Sin descripción'}
-                </p>
-              </div>
-              <span style={{ padding: '0.375rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '600', background: taller?.activo ? '#d1fae5' : '#f3f4f6', color: taller?.activo ? '#059669' : '#6b7280' }}>
-                {taller?.activo ? 'Activo' : 'Inactivo'}
-              </span>
-            </div>
+    <div style={{ display:'flex',gap:'1rem',flexWrap:mb?'wrap':'nowrap' }}>
+      <div style={{ flex:mb?'1 1 100%':7,minWidth:0 }}>
+        <div style={{ background:'white',borderRadius:'14px',border:'1px solid #f1f5f9',overflow:'hidden' }}>
+          <div style={{ display:'grid',gridTemplateColumns:'56px repeat(7,1fr)',background:'#f8fafc',borderBottom:'1px solid #f1f5f9' }}>
+            <div style={{ padding:'0.5rem',fontSize:'0.65rem',fontWeight:600,color:'#94a3b8',textAlign:'center',textTransform:'uppercase',letterSpacing:'0.04em' }}></div>
+            {DIAS.map(d => <div key={d.value} style={{ padding:'0.5rem',fontSize:'0.65rem',fontWeight:600,color:'#94a3b8',textAlign:'center',textTransform:'uppercase',letterSpacing:'0.04em' }}>{d.label.slice(0,3)}</div>)}
           </div>
-
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '60px repeat(7, 1fr)', 
-              background: '#f9fafb',
-              borderBottom: '1px solid #e5e7eb',
-            }}>
-              <div style={{ padding: '0.75rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textAlign: 'center' }}>Hora</div>
-              {DIAS.map((dia) => (
-                <div key={dia.value} style={{ padding: '0.75rem', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textAlign: 'center', textTransform: 'uppercase' }}>
-                  {dia.label.slice(0, 3)}
-                </div>
-              ))}
-            </div>
-
-            {HORAS.map((hora) => (
-              <div key={hora} style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid #f3f4f6' }}>
-                <div style={{ padding: '0.5rem', fontSize: '0.75rem', color: '#9ca3af', textAlign: 'center', borderRight: '1px solid #f3f4f6' }}>
-                  {getHoraLabel(hora)}
-                </div>
-                {DIAS.map((dia) => {
-                  const horaStr = getHoraLabel(hora);
-                  const key = `${dia.value}-${horaStr}`;
-                  const horario = gridHorarios[key];
-                  const estaLleno = horario ? (horario.ocupacion ?? 0) >= horario.cupo_maximo : false;
-                  
-                  return (
-                    <div
-                      key={`${dia.value}-${hora}`}
-                      onClick={() => handleCeldaClick(dia.value, horaStr)}
-                      style={{
-                        minHeight: '60px',
-                        borderRight: '1px solid #f3f4f6',
-                        cursor: 'pointer',
-                        padding: '0.25rem',
-                        background: horario ? (estaLleno ? '#fef2f2' : '#ecfdf5') : 'white',
-                        transition: 'background 0.15s',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!horario) e.currentTarget.style.background = '#f9fafb';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!horario) e.currentTarget.style.background = 'white';
-                      }}
-                    >
-                      {horario && (
-                        <div style={{
-                          height: '100%',
-                          background: estaLleno ? '#fecaca' : '#86efac',
-                          borderRadius: '6px',
-                          padding: '0.375rem',
-                          fontSize: isMobile ? '0.8rem' : '0.7rem',
-                          color: estaLleno ? '#7f1d1d' : '#14532d',
-                        }}>
-                          <div style={{ fontWeight: '600', marginBottom: '0.125rem' }}>
-                            {horario.ocupacion ?? 0}/{horario.cupo_maximo}
-                          </div>
-                          <div style={{ color: estaLleno ? '#991b1b' : '#166534', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {horario.profesor_nombre}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ flex: isMobile ? '1 1 100%' : '3 1 280px', maxWidth: isMobile ? '100%' : '360px', width: '100%', marginTop: isMobile ? '1rem' : 0 }}>
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem', position: 'sticky', top: '1rem' }}>
-            {panelEstado === 'vacio' && (
-              <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#9ca3af' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📅</div>
-                <p style={{ fontSize: '0.875rem' }}>
-                  Selecciona un horario.<br />
-                  Haz clic en una celda del calendario para ver los alumnos o crear un nuevo horario.
-                </p>
-              </div>
-            )}
-
-            {panelEstado === 'crear' && (
-              <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem', color: '#111827' }}>
-                  Crear Horario
-                </h3>
-                <form onSubmit={handleCrearHorario}>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>
-                      Día
-                    </label>
-                    <select
-                      value={formData.dia_semana}
-                      onChange={(e) => setFormData({ ...formData, dia_semana: parseInt(e.target.value) })}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem' }}
-                    >
-                      {DIAS.map((d) => (<option key={d.value} value={d.value}>{d.label}</option>))}
-                    </select>
-                  </div>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>
-                      Hora
-                    </label>
-                    <select
-                      value={formData.hora_inicio}
-                      onChange={(e) => setFormData({ ...formData, hora_inicio: e.target.value })}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem' }}
-                    >
-                      {HORAS.map((h) => (<option key={h} value={getHoraLabel(h)}>{getHoraLabel(h)}</option>))}
-                    </select>
-                  </div>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>
-                      Profesor
-                    </label>
-                    <select
-                      value={formData.profesor}
-                      onChange={(e) => setFormData({ ...formData, profesor: e.target.value ? parseInt(e.target.value) : '' })}
-                      required
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem' }}
-                    >
-                      <option value="">Seleccionar...</option>
-                      {profesores.map((p) => (<option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>))}
-                    </select>
-                  </div>
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>
-                      Cupo máximo
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.cupo_maximo}
-                      onChange={(e) => setFormData({ ...formData, cupo_maximo: parseInt(e.target.value) || 10 })}
-                      min={1}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem' }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => { setPanelEstado('vacio'); setCeldaSeleccionada(null); }}
-                      style={{ flex: 1, padding: '0.625rem', background: '#f3f4f6', border: 'none', borderRadius: '6px', fontWeight: '500', cursor: 'pointer', color: '#374151' }}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={saving || !formData.profesor}
-                      style={{ flex: 1, padding: '0.625rem', background: saving ? '#93c5fc' : '#6366f1', border: 'none', borderRadius: '6px', fontWeight: '500', cursor: saving ? 'not-allowed' : 'pointer', color: 'white' }}
-                    >
-                      {saving ? 'Guardando...' : 'Crear'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            {panelEstado === 'detalle' && horarioSeleccionado && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#111827' }}>
-                    Detalle del Horario
-                  </h3>
-                  <button
-                    onClick={() => { setPanelEstado('vacio'); setHorarioSeleccionado(null); setEditandoProfesor(false); setEditandoPago(false); }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#9ca3af' }}
-                  >
-                    ×
-                  </button>
-                </div>
-
-                <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Tipo de Pago</div>
-                    {!editandoPago && (
-                      <button
-                        onClick={() => { 
-                          setEditandoPago(true); 
-                          setTipoPagoSeleccionado(horarioSeleccionado.tipo_pago || 'dinamico'); 
-                          setMontoFijo(horarioSeleccionado.monto_fijo?.toString() || ''); 
-                        }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#6366f1', fontWeight: '500' }}
-                      >
-                        Configurar
-                      </button>
-                    )}
-                  </div>
-                  {editandoPago ? (
-                    <div>
-                      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => setTipoPagoSeleccionado('dinamico')}
-                          style={{ flex: 1, padding: '0.5rem', background: tipoPagoSeleccionado === 'dinamico' ? '#6366f1' : '#f3f4f6', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '500', cursor: 'pointer', color: tipoPagoSeleccionado === 'dinamico' ? 'white' : '#374151' }}
-                        >
-                          Dinámico
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setTipoPagoSeleccionado('fijo')}
-                          style={{ flex: 1, padding: '0.5rem', background: tipoPagoSeleccionado === 'fijo' ? '#6366f1' : '#f3f4f6', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '500', cursor: 'pointer', color: tipoPagoSeleccionado === 'fijo' ? 'white' : '#374151' }}
-                        >
-                          Fijo
-                        </button>
-                      </div>
-                      {tipoPagoSeleccionado === 'fijo' && (
-                        <div style={{ marginBottom: '0.5rem' }}>
-                          <input
-                            type="number"
-                            step="0.01"
-                            placeholder="Monto fijo (S/.)"
-                            value={montoFijo}
-                            onChange={(e) => setMontoFijo(e.target.value)}
-                            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem' }}
-                          />
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
-                          onClick={() => setEditandoPago(false)}
-                          style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '500', cursor: 'pointer', color: '#374151' }}
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          onClick={handleCambiarTipoPago}
-                          disabled={guardandoPago || (tipoPagoSeleccionado === 'fijo' && !montoFijo)}
-                          style={{ flex: 1, padding: '0.5rem', background: guardandoPago || (tipoPagoSeleccionado === 'fijo' && !montoFijo) ? '#93c5fc' : '#6366f1', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '500', cursor: (guardandoPago || (tipoPagoSeleccionado === 'fijo' && !montoFijo)) ? 'not-allowed' : 'pointer', color: 'white' }}
-                        >
-                          {guardandoPago ? 'Guardando...' : 'Guardar'}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#111827' }}>
-                      {horarioSeleccionado.tipo_pago === 'fijo' ? (
-                        <span>Fijo {horarioSeleccionado.monto_fijo ? `(S/. ${horarioSeleccionado.monto_fijo})` : ''}</span>
-                      ) : (
-                        <span>Dinámico</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Día y Hora</div>
-                  <div style={{ fontSize: '1rem', fontWeight: '600', color: '#111827' }}>
-                    {DIAS.find(d => d.value === horarioSeleccionado.dia_semana)?.label} - {normalizarHora(horarioSeleccionado.hora_inicio)}
-                  </div>
-                </div>
-
-                <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Profesor</div>
-                    {!editandoProfesor && (
-                      <button
-                        onClick={() => { setEditandoProfesor(true); setNuevoProfesorId(horarioSeleccionado.profesor); }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#6366f1', fontWeight: '500' }}
-                      >
-                        Cambiar
-                      </button>
-                    )}
-                  </div>
-                  {editandoProfesor ? (
-                    <div>
-                      <select
-                        value={nuevoProfesorId}
-                        onChange={(e) => setNuevoProfesorId(e.target.value ? parseInt(e.target.value) : '')}
-                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem', marginBottom: '0.5rem' }}
-                      >
-                        {profesores.map((p) => (
-                          <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>
-                        ))}
-                      </select>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
-                          onClick={() => setEditandoProfesor(false)}
-                          style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '500', cursor: 'pointer', color: '#374151' }}
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          onClick={handleCambiarProfesor}
-                          disabled={guardandoProfesor || nuevoProfesorId === horarioSeleccionado.profesor}
-                          style={{ flex: 1, padding: '0.5rem', background: guardandoProfesor ? '#93c5fc' : '#6366f1', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '500', cursor: guardandoProfesor ? 'not-allowed' : 'pointer', color: 'white' }}
-                        >
-                          {guardandoProfesor ? 'Guardando...' : 'Guardar'}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#111827' }}>
-                      {horarioSeleccionado.profesor_nombre}
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Cupo</div>
-                    {!editandoCupo && (
-                      <button
-                        onClick={() => { setEditandoCupo(true); setCupoEditado(horarioSeleccionado.cupo_maximo.toString()); }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#6366f1', fontWeight: '500' }}
-                      >
-                        Editar
-                      </button>
-                    )}
-                  </div>
-                  {editandoCupo ? (
-                    <div>
-                      <input
-                        type="number"
-                        value={cupoEditado}
-                        onChange={(e) => setCupoEditado(e.target.value)}
-                        min={horarioSeleccionado.ocupacion ?? 1}
-                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem', marginBottom: '0.5rem' }}
-                      />
-                      <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '0.5rem' }}>
-                        Mínimo: {horarioSeleccionado.ocupacion ?? 0} (alumnos actuales)
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
-                          onClick={() => setEditandoCupo(false)}
-                          style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '500', cursor: 'pointer', color: '#374151' }}
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          onClick={handleGuardarCupo}
-                          disabled={guardandoCupo || !cupoEditado || parseInt(cupoEditado) < (horarioSeleccionado.ocupacion ?? 0)}
-                          style={{ flex: 1, padding: '0.5rem', background: (guardandoCupo || !cupoEditado || parseInt(cupoEditado) < (horarioSeleccionado.ocupacion ?? 0)) ? '#93c5fc' : '#6366f1', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '500', cursor: (guardandoCupo || !cupoEditado || parseInt(cupoEditado) < (horarioSeleccionado.ocupacion ?? 0)) ? 'not-allowed' : 'pointer', color: 'white' }}
-                        >
-                          {guardandoCupo ? 'Guardando...' : 'Guardar'}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '1.25rem', fontWeight: '700', color: ((horarioSeleccionado.ocupacion ?? 0) >= horarioSeleccionado.cupo_maximo) ? '#dc2626' : '#059669' }}>
-                        {horarioSeleccionado.ocupacion ?? 0}
-                      </span>
-                      <span style={{ color: '#9ca3af' }}>/</span>
-                      <span style={{ fontSize: '1rem', color: '#374151' }}>{horarioSeleccionado.cupo_maximo}</span>
-                      <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginLeft: 'auto' }}>
-                        ({horarioSeleccionado.cupo_disponible ?? horarioSeleccionado.cupo_maximo} disponibles)
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ marginBottom: '1rem' }}>
-                  <div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem' }}>
-                    Alumnos ({horarioSeleccionado.alumnos?.length || 0})
-                  </div>
-                  {horarioSeleccionado.alumnos && horarioSeleccionado.alumnos.length > 0 ? (
-                    <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                      {horarioSeleccionado.alumnos.map((alumno) => (
-                        <div key={alumno.id} style={{ padding: '0.5rem', background: '#f9fafb', borderRadius: '6px', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
-                          {alumno.nombre} {alumno.apellido} {alumno.edad !== null ? `(${alumno.edad} años)` : ''}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem', background: '#f9fafb', borderRadius: '8px' }}>
-                      No hay estudiantes
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {horarioSeleccionado.ocupacion === 0 && (
-                    <button
-                      onClick={handleEliminarHorario}
-                      style={{ flex: 1, padding: '0.625rem', background: '#fee2e2', border: 'none', borderRadius: '6px', fontWeight: '500', cursor: 'pointer', color: '#dc2626' }}
-                    >
-                      Eliminar
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          {HORAS.map(hora => { const horaStr = getHoraLabel(hora); return (
+            <div key={hora} style={{ display:'grid',gridTemplateColumns:'56px repeat(7,1fr)',borderBottom:'1px solid #f8fafc',minHeight:52 }}>
+              <div style={{ padding:'0.35rem',fontSize:'0.65rem',color:'#cbd5e1',textAlign:'center',borderRight:'1px solid #f8fafc',display:'flex',alignItems:'center',justifyContent:'center' }}>{horaStr}</div>
+              {DIAS.map(dia => {
+                const key = `${dia.value}-${horaStr}`; const h = gridHorarios[key];
+                const lleno = h ? (h.ocupacion ?? 0) >= h.cupo_maximo : false;
+                const esSel = !h && celdaSeleccionada?.dia === dia.value && celdaSeleccionada?.hora === horaStr;
+                return (<div key={key} onClick={() => handleCeldaClick(dia.value, horaStr)} style={{ borderRight:'1px solid #f8fafc',cursor:'pointer',padding:2,background:h?(lleno?'#fef2f2':'#f0fdf4'):esSel?'#fef9e7':'transparent',outline:esSel?'2px solid #d4af37':'none',outlineOffset:-2,transition:'background 0.1s' }}
+                  onMouseEnter={e => { if (!h && !esSel) e.currentTarget.style.background = '#f8fafc'; }}
+                  onMouseLeave={e => { if (!h && !esSel) e.currentTarget.style.background = 'transparent'; }}>
+                  {h && <div style={{ height:'100%',background:lleno?'#fecaca':'#bbf7d0',borderRadius:'6px',padding:'0.2rem 0.3rem',fontSize:'0.6rem' }}><div style={{ fontWeight:700,color:lleno?'#7f1d1d':'#166534',marginBottom:1 }}>{h.ocupacion ?? 0}/{h.cupo_maximo}</div><div style={{ color:lleno?'#991b1b':'#14532d',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{h.profesor_nombre}</div></div>}
+                </div>);
+              })}
+            </div>);
+          })}
         </div>
       </div>
 
-      <ConfirmModal
-        isOpen={showDeleteModal}
-        title="Eliminar Horario"
-        message="¿Estás seguro de que deseas eliminar este horario?"
-        itemName={horarioSeleccionado ? `${DIAS.find(d => d.value === horarioSeleccionado.dia_semana)?.label} - ${normalizarHora(horarioSeleccionado.hora_inicio)}` : ''}
-        confirmLabel="Eliminar"
-        cancelLabel="Cancelar"
-        onConfirm={confirmDeleteHorario}
-        onCancel={cancelDeleteHorario}
-        isLoading={saving}
-      />
+      <div style={{ flex:mb?'1 1 100%':'3 1 280px',maxWidth:mb?'100%':'340px',marginTop:mb?'0.75rem':0 }}>
+        <div style={{ background:'white',borderRadius:'14px',border:'1px solid #f1f5f9',padding:'1.25rem',position:'sticky',top:'1rem' }}>
+          {panelEstado === 'vacio' && (
+            <div style={{ textAlign:'center',padding:'2rem 1rem',color:'#cbd5e1' }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" style={{ margin:'0 auto 0.75rem',display:'block' }}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <p style={{ fontSize:'0.8125rem',lineHeight:1.5 }}>Seleccioná un horario o hacé clic en una celda vacía para crear uno nuevo.</p>
+            </div>
+          )}
+          {panelEstado === 'crear' && (
+            <div>
+              <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem' }}><span style={{ fontSize:'0.875rem',fontWeight:600,color:'#0f172a' }}>Crear horario</span><button onClick={() => { setPanelEstado('vacio'); setCeldaSeleccionada(null); }} style={{ width:28,height:28,borderRadius:'50%',border:'none',background:'#f3f4f6',color:'#6b7280',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>×</button></div>
+              <form onSubmit={handleCrearHorario}>
+                <div style={{ marginBottom:'0.75rem' }}><label style={ls}>Día</label><select value={formData.dia_semana} onChange={e => setFormData({ ...formData, dia_semana: parseInt(e.target.value) })} style={is}>{DIAS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}</select></div>
+                <div style={{ marginBottom:'0.75rem' }}><label style={ls}>Hora</label><select value={formData.hora_inicio} onChange={e => setFormData({ ...formData, hora_inicio: e.target.value })} style={is}>{HORAS.map(h => <option key={h} value={getHoraLabel(h)}>{getHoraLabel(h)}</option>)}</select></div>
+                <div style={{ marginBottom:'0.75rem' }}><label style={ls}>Profesor</label><select value={formData.profesor} onChange={e => setFormData({ ...formData, profesor: e.target.value ? parseInt(e.target.value) : '' })} required style={is}><option value="">Seleccionar...</option>{profesores.map(p => <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>)}</select></div>
+                <div style={{ marginBottom:'0.75rem' }}><label style={ls}>Cupo máximo</label><input type="number" value={formData.cupo_maximo} onChange={e => setFormData({ ...formData, cupo_maximo: parseInt(e.target.value) || 10 })} min={1} style={is} /></div>
+                <div style={{ marginBottom:'1rem' }}>
+                  <label style={ls}>Tipo de pago</label>
+                  <div style={{ display:'flex',gap:0,borderRadius:'10px',border:'1px solid #e5e7eb',overflow:'hidden',marginBottom:crearTipoPago==='fijo'?'0.5rem':0 }}>
+                    {(['dinamico','fijo'] as const).map(t => <button key={t} type="button" onClick={() => setCrearTipoPago(t)} style={{ flex:1,padding:'0.4rem',border:'none',cursor:'pointer',fontSize:'0.75rem',fontWeight:crearTipoPago===t?600:400,background:crearTipoPago===t?'#fef9e7':'white',color:crearTipoPago===t?'#8b6914':'#94a3b8' }}>{t==='dinamico'?'Dinámico':'Fijo'}</button>)}
+                  </div>
+                  {crearTipoPago==='fijo' && <input type="number" step="0.01" placeholder="Monto fijo (S/.)" value={crearMontoFijo} onChange={e => setCrearMontoFijo(e.target.value)} style={is} />}
+                </div>
+                <div style={{ display:'flex',gap:'0.5rem' }}><button type="button" onClick={() => { setPanelEstado('vacio'); setCeldaSeleccionada(null); }} style={{ flex:1,padding:'0.5rem',border:'1px solid #e5e7eb',borderRadius:'10px',background:'white',color:'#374151',fontWeight:500,cursor:'pointer',fontSize:'0.8125rem' }}>Cancelar</button><button type="submit" disabled={saving || !formData.profesor} style={{ flex:1,padding:'0.5rem',border:'none',borderRadius:'10px',background:saving?'#e5e7eb':'#d4af37',color:saving?'#9ca3af':'#0a0a0a',fontWeight:600,cursor:saving?'not-allowed':'pointer',fontSize:'0.8125rem' }}>{saving?'...':'Crear'}</button></div>
+              </form>
+            </div>
+          )}
+          {panelEstado === 'detalle' && horarioSeleccionado && (
+            <div>
+              <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem' }}><span style={{ fontSize:'0.875rem',fontWeight:600,color:'#0f172a' }}>Detalle</span><button onClick={() => { setPanelEstado('vacio'); setHorarioSeleccionado(null); }} style={{ width:28,height:28,borderRadius:'50%',border:'none',background:'#f3f4f6',color:'#6b7280',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>×</button></div>
+              <SideCard><span style={sc}>Día y hora</span><span style={sv}>{DIAS.find(d => d.value === horarioSeleccionado.dia_semana)?.label} · {normalizarHora(horarioSeleccionado.hora_inicio)}</span></SideCard>
+              <SideCard>
+                <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center' }}><span style={sc}>Profesor</span>{!editandoProfesor && <button onClick={() => { setEditandoProfesor(true); setNuevoProfesorId(horarioSeleccionado.profesor); }} style={linkBtn}>Cambiar</button>}</div>
+                {editandoProfesor ? (<div style={{ marginTop:'0.5rem' }}><select value={nuevoProfesorId} onChange={e => setNuevoProfesorId(e.target.value ? parseInt(e.target.value) : '')} style={{ ...is,marginBottom:'0.5rem' }}>{profesores.map(p => <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>)}</select><div style={{ display:'flex',gap:'0.375rem' }}><button onClick={() => setEditandoProfesor(false)} style={btnSm}>Cancelar</button><button onClick={async () => { setGuardandoProfesor(true); await patchHorario({ profesor: nuevoProfesorId }, 'Profesor'); setGuardandoProfesor(false); setEditandoProfesor(false); }} disabled={guardandoProfesor || nuevoProfesorId === horarioSeleccionado.profesor} style={{ ...btnSm,background:guardandoProfesor?'#e5e7eb':'#d4af37',color:guardandoProfesor?'#9ca3af':'#0a0a0a' }}>{guardandoProfesor?'...':'Guardar'}</button></div></div>) : <span style={sv}>{horarioSeleccionado.profesor_nombre}</span>}
+              </SideCard>
+              <SideCard>
+                <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center' }}><span style={sc}>Tipo de pago</span>{!editandoPago && <button onClick={() => { setEditandoPago(true); setTipoPagoSeleccionado(horarioSeleccionado.tipo_pago || 'dinamico'); setMontoFijo(horarioSeleccionado.monto_fijo?.toString() || ''); }} style={linkBtn}>Cambiar</button>}</div>
+                {editandoPago ? (<div style={{ marginTop:'0.5rem' }}><div style={{ display:'flex',gap:0,borderRadius:'8px',border:'1px solid #e5e7eb',overflow:'hidden',marginBottom:'0.5rem' }}>{(['dinamico','fijo'] as const).map(t => <button key={t} type="button" onClick={() => setTipoPagoSeleccionado(t)} style={{ flex:1,padding:'0.35rem',border:'none',cursor:'pointer',fontSize:'0.7rem',fontWeight:tipoPagoSeleccionado===t?600:400,background:tipoPagoSeleccionado===t?'#fef9e7':'white',color:tipoPagoSeleccionado===t?'#8b6914':'#94a3b8' }}>{t==='dinamico'?'Dinámico':'Fijo'}</button>)}</div>{tipoPagoSeleccionado==='fijo' && <input type="number" step="0.01" placeholder="Monto fijo" value={montoFijo} onChange={e => setMontoFijo(e.target.value)} style={{ ...is,marginBottom:'0.5rem' }} />}<div style={{ display:'flex',gap:'0.375rem' }}><button onClick={() => setEditandoPago(false)} style={btnSm}>Cancelar</button><button onClick={async () => { setGuardandoPago(true); const p: Record<string,unknown> = { tipo_pago: tipoPagoSeleccionado }; if (tipoPagoSeleccionado==='fijo'&&montoFijo) p.monto_fijo = parseFloat(montoFijo); else if (tipoPagoSeleccionado==='dinamico') p.monto_fijo = null; await patchHorario(p,'Tipo de pago'); setGuardandoPago(false); setEditandoPago(false); }} disabled={guardandoPago||(tipoPagoSeleccionado==='fijo'&&!montoFijo)} style={{ ...btnSm,background:guardandoPago?'#e5e7eb':'#d4af37',color:guardandoPago?'#9ca3af':'#0a0a0a' }}>{guardandoPago?'...':'Guardar'}</button></div></div>) : <span style={sv}>{horarioSeleccionado.tipo_pago==='fijo'?`Fijo ${horarioSeleccionado.monto_fijo?`(S/. ${horarioSeleccionado.monto_fijo})`:''}`:'Dinámico'}</span>}
+              </SideCard>
+              <SideCard>
+                <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center' }}><span style={sc}>Cupo</span>{!editandoCupo && <button onClick={() => { setEditandoCupo(true); setCupoEditado(horarioSeleccionado.cupo_maximo.toString()); }} style={linkBtn}>Editar</button>}</div>
+                {editandoCupo ? (<div style={{ marginTop:'0.5rem' }}><input type="number" value={cupoEditado} onChange={e => setCupoEditado(e.target.value)} min={horarioSeleccionado.ocupacion ?? 1} style={{ ...is,marginBottom:'0.25rem' }} /><div style={{ fontSize:'0.65rem',color:'#94a3b8',marginBottom:'0.5rem' }}>Mín: {horarioSeleccionado.ocupacion ?? 0} alumnos</div><div style={{ display:'flex',gap:'0.375rem' }}><button onClick={() => setEditandoCupo(false)} style={btnSm}>Cancelar</button><button onClick={async () => { setGuardandoCupo(true); await patchHorario({ cupo_maximo: parseInt(cupoEditado) },'Cupo'); setGuardandoCupo(false); setEditandoCupo(false); }} disabled={guardandoCupo||!cupoEditado||parseInt(cupoEditado)<(horarioSeleccionado.ocupacion??0)} style={{ ...btnSm,background:guardandoCupo?'#e5e7eb':'#d4af37',color:guardandoCupo?'#9ca3af':'#0a0a0a' }}>{guardandoCupo?'...':'Guardar'}</button></div></div>) : (<div style={{ display:'flex',alignItems:'center',gap:'0.375rem',marginTop:2 }}><span style={{ fontSize:'1.125rem',fontWeight:700,color:((horarioSeleccionado.ocupacion??0)>=horarioSeleccionado.cupo_maximo)?'#dc2626':'#059669' }}>{horarioSeleccionado.ocupacion??0}</span><span style={{ color:'#cbd5e1' }}>/</span><span style={{ fontSize:'0.875rem',color:'#475569' }}>{horarioSeleccionado.cupo_maximo}</span><span style={{ fontSize:'0.65rem',color:'#94a3b8',marginLeft:'auto' }}>{horarioSeleccionado.cupo_disponible??horarioSeleccionado.cupo_maximo} libres</span></div>)}
+              </SideCard>
+              <div style={{ marginBottom:'0.75rem' }}><span style={{ fontSize:'0.65rem',fontWeight:600,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.04em',display:'block',marginBottom:'0.5rem' }}>Alumnos ({horarioSeleccionado.alumnos?.length||0})</span>{horarioSeleccionado.alumnos&&horarioSeleccionado.alumnos.length>0?<div style={{ maxHeight:180,overflowY:'auto',display:'flex',flexDirection:'column',gap:'0.25rem' }}>{horarioSeleccionado.alumnos.map(a => <div key={a.id} style={{ padding:'0.4rem 0.5rem',background:'#f8fafc',borderRadius:'8px',fontSize:'0.8125rem',color:'#475569' }}>{a.nombre} {a.apellido}{a.edad!==null?<span style={{ color:'#94a3b8',marginLeft:6 }}>({a.edad} años)</span>:''}</div>)}</div>:<div style={{ padding:'1rem',textAlign:'center',color:'#cbd5e1',fontSize:'0.75rem',background:'#f8fafc',borderRadius:'8px' }}>Sin estudiantes</div>}</div>
+              {horarioSeleccionado.ocupacion===0 && <button onClick={handleEliminarHorario} style={{ width:'100%',padding:'0.5rem',border:'1px solid #fecaca',borderRadius:'10px',background:'#fef2f2',color:'#dc2626',fontWeight:500,cursor:'pointer',fontSize:'0.8125rem' }}>Eliminar horario</button>}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
-  );
+    <ConfirmModal isOpen={showDeleteModal} title="Eliminar Horario" message="¿Estás seguro?" itemName={horarioSeleccionado?`${DIAS.find(d=>d.value===horarioSeleccionado.dia_semana)?.label} - ${normalizarHora(horarioSeleccionado.hora_inicio)}`:''} confirmLabel="Eliminar" cancelLabel="Cancelar" onConfirm={confirmDeleteHorario} onCancel={()=>setShowDeleteModal(false)} isLoading={saving}/>
+  </div>);
 }
 
+function SideCard({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) { return <div style={{ background:'#f8fafc',borderRadius:'10px',padding:'0.75rem',marginBottom:'0.5rem',border:'1px solid #f1f5f9',...style }}>{children}</div>; }
+const sc: React.CSSProperties = { fontSize:'0.65rem',color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.04em',display:'block',marginBottom:2 };
+const sv: React.CSSProperties = { fontSize:'0.8125rem',fontWeight:600,color:'#0f172a',display:'block',marginTop:1 };
+const linkBtn: React.CSSProperties = { background:'none',border:'none',cursor:'pointer',fontSize:'0.65rem',color:'#d4af37',fontWeight:500 };
+const btnSm: React.CSSProperties = { flex:1,padding:'0.35rem 0.5rem',border:'1px solid #e5e7eb',borderRadius:'8px',background:'white',color:'#374151',fontSize:'0.7rem',fontWeight:500,cursor:'pointer' };
 export default memo(TallerDetalle);

@@ -11,7 +11,7 @@ class PortalCiclosView(APIView):
     """
     GET /api/portal/me/ciclos/
 
-    Returns all cycles where the authenticated student has at least one enrollment.
+    Returns active cycles where the authenticated student has at least one enrollment.
     Each cycle includes has_matricula_activa flag.
     """
     authentication_classes = [PortalJWTAuthentication]
@@ -20,9 +20,10 @@ class PortalCiclosView(APIView):
     def get(self, request):
         alumno_id = request.user.id
 
-        # Get cycles where student has any enrollment (active or concluded)
+        # Get active cycles where student has any enrollment (active or concluded)
         ciclos = Ciclo.objects.filter(
-            matriculas__alumno_id=alumno_id
+            matriculas__alumno_id=alumno_id,
+            activo=True,
         ).distinct().order_by('-fecha_inicio')
 
         return Response(

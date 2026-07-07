@@ -53,9 +53,10 @@ class PortalLoginView(APIView):
         refresh['dni'] = alumno.dni
         refresh['type'] = 'portal'
         
-        # Get cycles where student has enrollment
+        # Get active cycles where student has enrollment
         ciclos = Ciclo.objects.filter(
-            matriculas__alumno=alumno
+            matriculas__alumno=alumno,
+            activo=True,
         ).distinct()
         
         return Response({

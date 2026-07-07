@@ -31,13 +31,13 @@ class TestCalcularPagoClase(TestCase):
         return mock_asistencia
 
     def test_cero_alumnos(self):
-        """0 alumnos → payment=0.00, profit=0.00"""
+        """0 alumnos -> payment=BASE_PAGO (17.00), adicional=0.00"""
         asistentes = []
         num_alumnos = 0
         
         resultado = PagoProfesorService._calcular_pago_clase(asistentes, num_alumnos)
         
-        self.assertEqual(resultado['monto_profesor'], Decimal('0.00'))
+        self.assertEqual(resultado['monto_profesor'], Decimal('17.00'))
         self.assertEqual(resultado['monto_adicional'], Decimal('0.00'))
 
     def test_un_alumno_valor_normal(self):
@@ -258,8 +258,10 @@ class TestPagoProfesorServiceIntegration(TestCase):
         )
         
         self.assertEqual(resultado['resumen']['num_alumnos'], 0)
-        self.assertEqual(resultado['resumen']['monto_profesor'], 0)
-        self.assertEqual(resultado['resumen']['ganancia_taller'], 0)
+        # Pago dinámico: 0 alumnos -> el profesor cobra la base
+        self.assertEqual(resultado['resumen']['monto_profesor'], 17.0)
+        # Ganancia: 0 (valor_generado) - 17.0 (monto_profesor) = -17.0
+        self.assertEqual(resultado['resumen']['ganancia_taller'], -17.0)
 
     def test_detalle_clase_con_una_asistencia(self):
         """detalle_clase con 1 asistencia retorna 17.00 para el profesor."""
@@ -932,3 +934,331 @@ class TestDetalleClasePagoFijo(TestCase):
         self.assertEqual(resultado['resumen']['monto_adicional'], 0.00)  # Fijo = 0
         # Ganancia: 20 (valor_generado) - 25 (pago) = -5
         self.assertEqual(resultado['resumen']['ganancia_taller'], -5.00)
+
+
+class TestHoraTrabajadaServicePagoFijo(TestCase):
+    """Tests para HoraTrabajadaService._calcular_montos_para_clase con pago fijo.
+
+    Verifica que cuando un horario tiene tipo_pago='fijo' pero monto_fijo=None
+    o monto_fijo=0.00, el cálculo usa la fórmula fija (monto_base=0, monto_adicional=0)
+    y NO cae en la fórmula dinámica.
+    """
+
+    def _crear_mock_asistencia(self, precio_sesion: float):
+        """Crea un mock de Asistencia con precio por sesión."""
+        from unittest.mock import MagicMock
+        mock_matricula = MagicMock()
+        mock_matricula.precio_por_sesion = Decimal(str(precio_sesion))
+
+        mock_asistencia = MagicMock()
+        mock_asistencia.matricula = mock_matricula
+        return mock_asistencia
+
+    def test_hora_trabajada_service_pago_fijo_con_monto_none(self):
+        """Pago fijo con monto_fijo=None → usa fórmula fija con monto=0, NO la dinámica."""
+        from core.services.hora_trabajada_service import HoraTrabajadaService
+
+        horario_meta = {
+            'tipo_pago': 'fijo',
+            'monto_fijo': None,
+        }
+        config_snapshot = {
+            'base_pago': 17.0,
+            'tope_maximo': 35.0,
+            'porcentaje_adicional': 0.5,
+        }
+        mock_asistencia = self._crear_mock_asistencia(20.00)
+        asistentes = [mock_asistencia]
+        num_alumnos = 1
+
+        resultado = HoraTrabajadaService._calcular_montos_para_clase(
+            num_alumnos, asistentes, horario_meta, config_snapshot
+        )
+
+        # Debe usar fórmula fija: monto_base=0, monto_adicional=0, monto_profesor=0
+        self.assertEqual(resultado['monto_base'], Decimal('0.00'))
+        self.assertEqual(resultado['monto_adicional'], Decimal('0.00'))
+        self.assertEqual(resultado['monto_profesor'], Decimal('0.00'))
+        # valor_generado debe calcularse desde asistentes
+        self.assertEqual(resultado['valor_generado'], Decimal('20.00'))
+
+    def test_hora_trabajada_service_pago_fijo_con_monto_cero(self):
+        """Pago fijo con monto_fijo=Decimal('0.00') → usa fórmula fija, NO la dinámica."""
+        from core.services.hora_trabajada_service import HoraTrabajadaService
+
+        horario_meta = {
+            'tipo_pago': 'fijo',
+            'monto_fijo': Decimal('0.00'),
+        }
+        config_snapshot = {
+            'base_pago': 17.0,
+            'tope_maximo': 35.0,
+            'porcentaje_adicional': 0.5,
+        }
+        mock_asistencia = self._crear_mock_asistencia(20.00)
+        asistentes = [mock_asistencia]
+        num_alumnos = 1
+
+        resultado = HoraTrabajadaService._calcular_montos_para_clase(
+            num_alumnos, asistentes, horario_meta, config_snapshot
+        )
+
+        # Debe usar fórmula fija: monto_base=0, monto_adicional=0, monto_profesor=0
+        self.assertEqual(resultado['monto_base'], Decimal('0.00'))
+        self.assertEqual(resultado['monto_adicional'], Decimal('0.00'))
+        self.assertEqual(resultado['monto_profesor'], Decimal('0.00'))
+        self.assertEqual(resultado['valor_generado'], Decimal('20.00'))
+
+
+class TestHoraTrabajadaIntegration(TestCase):
+    """Tests de integración entre HoraTrabajada y PagoProfesorService.
+
+    Verifica que calcular_periodo() genera correctamente HoraTrabajada
+    desde asistencias y que los valores en PagoProfesorDetalle coinciden
+    con los valores precalculados en HoraTrabajada.
+    """
+
+    def setUp(self):
+        """Crear datos de prueba."""
+        from core.models import Ciclo, Profesor, Alumno, Taller, Horario, Matricula
+
+        self.ciclo = Ciclo.objects.create(
+            nombre='Test Cycle 2026',
+            tipo='anual',
+            fecha_inicio=date(2026, 1, 1),
+            fecha_fin=date(2026, 12, 31),
+            activo=True
+        )
+
+        self.profesor = Profesor.objects.create(
+            ciclo=self.ciclo,
+            nombre='Profesor',
+            apellido='Test',
+            dni='12345678',
+            telefono='999999999',
+            email='prof@test.com',
+            activo=True,
+            es_gerente=False
+        )
+
+        self.alumno = Alumno.objects.create(
+            ciclo=self.ciclo,
+            nombre='Alumno',
+            apellido='Test',
+            dni='87654321',
+            telefono='888888888',
+            email='alumno@test.com',
+            activo=True
+        )
+
+        self.taller = Taller.objects.create(
+            ciclo=self.ciclo,
+            nombre='Guitarra',
+            tipo='instrumento',
+            descripcion='Taller de guitarra',
+            activo=True
+        )
+
+        self.horario = Horario.objects.create(
+            ciclo=self.ciclo,
+            taller=self.taller,
+            profesor=self.profesor,
+            dia_semana=0,
+            hora_inicio='10:00',
+            hora_fin='11:00',
+            cupo_maximo=10
+        )
+
+        self.matricula = Matricula.objects.create(
+            alumno=self.alumno,
+            ciclo=self.ciclo,
+            taller=self.taller,
+            sesiones_contratadas=10,
+            precio_total=Decimal('200.00'),
+            precio_por_sesion=Decimal('20.00'),
+            metodo_pago='efectivo',
+            activo=True,
+            concluida=False
+        )
+
+    def test_calcular_periodo_creates_hora_trabajada(self):
+        """calcular_periodo() con regenerar_horas=True crea HoraTrabajada."""
+        from core.models import Asistencia, HoraTrabajada, PagoProfesor
+
+        Asistencia.objects.create(
+            matricula=self.matricula,
+            horario=self.horario,
+            profesor=self.profesor,
+            fecha='2026-03-15',
+            hora='10:00',
+            estado='asistio'
+        )
+
+        resultado = PagoProfesorService.calcular_periodo(
+            self.ciclo,
+            date(2026, 3, 1),
+            date(2026, 3, 31),
+            regenerar_horas=True
+        )
+
+        # Verificar que se creó HoraTrabajada
+        ht = HoraTrabajada.objects.get(
+            profesor=self.profesor,
+            horario=self.horario,
+            fecha=date(2026, 3, 15)
+        )
+        self.assertEqual(ht.estado, 'aprobada')
+        self.assertEqual(ht.num_alumnos, 1)
+        self.assertEqual(ht.monto_profesor, Decimal('17.00'))
+
+        # Verificar que se creó PagoProfesor
+        self.assertEqual(len(resultado['resultados']), 1)
+        pago = resultado['resultados'][0]
+        self.assertEqual(pago['clases_dictadas'], 1)
+        self.assertEqual(pago['monto_profesor'], 17.00)
+
+    def test_dual_write_consistency(self):
+        """Los valores en HoraTrabajada y PagoProfesorDetalle coinciden."""
+        from core.models import Asistencia, HoraTrabajada, PagoProfesor, PagoProfesorDetalle
+
+        Asistencia.objects.create(
+            matricula=self.matricula,
+            horario=self.horario,
+            profesor=self.profesor,
+            fecha='2026-03-15',
+            hora='10:00',
+            estado='asistio'
+        )
+
+        PagoProfesorService.calcular_periodo(
+            self.ciclo,
+            date(2026, 3, 1),
+            date(2026, 3, 31),
+            regenerar_horas=True
+        )
+
+        # Leer valores desde HoraTrabajada y PagoProfesorDetalle
+        ht = HoraTrabajada.objects.get(
+            profesor=self.profesor,
+            horario=self.horario,
+            fecha=date(2026, 3, 15)
+        )
+
+        detalle = PagoProfesorDetalle.objects.get(
+            horario=self.horario,
+            fecha=date(2026, 3, 15)
+        )
+
+        # Verificar consistencia
+        self.assertEqual(ht.num_alumnos, detalle.num_alumnos)
+        self.assertEqual(ht.valor_generado, detalle.valor_generado)
+        self.assertEqual(ht.monto_base, detalle.monto_base)
+        self.assertEqual(ht.monto_adicional, detalle.monto_adicional)
+        self.assertEqual(ht.monto_profesor, detalle.monto_profesor)
+        self.assertEqual(ht.ganancia_taller, detalle.ganancia_taller)
+
+    def test_dual_write_both_created_together(self):
+        """Ambos registros (HoraTrabajada y PagoProfesorDetalle) existen juntos."""
+        from core.models import Asistencia, HoraTrabajada, PagoProfesor, PagoProfesorDetalle
+
+        Asistencia.objects.create(
+            matricula=self.matricula,
+            horario=self.horario,
+            profesor=self.profesor,
+            fecha='2026-03-15',
+            hora='10:00',
+            estado='asistio'
+        )
+
+        PagoProfesorService.calcular_periodo(
+            self.ciclo,
+            date(2026, 3, 1),
+            date(2026, 3, 31),
+            regenerar_horas=True
+        )
+
+        # Ambos deben existir
+        ht_count = HoraTrabajada.objects.filter(
+            profesor=self.profesor,
+            fecha__gte=date(2026, 3, 1),
+            fecha__lte=date(2026, 3, 31)
+        ).count()
+
+        detalle_count = PagoProfesorDetalle.objects.filter(
+            fecha__gte=date(2026, 3, 1),
+            fecha__lte=date(2026, 3, 31)
+        ).count()
+
+        self.assertGreater(ht_count, 0)
+        self.assertGreater(detalle_count, 0)
+        self.assertEqual(ht_count, detalle_count)
+
+    def test_regenerar_horas_false_skips_generation(self):
+        """calcular_periodo() con regenerar_horas=False no toca HoraTrabajada."""
+        from core.models import Asistencia, HoraTrabajada
+
+        Asistencia.objects.create(
+            matricula=self.matricula,
+            horario=self.horario,
+            profesor=self.profesor,
+            fecha='2026-03-15',
+            hora='10:00',
+            estado='asistio'
+        )
+
+        # Primero generar horas trabajadas manualmente
+        from core.services.hora_trabajada_service import HoraTrabajadaService
+
+        HoraTrabajadaService.generar_horas_trabajadas(
+            self.ciclo,
+            date(2026, 3, 1),
+            date(2026, 3, 31)
+        )
+
+        ht_count_before = HoraTrabajada.objects.count()
+
+        # Llamar calcular_periodo con regenerar_horas=False
+        PagoProfesorService.calcular_periodo(
+            self.ciclo,
+            date(2026, 3, 1),
+            date(2026, 3, 31),
+            regenerar_horas=False
+        )
+
+        ht_count_after = HoraTrabajada.objects.count()
+
+        # No se deben crear nuevas HoraTrabajada (solo se leen existentes)
+        self.assertEqual(ht_count_before, ht_count_after)
+
+    def test_config_snapshot_fallback(self):
+        """Cuando Configuracion falla, snapshot usa valores de constants."""
+        from core.models import Asistencia, HoraTrabajada
+        from unittest.mock import patch
+
+        Asistencia.objects.create(
+            matricula=self.matricula,
+            horario=self.horario,
+            profesor=self.profesor,
+            fecha='2026-03-15',
+            hora='10:00',
+            estado='asistio'
+        )
+
+        # Mock Configuracion.get_instance para que falle
+        with patch('core.services.hora_trabajada_service.Configuracion.get_instance',
+                   side_effect=Exception('DB error')):
+            from core.services.hora_trabajada_service import HoraTrabajadaService
+            HoraTrabajadaService.generar_horas_trabajadas(
+                self.ciclo,
+                date(2026, 3, 1),
+                date(2026, 3, 31)
+            )
+
+        ht = HoraTrabajada.objects.get(
+            profesor=self.profesor,
+            fecha=date(2026, 3, 15)
+        )
+        snapshot = ht.config_snapshot
+        self.assertEqual(snapshot['base_pago'], 17.0)
+        self.assertEqual(snapshot['tope_maximo'], 35.0)
+        self.assertIsNone(snapshot['ciclo_activo_id'])

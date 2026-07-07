@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db import models
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 from django.db.models.functions import ExtractMonth
 from decimal import Decimal
 from datetime import datetime
@@ -16,7 +16,7 @@ from .pagination import StandardResultsSetPagination
 
 
 class PagoProfesorViewSet(viewsets.ModelViewSet):
-    queryset = PagoProfesor.objects.select_related('profesor', 'ciclo').prefetch_related('detalles').all()
+    queryset = PagoProfesor.objects.select_related('profesor', 'ciclo').all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['ciclo', 'estado', 'profesor', 'fecha_inicio', 'fecha_fin']
@@ -24,6 +24,20 @@ class PagoProfesorViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'monto_final']
     ordering = ['-created_at']
     pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Solo prefetch detalles para retrieve/detalles (no en list)
+        if self.action in ('retrieve', 'detalles'):
+            qs = qs.prefetch_related(
+                Prefetch(
+                    'detalles',
+                    queryset=PagoProfesorDetalle.objects.select_related(
+                        'horario__taller', 'pago_profesor__profesor'
+                    )
+                )
+            )
+        return qs
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -33,7 +47,8 @@ class PagoProfesorViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def detalles(self, request, pk=None):
         pago = self.get_object()
-        detalles = pago.detalles.all().order_by('-fecha')
+        # sorted() usa el prefetch cache; .order_by() lo ignoraría
+        detalles = sorted(pago.detalles.all(), key=lambda d: d.fecha, reverse=True)
         serializer = PagoProfesorDetalleSerializer(detalles, many=True)
         return Response({'detalles': serializer.data})
 
@@ -44,6 +59,7 @@ def calcular_pago_profesor(request):
     ciclo_id = request.data.get('ciclo_id')
     fecha_inicio = request.data.get('fecha_inicio')
     fecha_fin = request.data.get('fecha_fin')
+    regenerar_horas = str(request.data.get('regenerar_horas', 'true')).lower() == 'true'
 
     if not ciclo_id:
         return Response(
@@ -72,8 +88,11 @@ def calcular_pago_profesor(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # Delegar al servicio
-    resultados = PagoProfesorService.calcular_periodo(ciclo, fecha_inicio, fecha_fin)
+    # Delegar al servicio (regenerar_horas controla si se regeneran las horas trabajadas)
+    resultados = PagoProfesorService.calcular_periodo(
+        ciclo, fecha_inicio, fecha_fin,
+        regenerar_horas=regenerar_horas
+    )
     return Response(resultados)
 
 
@@ -114,46 +133,26 @@ def resumen_ciclo(request, pk):
     from ..models import Recibo, Egreso
     from django.db.models import Sum
 
-    # === INGRESOS ===
-    ingresos_recibos = Recibo.objects.filter(
+    # === INGRESOS (1 query combinada) ===
+    recibos_data = Recibo.objects.filter(
         ciclo=ciclo,
         estado='pagado'
-    ).aggregate(total=Sum('monto_pagado'))
+    ).aggregate(total=Sum('monto_pagado'), count=Count('id'))
+    ingreso_bruto = recibos_data['total'] or Decimal('0.00')
+    num_recibos = recibos_data['count'] or 0
 
-    ingreso_bruto = ingresos_recibos['total'] or Decimal('0.00')
-
-    # === EGRESOS (solo manuales - desde Egreso) ===
-    # Los pagos a profesores se registran manualmente como Egreso, no desde PagoProfesor
-    
-    # 1. Pagos manuales a profesores (desde Egreso)
-    pagos_profesores_manual = Egreso.objects.filter(
+    # === EGRESOS (gasto_taller + gasto_personal + pago_profesor legacy) ===
+    egresos_por_tipo = Egreso.objects.filter(
         ciclo=ciclo,
-        tipo='pago_profesor',
-        estado='cancelado'
-    ).aggregate(total=Sum('monto'))
+        estado__in=['pendiente', 'cancelado'],
+        tipo__in=['gasto_taller', 'gasto_personal', 'pago_profesor']
+    ).values('tipo').annotate(total=Sum('monto'))
+    egreso_map = {e['tipo']: e['total'] for e in egresos_por_tipo}
+    gasto_taller = egreso_map.get('gasto_taller', Decimal('0.00'))
+    # Fusionar pago_profesor (legacy) con gasto_personal
+    gasto_personal = egreso_map.get('gasto_personal', Decimal('0.00')) + egreso_map.get('pago_profesor', Decimal('0.00'))
 
-    pago_profesor_manual = pagos_profesores_manual['total'] or Decimal('0.00')
-
-    # 2. Gastos del taller
-    gastos_taller = Egreso.objects.filter(
-        ciclo=ciclo,
-        tipo='gasto_taller',
-        estado='cancelado'
-    ).aggregate(total=Sum('monto'))
-
-    gasto_taller = gastos_taller['total'] or Decimal('0.00')
-
-    # 3. Gastos de personal
-    gastos_personal = Egreso.objects.filter(
-        ciclo=ciclo,
-        tipo='gasto_personal',
-        estado='cancelado'
-    ).aggregate(total=Sum('monto'))
-
-    gasto_personal = gastos_personal['total'] or Decimal('0.00')
-
-    # Total egresos (solo manuales)
-    total_egresos = pago_profesor_manual + gasto_taller + gasto_personal
+    total_egresos = gasto_taller + gasto_personal
 
     # Ganancia neta
     ingreso_neto = ingreso_bruto - total_egresos
@@ -163,7 +162,6 @@ def resumen_ciclo(request, pk):
     porcentaje_ganancia = float(ingreso_neto / ingreso_bruto * 100) if ingreso_bruto > 0 else 0
 
     # Ticket promedio (ingresos / numero de recibos)
-    num_recibos = Recibo.objects.filter(ciclo=ciclo, estado='pagado').count()
     ticket_promedio = float(ingreso_bruto / num_recibos) if num_recibos > 0 else 0
 
     return Response({
@@ -183,8 +181,6 @@ def resumen_ciclo(request, pk):
         'egresos': {
             'gasto_taller': float(gasto_taller),
             'gasto_personal': float(gasto_personal),
-            'pago_profesor_manual': float(pago_profesor_manual),
-            'total_pago_profesor': float(pago_profesor_manual),
         }
     })
 
@@ -203,41 +199,42 @@ def resumen_mensual_ciclo(request, pk):
 
     from ..models import Recibo, Egreso
     from django.db.models import Sum, Count
-    from django.db.models.functions import ExtractMonth
+    from django.db.models.functions import ExtractMonth, ExtractYear
 
     # Ingresos por mes (recibos pagados)
     ingresos_mensuales = Recibo.objects.filter(
         ciclo=ciclo,
         estado='pagado'
     ).annotate(
+        año=ExtractYear('fecha_emision'),
         mes=ExtractMonth('fecha_emision')
-    ).values('mes').annotate(
+    ).values('año', 'mes').annotate(
         total=Sum('monto_pagado'),
         cantidad=Count('id')
-    ).order_by('mes')
+    ).order_by('año', 'mes')
 
     # Egresos por mes (cancelados)
     egresos_mensuales = Egreso.objects.filter(
         ciclo=ciclo,
-        estado='cancelado'
+        estado__in=['pendiente', 'cancelado']
     ).annotate(
+        año=ExtractYear('fecha'),
         mes=ExtractMonth('fecha')
-    ).values('mes').annotate(
+    ).values('año', 'mes').annotate(
         total=Sum('monto')
-    ).order_by('mes')
+    ).order_by('año', 'mes')
 
-    # Convertir a diccionario por mes
-    ingresos_por_mes = {item['mes']: {'ingresos': float(item['total'] or 0), 'recibos': item['cantidad']} for item in ingresos_mensuales}
-    egresos_por_mes = {item['mes']: float(item['total'] or 0) for item in egresos_mensuales}
+    # Convertir a diccionario por (año, mes)
+    ingresos_por_mes = {(item['año'], item['mes']): {'ingresos': float(item['total'] or 0), 'recibos': item['cantidad']} for item in ingresos_mensuales}
+    egresos_por_mes = {(item['año'], item['mes']): float(item['total'] or 0) for item in egresos_mensuales}
 
-    # Obtener todos los meses del ciclo
+    # Obtener todos los meses del ciclo como (año, mes)
     meses_cycle = []
     if ciclo.fecha_inicio and ciclo.fecha_fin:
         from datetime import date
         current = ciclo.fecha_inicio
         while current <= ciclo.fecha_fin:
-            meses_cycle.append(current.month)
-            # Avanzar al siguiente mes
+            meses_cycle.append((current.year, current.month))
             if current.month == 12:
                 current = date(current.year + 1, 1, 1)
             else:
@@ -246,16 +243,22 @@ def resumen_mensual_ciclo(request, pk):
     # Construir respuesta
     meses_nombres = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
     resultado = []
-    for mes in sorted(set(meses_cycle)):
-        ingresos = ingresos_por_mes.get(mes, {'ingresos': 0, 'recibos': 0})['ingresos']
-        egresos = egresos_por_mes.get(mes, 0)
+    seen = set()
+    for año, mes in meses_cycle:
+        if (año, mes) in seen:
+            continue
+        seen.add((año, mes))
+        data = ingresos_por_mes.get((año, mes), {'ingresos': 0, 'recibos': 0})
+        ingresos = data['ingresos']
+        egresos = egresos_por_mes.get((año, mes), 0)
         resultado.append({
+            'año': año,
             'mes': mes,
-            'nombre': meses_nombres[mes],
+            'nombre': f"{meses_nombres[mes]} {año}",
             'ingresos': ingresos,
             'egresos': egresos,
             'balance': ingresos - egresos,
-            'recibos': ingresos_por_mes.get(mes, {'recibos': 0})['recibos'],
+            'recibos': data['recibos'],
         })
 
     return Response(resultado)
