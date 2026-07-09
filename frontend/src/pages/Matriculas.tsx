@@ -418,7 +418,7 @@ function MatriculasPage() {
         payload.horarios = formData.horarios;
       }
 
-      const res = editingId 
+      editingId 
         ? await api.patch(url, payload)
         : await api.post(url, payload);
 
