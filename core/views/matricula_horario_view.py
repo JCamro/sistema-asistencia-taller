@@ -19,6 +19,14 @@ class MatriculaHorarioViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_fields = ['matricula', 'horario', 'matricula__ciclo']
     search_fields = ['matricula__alumno__nombre', 'matricula__alumno__apellido', 'horario__taller__nombre']
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Filtrar por matricula_id si viene en la URL (endpoint anidado)
+        matricula_id = self.kwargs.get('matricula_id')
+        if matricula_id:
+            queryset = queryset.filter(matricula_id=matricula_id)
+        return queryset
+
     def get_serializer_class(self):
         if self.action == 'list':
             return MatriculaHorarioListSerializer
