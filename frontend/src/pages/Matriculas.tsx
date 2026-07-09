@@ -414,64 +414,13 @@ function MatriculasPage() {
         payload.concluida = formData.concluida;
       }
 
-      if (!editingId && formData.horarios.length > 0) {
+      if (formData.horarios.length > 0) {
         payload.horarios = formData.horarios;
       }
 
-      const res = editingId 
+      editingId 
         ? await api.patch(url, payload)
         : await api.post(url, payload);
-      
-      const matriculaData = res.data;
-
-      if (!editingId && formData.horarios.length > 0) {
-        // Crear nuevos horarios para nueva matrícula
-        for (const horarioId of formData.horarios) {
-          try {
-            await api.post('/matriculas-horarios/', {
-              matricula: matriculaData.id,
-              horario: horarioId,
-            });
-          } catch (err: any) {
-            // Si ya existe (idempotente), no es error
-            if (!err.response || (err.response.status !== 400 && err.response.status !== 200)) {
-              throw err;
-            }
-          }
-        }
-      } else if (editingId) {
-        // Obtener horarios actuales y actualizarlos
-        const resHorarios = await api.get(`/matriculas-horarios/?matricula=${editingId}`);
-        const dataHorarios = resHorarios.data.results || resHorarios.data;
-        const horariosActuales: number[] = Array.isArray(dataHorarios) ? dataHorarios.map((mh: any) => mh.horario) : [];
-        
-        // Eliminar horarios que ya no están seleccionados
-        for (const horarioId of horariosActuales) {
-          if (!formData.horarios.includes(horarioId)) {
-            const mhToDelete = Array.isArray(dataHorarios) ? dataHorarios.find((mh: any) => mh.horario === horarioId) : null;
-            if (mhToDelete) {
-              await api.delete(`/matriculas-horarios/${mhToDelete.id}/`);
-            }
-          }
-        }
-        
-        // Agregar nuevos horarios
-        for (const horarioId of formData.horarios) {
-          if (!horariosActuales.includes(horarioId)) {
-            try {
-              await api.post('/matriculas-horarios/', {
-                matricula: editingId,
-                horario: horarioId,
-              });
-            } catch (err: any) {
-              // Si ya existe (idempotente), no es error
-              if (!err.response || (err.response.status !== 400 && err.response.status !== 200)) {
-                throw err;
-              }
-            }
-          }
-        }
-      }
 
       setShowModal(false);
       setEditingId(null);
@@ -495,6 +444,8 @@ function MatriculasPage() {
       horariosExistentes = Array.isArray(data) ? data.map((mh: any) => mh.horario) : [];
     } catch (err) {
       console.error('Error loading horarios:', err);
+      showToast('Error al cargar horarios de la matrícula. Reintentá más tarde.', 'error');
+      return; // No abrir el modal si falla el fetch
     }
     
     setEditingId(matricula.id);

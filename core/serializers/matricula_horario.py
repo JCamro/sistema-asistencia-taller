@@ -22,9 +22,6 @@ class MatriculaHorarioSerializer(serializers.ModelSerializer):
         if matricula.concluida:
             raise serializers.ValidationError("La matrícula ya está concluida")
 
-        if matricula.sesiones_consumidas >= matricula.sesiones_contratadas:
-            raise serializers.ValidationError("La matrícula no tiene sesiones disponibles")
-
         ocupacion = horario.matricula_horarios.filter(
             matricula__activo=True,
             matricula__concluida=False

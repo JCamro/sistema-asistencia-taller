@@ -95,10 +95,46 @@ class MatriculaSerializer(serializers.ModelSerializer):
             horarios_ids = data['horarios']
             
             nuevos_horarios = Horario.objects.filter(id__in=horarios_ids)
+            nuevos_horarios_dict = {h.id: h for h in nuevos_horarios}
+            
+            # W3: Detectar auto-conflicto entre los nuevos horarios enviados
+            nuevos_horarios_list = list(nuevos_horarios)
+            for i, h1 in enumerate(nuevos_horarios_list):
+                for h2 in nuevos_horarios_list[i+1:]:
+                    if h1.dia_semana == h2.dia_semana:
+                        if h1.hora_inicio < h2.hora_fin and h1.hora_fin > h2.hora_inicio:
+                            raise serializers.ValidationError(
+                                f"Conflicto entre los horarios seleccionados: "
+                                f"{h1.get_dia_semana_display()} {h1.hora_inicio}-{h1.hora_fin} "
+                                f"y {h2.get_dia_semana_display()} {h2.hora_inicio}-{h2.hora_fin}"
+                            )
+            
             for nuevo in nuevos_horarios:
                 nuevo_inicio = nuevo.hora_inicio
                 nuevo_fin = nuevo.hora_fin
                 
+                # C3: Validar cupo_maximo
+                ocupacion = nuevo.matricula_horarios.filter(
+                    matricula__activo=True,
+                    matricula__concluida=False
+                ).count()
+                
+                # Si estamos editando, excluir esta matrícula del conteo
+                if self.instance:
+                    ya_tiene_este_horario = MatriculaHorario.objects.filter(
+                        matricula=self.instance, horario=nuevo
+                    ).exists()
+                    if ya_tiene_este_horario:
+                        ocupacion -= 1  # Ya lo tiene, no cuenta como "nuevo"
+                
+                if ocupacion >= nuevo.cupo_maximo:
+                    raise serializers.ValidationError(
+                        f"El horario del {nuevo.get_dia_semana_display()} "
+                        f"{nuevo.hora_inicio}-{nuevo.hora_fin} no tiene cupos disponibles. "
+                        f"Cupo máximo: {nuevo.cupo_maximo}"
+                    )
+                
+                # Detectar conflictos con horarios existentes de otras matrículas
                 coincidencias = MatriculaHorario.objects.filter(
                     horario__dia_semana=nuevo.dia_semana,
                     horario__hora_inicio__lt=nuevo_fin,
