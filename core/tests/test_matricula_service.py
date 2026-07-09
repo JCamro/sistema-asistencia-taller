@@ -130,8 +130,9 @@ class TestMatriculaServiceCreate(TestCase):
         self.assertEqual(matricula.horarios.count(), 0)
 
     def test_create_matricula_con_horario_invalido(self):
-        """Crear matrícula con ID de horario inexistente → se ignora."""
+        """Crear matrícula con ID de horario inexistente → lanza ValidationError."""
         from core.models import Matricula
+        from django.core.exceptions import ValidationError
         
         datos = {
             'alumno': self.alumno,
@@ -147,17 +148,18 @@ class TestMatriculaServiceCreate(TestCase):
         # ID de horario que no existe
         horarios_ids = [99999]
         
-        matricula = MatriculaService.create(datos, horarios_ids)
+        with self.assertRaises(ValidationError) as ctx:
+            MatriculaService.create(datos, horarios_ids)
         
-        # La matrícula se crea igual
-        self.assertIsNotNone(matricula.id)
+        self.assertIn('99999', str(ctx.exception))
         
-        # No hay horarios asociados (el ID 99999 no existe)
-        self.assertEqual(matricula.horarios.count(), 0)
+        # La matrícula NO se crea (rollback)
+        self.assertEqual(Matricula.objects.filter(alumno=self.alumno, taller=self.taller).count(), 0)
 
     def test_create_matricula_con_horario_nulo_en_lista(self):
-        """Crear matrícula con lista que contiene None → se ignora."""
+        """Crear matrícula con lista que contiene None → lanza ValidationError."""
         from core.models import Matricula
+        from django.core.exceptions import ValidationError
         
         datos = {
             'alumno': self.alumno,
@@ -173,14 +175,8 @@ class TestMatriculaServiceCreate(TestCase):
         # Lista con None
         horarios_ids = [self.horario1.id, None]
         
-        # Debe manejar el None gracefully
-        try:
-            matricula = MatriculaService.create(datos, horarios_ids)
-            # Si llega hasta aquí, verificar que solo se associate el válido
-            self.assertEqual(matricula.horarios.count(), 1)
-        except (TypeError, AttributeError):
-            # Si falla por el None, el test pasa (el código debería manejar esto)
-            pass
+        with self.assertRaises(ValidationError):
+            MatriculaService.create(datos, horarios_ids)
 
 
 class TestMatriculaServiceUpdate(TestCase):

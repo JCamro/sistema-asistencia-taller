@@ -444,6 +444,8 @@ function MatriculasPage() {
       horariosExistentes = Array.isArray(data) ? data.map((mh: any) => mh.horario) : [];
     } catch (err) {
       console.error('Error loading horarios:', err);
+      showToast('Error al cargar horarios de la matrícula. Reintentá más tarde.', 'error');
+      return; // No abrir el modal si falla el fetch
     }
     
     setEditingId(matricula.id);
