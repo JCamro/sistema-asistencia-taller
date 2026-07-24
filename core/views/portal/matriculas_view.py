@@ -6,7 +6,7 @@ from django.db.models import Case, When, Value, CharField, Exists, OuterRef
 
 from core.models import Matricula, MatriculaHorario, ReciboMatricula
 from core.serializers.portal.portal_serializers import PortalMatriculaSerializer, PortalMatriculaHistorialSerializer
-from core.authentication import PortalJWTAuthentication
+from core.shared.authentication import PortalJWTAuthentication
 
 
 class PortalMatriculasView(APIView):

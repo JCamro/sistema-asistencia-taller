@@ -23,9 +23,6 @@ DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
 ALLOWED_HOSTS_STR = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver')
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_STR.split(',') if host.strip()]
 
-# Configuración personalizada
-PORCENTAJE_LOCAL = 40
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',

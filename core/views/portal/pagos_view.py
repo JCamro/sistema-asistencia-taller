@@ -5,7 +5,7 @@ from rest_framework.response import Response
 
 from core.models import Recibo, ReciboMatricula
 from core.serializers.portal.portal_serializers import PortalReciboSerializer
-from core.authentication import PortalJWTAuthentication
+from core.shared.authentication import PortalJWTAuthentication
 
 
 class PortalPagosView(APIView):

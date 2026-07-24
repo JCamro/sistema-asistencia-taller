@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from decimal import Decimal
 from ..models import Egreso, Profesor
-from ..serializer_helpers import get_profesor_nombre
+from ..shared.serializer_helpers import get_profesor_nombre
 
 
 class EgresoSerializer(serializers.ModelSerializer):

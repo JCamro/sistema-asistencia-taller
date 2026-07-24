@@ -4,7 +4,7 @@ from rest_framework.response import Response
 
 from core.models import Ciclo, Matricula
 from core.serializers.portal.portal_serializers import PortalCicloSerializer
-from core.authentication import PortalJWTAuthentication
+from core.shared.authentication import PortalJWTAuthentication
 
 
 class PortalCiclosView(APIView):

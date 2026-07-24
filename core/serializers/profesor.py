@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from ..models import Profesor
-from ..validators import alphanumeric_validator
-from ..serializer_helpers import get_nombre_completo
+from ..shared.validators import alphanumeric_validator
+from ..shared.serializer_helpers import get_nombre_completo
 
 
 class ProfesorSerializer(serializers.ModelSerializer):

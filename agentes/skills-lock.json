@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "skills": {
+    "database-schema-designer": {
+      "source": "softaworks/agent-toolkit",
+      "sourceType": "github",
+      "skillPath": "skills/database-schema-designer/SKILL.md",
+      "computedHash": "f23c909d45c6207e974dbce0db4c648de13d586abb37057cfec34d62f25bb526"
+    },
+    "django-expert": {
+      "source": "vintasoftware/django-ai-plugins",
+      "sourceType": "github",
+      "computedHash": "48918a76e3f070c0cbd13a70324bf1c4d2cc8251f33a27055a4e432312a3ac0c"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "516bd2154eb843a8240e43d5b285229129853114ad7075a5e141e1c08e408c84"
+    },
+    "software-architecture-design": {
+      "source": "vasilyu1983/ai-agents-public",
+      "sourceType": "github",
+      "skillPath": "frameworks/shared-skills/skills/software-architecture-design/SKILL.md",
+      "computedHash": "489a330442d0df096555d13a4d3c4e9ffa0511311b758d779e7eb277dc2cfad3"
+    },
+    "solidity-security": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "c8a45e24c3ce1a360eb8261f54539e325309f2fb2275a1f3d5d77c80568983f6"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "9fb08ab39585f6f770d0c1c735f83e619aba2089d7ad50ba2a305eff715e08b9"
+    }
+  }
+}

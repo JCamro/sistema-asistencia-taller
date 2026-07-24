@@ -11,7 +11,7 @@ from core.models import Horario, MatriculaHorario
 from core.serializers.portal_docente.serializers import (
     HorarioConAlumnosSerializer, _get_taller_color,
 )
-from core.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
+from core.shared.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 
 
 class ProfesorHorariosView(APIView):

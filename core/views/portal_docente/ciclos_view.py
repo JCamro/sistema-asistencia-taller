@@ -4,7 +4,7 @@ from rest_framework.response import Response
 
 from core.models import Ciclo
 from core.serializers.portal_docente.serializers import CicloBasicSerializer
-from core.authentication import ProfesorJWTAuthentication
+from core.shared.authentication import ProfesorJWTAuthentication
 
 
 class ProfesorCiclosView(APIView):

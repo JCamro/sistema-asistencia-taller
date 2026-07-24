@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.models import Alumno, Matricula, MatriculaHorario, Asistencia
-from core.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
+from core.shared.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 from core.serializers.portal_docente.serializers import AlumnoDetalleSerializer
 
 

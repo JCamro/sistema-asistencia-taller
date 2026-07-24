@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django.db.models import Q, Prefetch, Exists, OuterRef, Subquery, Max
 
 from core.models import Alumno, MatriculaHorario, Matricula, Asistencia
-from core.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
+from core.shared.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 from core.views.pagination import StandardResultsSetPagination
 
 

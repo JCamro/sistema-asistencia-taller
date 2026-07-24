@@ -12,7 +12,7 @@ from core.serializers.portal.auth_serializers import (
     PortalAlumnoSerializer,
     PortalCicloSerializer,
 )
-from core.throttles import PortalLoginRateThrottle
+from core.shared.throttles import PortalLoginRateThrottle
 
 
 class PortalLoginView(APIView):

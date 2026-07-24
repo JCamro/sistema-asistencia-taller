@@ -9,7 +9,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from core.models import Profesor, Ciclo
 from core.serializers.portal_docente.auth_serializers import ProfesorLoginSerializer
 from core.serializers.portal_docente.serializers import ProfesorSerializer, CicloBasicSerializer
-from core.throttles import PortalDocenteLoginRateThrottle
+from core.shared.throttles import PortalDocenteLoginRateThrottle
 
 
 class ProfesorLoginView(APIView):

@@ -10,7 +10,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 
 from ..models import HoraTrabajada, Asistencia, Horario, Profesor, Configuracion, Ciclo
-from ..constants import BASE_PAGO, TOPE_MAXIMO, PORCENTAJE_ADICIONAL
+from ..shared.constants import BASE_PAGO, TOPE_MAXIMO, PORCENTAJE_ADICIONAL
 
 
 class HoraTrabajadaService:

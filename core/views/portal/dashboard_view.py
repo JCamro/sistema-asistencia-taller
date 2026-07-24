@@ -12,7 +12,7 @@ from core.serializers.portal.portal_serializers import (
     PortalMatriculaSerializer,
     PortalReciboSerializer,
 )
-from core.authentication import PortalJWTAuthentication
+from core.shared.authentication import PortalJWTAuthentication
 
 
 class PortalDashboardView(APIView):

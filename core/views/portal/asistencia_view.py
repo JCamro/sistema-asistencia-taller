@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from core.models import Asistencia, Matricula
 from core.serializers.portal.portal_serializers import PortalAsistenciaSerializer
-from core.authentication import PortalJWTAuthentication
+from core.shared.authentication import PortalJWTAuthentication
 
 
 class PortalAsistenciasView(APIView):

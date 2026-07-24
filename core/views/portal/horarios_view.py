@@ -5,7 +5,7 @@ from rest_framework.response import Response
 
 from core.models import Horario, MatriculaHorario, Matricula
 from core.serializers.portal.portal_serializers import PortalHorarioSerializer
-from core.authentication import PortalJWTAuthentication
+from core.shared.authentication import PortalJWTAuthentication
 
 
 class PortalHorariosView(APIView):

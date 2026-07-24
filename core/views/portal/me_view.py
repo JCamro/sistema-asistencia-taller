@@ -4,7 +4,7 @@ from rest_framework.response import Response
 
 from core.models import Alumno
 from core.serializers.portal.portal_serializers import PortalAlumnoSerializer
-from core.authentication import PortalJWTAuthentication
+from core.shared.authentication import PortalJWTAuthentication
 
 
 class PortalMeView(APIView):

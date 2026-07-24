@@ -10,7 +10,7 @@ from decimal import Decimal
 from django.db import transaction
 
 from ..models import Asistencia, HoraTrabajada, PagoProfesor, PagoProfesorDetalle, Profesor, Configuracion
-from ..constants import BASE_PAGO, TOPE_MAXIMO, PORCENTAJE_ADICIONAL
+from ..shared.constants import BASE_PAGO, TOPE_MAXIMO, PORCENTAJE_ADICIONAL
 
 
 class PagoProfesorService:

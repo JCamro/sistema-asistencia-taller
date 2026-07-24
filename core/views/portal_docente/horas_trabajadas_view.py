@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from core.models.hora_trabajada import HoraTrabajada
 from core.serializers.portal_docente.serializers import HoraTrabajadaSerializer
-from core.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
+from core.shared.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 
 
 class ProfesorHorasTrabajadasView(APIView):

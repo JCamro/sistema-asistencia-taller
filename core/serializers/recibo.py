@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from ..models import Recibo, ReciboMatricula, Matricula
 from ..services import ReciboService
-from ..serializer_helpers import get_alumnos_nombres
+from ..shared.serializer_helpers import get_alumnos_nombres
 
 
 class ReciboMatriculaSerializer(serializers.ModelSerializer):

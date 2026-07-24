@@ -14,7 +14,7 @@ from core.serializers.portal_docente.serializers import (
     HorarioResumenSerializer,
     AlumnoAsistenciaGrupoSerializer,
 )
-from core.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
+from core.shared.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 
 
 class ProfesorAsistenciasView(APIView):

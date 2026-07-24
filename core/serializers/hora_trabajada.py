@@ -2,7 +2,7 @@ from rest_framework import serializers
 from datetime import date
 
 from ..models import HoraTrabajada, Profesor
-from ..serializer_helpers import get_profesor_nombre
+from ..shared.serializer_helpers import get_profesor_nombre
 
 
 class HoraTrabajadaListSerializer(serializers.ModelSerializer):

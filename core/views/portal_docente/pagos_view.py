@@ -4,7 +4,7 @@ from rest_framework.response import Response
 
 from core.models import PagoProfesor
 from core.serializers.portal_docente.serializers import PagoProfesorPortalSerializer
-from core.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
+from core.shared.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 
 
 class ProfesorPagosView(APIView):

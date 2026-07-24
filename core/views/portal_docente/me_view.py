@@ -4,7 +4,7 @@ from rest_framework.response import Response
 
 from core.models import Profesor
 from core.serializers.portal_docente.serializers import ProfesorSerializer
-from core.authentication import ProfesorJWTAuthentication
+from core.shared.authentication import ProfesorJWTAuthentication
 
 
 class ProfesorMeView(APIView):
