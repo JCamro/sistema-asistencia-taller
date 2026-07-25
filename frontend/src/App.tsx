@@ -1,8 +1,11 @@
 import { useState, useEffect, useMemo, memo } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CicloProvider, useCiclo } from './contexts/CicloContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { getApiBaseUrl } from './utils/api';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { useLoginForm } from './hooks/useLoginForm';
 import DashboardPage from './pages/Dashboard';
 import AlumnosPage from './pages/Alumnos';
 import ProfesoresPage from './pages/Profesores';
@@ -17,7 +20,6 @@ import EgresosPage from './pages/Egresos';
 import FinanzasPage from './pages/Finanzas';
 import ConfiguracionPreciosPage from './pages/ConfiguracionPrecios';
 import CalculadoraPreciosPage from './pages/CalculadoraPrecios';
-import HorasTrabajadasPage from './pages/HorasTrabajadas';
 
 const Loading = memo(function Loading() {
   return (
@@ -31,15 +33,16 @@ const Loading = memo(function Loading() {
 function Sidebar({ cicloNombre, abierto, onToggle }: { cicloNombre: string, abierto: boolean, onToggle: () => void }) {
   const { setCicloActual } = useCiclo();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     localStorage.clear();
-    window.location.href = '/login';
+    navigate('/login');
   };
 
   const handleCambiarCiclo = () => {
     setCicloActual(null);
-    window.location.href = '/';
+    navigate('/');
   };
 
   const NavLink = ({ item }: { item: { to: string; label: string; icon: string } }) => {
@@ -216,40 +219,26 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function Login() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const navigate = useNavigate();
+  const { register, handleSubmit, errors, isLoading, onSubmit } = useLoginForm();
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  
+
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (token) {
-      window.location.href = '/';
+      navigate('/');
     }
-  }, []);
+  }, [navigate]);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    const apiUrl = getApiBaseUrl();
+  const handleLogin = handleSubmit(async (data) => {
     try {
-      const res = await fetch(`${apiUrl}/api/auth/login/`, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ username, password }) 
-      });
-      if (!res.ok) throw new Error('Invalid');
-      const data = await res.json();
-      localStorage.setItem('access_token', data.access);
-      localStorage.setItem('refresh_token', data.refresh);
-      window.location.href = '/';
-    } catch { 
-      setError('Usuario o contraseña incorrectos'); 
-    } finally { 
-      setLoading(false); 
+      setError('');
+      await onSubmit(data);
+      navigate('/');
+    } catch {
+      setError('Usuario o contraseña incorrectos');
     }
-  };
+  });
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0a0a0a 0%, #141414 100%)', position: 'relative', overflow: 'hidden' }}>
@@ -266,9 +255,11 @@ function Login() {
           <p style={{ fontSize: '1.25rem', fontWeight: '700', color: '#c41e3a', fontFamily: "'Inter', sans-serif" }}>Elguera</p>
         </div>
         {error && <div style={{ padding: '0.75rem', background: 'rgba(196, 30, 58, 0.15)', color: '#e63950', borderRadius: '8px', marginBottom: '1rem', border: '1px solid rgba(196, 30, 58, 0.3)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{error}</div>}
-        <input type="text" placeholder="Usuario" value={username} onChange={e => setUsername(e.target.value)} required style={{ width: '100%', padding: '0.875rem 1rem', marginBottom: '1rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.03)', color: '#ffffff', fontSize: '1rem' }} />
-        <input type="password" placeholder="Contraseña" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '0.875rem 1rem', marginBottom: '1.25rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.03)', color: '#ffffff', fontSize: '1rem' }} />
-        <button type="submit" disabled={loading} style={{ width: '100%', padding: '0.875rem', background: loading ? 'rgba(212, 175, 55, 0.5)' : 'linear-gradient(135deg, #d4af37 0%, #b8962e 100%)', color: '#0a0a0a', border: 'none', borderRadius: '10px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '1rem', boxShadow: loading ? 'none' : '0 4px 12px rgba(212, 175, 55, 0.3)' }}>{loading ? 'Cargando...' : 'Iniciar sesión'}</button>
+        {errors.username && <div style={{ padding: '0.5rem 0.75rem', background: 'rgba(196, 30, 58, 0.15)', color: '#e63950', borderRadius: '8px', marginBottom: '0.75rem', border: '1px solid rgba(196, 30, 58, 0.3)', fontSize: '0.875rem' }}>{errors.username.message}</div>}
+        <input {...register('username')} type="text" placeholder="Usuario" style={{ width: '100%', padding: '0.875rem 1rem', marginBottom: '1rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.03)', color: '#ffffff', fontSize: '1rem' }} />
+        {errors.password && <div style={{ padding: '0.5rem 0.75rem', background: 'rgba(196, 30, 58, 0.15)', color: '#e63950', borderRadius: '8px', marginBottom: '0.75rem', border: '1px solid rgba(196, 30, 58, 0.3)', fontSize: '0.875rem' }}>{errors.password.message}</div>}
+        <input {...register('password')} type="password" placeholder="Contraseña" style={{ width: '100%', padding: '0.875rem 1rem', marginBottom: '1.25rem', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.03)', color: '#ffffff', fontSize: '1rem' }} />
+        <button type="submit" disabled={isLoading} style={{ width: '100%', padding: '0.875rem', background: isLoading ? 'rgba(212, 175, 55, 0.5)' : 'linear-gradient(135deg, #d4af37 0%, #b8962e 100%)', color: '#0a0a0a', border: 'none', borderRadius: '10px', cursor: isLoading ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '1rem', boxShadow: isLoading ? 'none' : '0 4px 12px rgba(212, 175, 55, 0.3)' }}>{isLoading ? 'Cargando...' : 'Iniciar sesión'}</button>
       </form>
     </div>
   );
@@ -765,32 +756,41 @@ const SeleccionCiclosMemo = memo(SeleccionCiclos);
 
 const DashboardMemo = memo(DashboardPage);
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false },
+  },
+});
+
 export default function App() {
   return (
     <ToastProvider>
-    <CicloProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginMemo />} />
-          <Route path="/" element={<ProtectedRoute><SeleccionCiclosMemo /></ProtectedRoute>} />
-          <Route path="/dashboard" element={<ProtectedRoute><DashboardLayoutMemo><DashboardMemo /></DashboardLayoutMemo></ProtectedRoute>} />
-          <Route path="/alumnos" element={<ProtectedRoute><DashboardLayoutMemo><AlumnosPage /></DashboardLayoutMemo></ProtectedRoute>} />
-          <Route path="/profesores" element={<ProtectedRoute><DashboardLayoutMemo><ProfesoresPage /></DashboardLayoutMemo></ProtectedRoute>} />
-          <Route path="/talleres" element={<ProtectedRoute><DashboardLayoutMemo><TalleresPage /></DashboardLayoutMemo></ProtectedRoute>} />
-          <Route path="/talleres/:tallerId" element={<ProtectedRoute><DashboardLayoutMemo><TallerDetalle /></DashboardLayoutMemo></ProtectedRoute>} />
-          <Route path="/horarios" element={<ProtectedRoute><DashboardLayoutMemo><HorariosPage /></DashboardLayoutMemo></ProtectedRoute>} />
-          <Route path="/matriculas" element={<ProtectedRoute><DashboardLayoutMemo><MatriculasPage /></DashboardLayoutMemo></ProtectedRoute>} />
-          <Route path="/asistencias" element={<ProtectedRoute><DashboardLayoutMemo><AsistenciasPage /></DashboardLayoutMemo></ProtectedRoute>} />
-          <Route path="/recibos" element={<ProtectedRoute><DashboardLayoutMemo><RecibosPage /></DashboardLayoutMemo></ProtectedRoute>} />
-          <Route path="/horas-trabajadas" element={<ProtectedRoute><DashboardLayoutMemo><HorasTrabajadasPage /></DashboardLayoutMemo></ProtectedRoute>} />
-          <Route path="/egresos" element={<ProtectedRoute><DashboardLayoutMemo><EgresosPage /></DashboardLayoutMemo></ProtectedRoute>} />
-          <Route path="/finanzas" element={<ProtectedRoute><DashboardLayoutMemo><FinanzasPage /></DashboardLayoutMemo></ProtectedRoute>} />
-          <Route path="/pagos-profesores" element={<ProtectedRoute><DashboardLayoutMemo><PagosProfesoresPage /></DashboardLayoutMemo></ProtectedRoute>} />
-          <Route path="/configuracion-precios" element={<ProtectedRoute><DashboardLayoutMemo><ConfiguracionPreciosPage /></DashboardLayoutMemo></ProtectedRoute>} />
-          <Route path="/calculadora-precios" element={<ProtectedRoute><DashboardLayoutMemo><CalculadoraPreciosPage /></DashboardLayoutMemo></ProtectedRoute>} />
-        </Routes>
+        <CicloProvider>
+          <QueryClientProvider client={queryClient}>
+            <ErrorBoundary>
+              <Routes>
+                <Route path="/login" element={<LoginMemo />} />
+                <Route path="/" element={<ProtectedRoute><SeleccionCiclosMemo /></ProtectedRoute>} />
+                <Route path="/dashboard" element={<ProtectedRoute><DashboardLayoutMemo><DashboardMemo /></DashboardLayoutMemo></ProtectedRoute>} />
+                <Route path="/alumnos" element={<ProtectedRoute><DashboardLayoutMemo><AlumnosPage /></DashboardLayoutMemo></ProtectedRoute>} />
+                <Route path="/profesores" element={<ProtectedRoute><DashboardLayoutMemo><ProfesoresPage /></DashboardLayoutMemo></ProtectedRoute>} />
+                <Route path="/talleres" element={<ProtectedRoute><DashboardLayoutMemo><TalleresPage /></DashboardLayoutMemo></ProtectedRoute>} />
+                <Route path="/talleres/:tallerId" element={<ProtectedRoute><DashboardLayoutMemo><TallerDetalle /></DashboardLayoutMemo></ProtectedRoute>} />
+                <Route path="/horarios" element={<ProtectedRoute><DashboardLayoutMemo><HorariosPage /></DashboardLayoutMemo></ProtectedRoute>} />
+                <Route path="/matriculas" element={<ProtectedRoute><DashboardLayoutMemo><MatriculasPage /></DashboardLayoutMemo></ProtectedRoute>} />
+                <Route path="/asistencias" element={<ProtectedRoute><DashboardLayoutMemo><AsistenciasPage /></DashboardLayoutMemo></ProtectedRoute>} />
+                <Route path="/recibos" element={<ProtectedRoute><DashboardLayoutMemo><RecibosPage /></DashboardLayoutMemo></ProtectedRoute>} />
+                <Route path="/egresos" element={<ProtectedRoute><DashboardLayoutMemo><EgresosPage /></DashboardLayoutMemo></ProtectedRoute>} />
+                <Route path="/finanzas" element={<ProtectedRoute><DashboardLayoutMemo><FinanzasPage /></DashboardLayoutMemo></ProtectedRoute>} />
+                <Route path="/pagos-profesores" element={<ProtectedRoute><DashboardLayoutMemo><PagosProfesoresPage /></DashboardLayoutMemo></ProtectedRoute>} />
+                <Route path="/configuracion-precios" element={<ProtectedRoute><DashboardLayoutMemo><ConfiguracionPreciosPage /></DashboardLayoutMemo></ProtectedRoute>} />
+                <Route path="/calculadora-precios" element={<ProtectedRoute><DashboardLayoutMemo><CalculadoraPreciosPage /></DashboardLayoutMemo></ProtectedRoute>} />
+              </Routes>
+            </ErrorBoundary>
+          </QueryClientProvider>
+        </CicloProvider>
       </BrowserRouter>
-    </CicloProvider>
     </ToastProvider>
   );
 }

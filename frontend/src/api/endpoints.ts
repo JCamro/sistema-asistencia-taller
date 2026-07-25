@@ -243,11 +243,6 @@ export interface ResumenMensual {
 }
 
 // API Functions
-export const login = async (username: string, password: string) => {
-  const response = await api.post('/auth/login/', { username, password });
-  return response.data;
-};
-
 export const logout = async () => {
   const refreshToken = localStorage.getItem('refresh_token');
   if (refreshToken) {

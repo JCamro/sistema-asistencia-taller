@@ -1,9 +1,12 @@
 import { useState, useEffect, memo, useCallback, useMemo } from 'react';
 import { useCiclo } from '../contexts/CicloContext';
 import { useToast } from '../contexts/ToastContext';
-import ConfirmModal from '../components/ui/ConfirmModal';
+import PageHeader from '../components/ui/PageHeader';
 import { getApiBaseUrl } from '../utils/api';
-import { useWindowWidth } from '../hooks/useWindowWidth';
+import AsistenciasFilterBar from './AsistenciasFilterBar';
+import AsistenciaContenido, { type AsistenciaEdit } from './AsistenciaContenido';
+import AsistenciaRecuperacionModal from './AsistenciaRecuperacionModal';
+import AsistenciaEditModal from './AsistenciaEditModal';
 
 interface Horario {
   id: number;
@@ -16,11 +19,6 @@ interface Horario {
   hora_inicio: string;
   hora_fin: string;
   activo: boolean;
-}
-
-interface TallerOption {
-  id: number;
-  nombre: string;
 }
 
 interface AlumnoHorario {
@@ -48,22 +46,11 @@ interface Asistencia {
   observacion: string;
   es_recuperacion: boolean;
   activo: boolean;
-  horario_dia?: string;
-  horario_hora_inicio?: string;
-  horario_hora_fin?: string;
 }
-
-const ESTADOS = [
-  { value: 'asistio', label: 'Asistió', color: '#059669', bg: '#d1fae5' },
-  { value: 'falta', label: 'Falta', color: '#d97706', bg: '#fef3c7' },
-  { value: 'falta_grave', label: 'Falta Grave', color: '#dc2626', bg: '#fee2e2' },
-];
 
 function AsistenciasPage() {
   const { cicloActual } = useCiclo();
   const { showToast, showApiError } = useToast();
-  const windowWidth = useWindowWidth();
-  const isMobile = windowWidth < 768;
   const apiBase = getApiBaseUrl();
   const [horarios, setHorarios] = useState<Horario[]>([]);
   const [asistencias, setAsistencias] = useState<Asistencia[]>([]);
@@ -81,10 +68,7 @@ function AsistenciasPage() {
   const [profesores, setProfesores] = useState<any[]>([]);
   const [profesorSeleccionado, setProfesorSeleccionado] = useState<number | null>(null);
   const [editandoAsistencia, setEditandoAsistencia] = useState<Asistencia | null>(null);
-  const [editandoProfesorOriginal, setEditandoProfesorOriginal] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-  const [showConfirmProfesor1, setShowConfirmProfesor1] = useState(false);
-  const [showConfirmProfesor2, setShowConfirmProfesor2] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!cicloActual) return;
@@ -94,10 +78,7 @@ function AsistenciasPage() {
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/horarios/`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/profesores/`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
-      const [horariosData, profesData] = await Promise.all([
-        horariosRes.json(),
-        profesRes.json(),
-      ]);
+      const [horariosData, profesData] = await Promise.all([horariosRes.json(), profesRes.json()]);
       setHorarios((horariosData.results || horariosData).filter((h: Horario) => h.activo));
       setProfesores((profesData.results || profesData).filter((p: any) => p.activo));
     } catch (err) {
@@ -105,7 +86,7 @@ function AsistenciasPage() {
     } finally {
       setLoading(false);
     }
-  }, [cicloActual]);
+  }, [cicloActual, apiBase]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -114,37 +95,33 @@ function AsistenciasPage() {
     const token = localStorage.getItem('access_token');
     fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
       headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.json()).then(data => {
+    }).then((r) => r.json()).then((data) => {
       setAsistencias(data.results || data);
     });
-  }, [cicloActual, fecha]);
+  }, [cicloActual, fecha, apiBase]);
 
   const diaSemana = useMemo(() => {
     const jsDay = new Date(fecha + 'T00:00:00').getDay();
     return (jsDay + 6) % 7;
   }, [fecha]);
 
-  const horariosDelDia = useMemo(() => {
-    return horarios.filter(h => Number(h.dia_semana) === diaSemana);
-  }, [horarios, diaSemana]);
-
-  const talleres = useMemo<TallerOption[]>(() => {
+  const { horariosDelDia, talleres } = useMemo(() => {
+    const delDia = horarios.filter((h) => Number(h.dia_semana) === diaSemana);
     const mapa = new Map<number, string>();
-    for (const h of horariosDelDia) {
-      if (!mapa.has(h.taller)) {
-        mapa.set(h.taller, h.taller_nombre);
-      }
+    for (const h of delDia) {
+      if (!mapa.has(h.taller)) mapa.set(h.taller, h.taller_nombre);
     }
-    return Array.from(mapa, ([id, nombre]) => ({ id, nombre }))
-      .sort((a, b) => a.nombre.localeCompare(b.nombre));
-  }, [horariosDelDia]);
+    return {
+      horariosDelDia: delDia,
+      talleres: Array.from(mapa, ([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    };
+  }, [horarios, diaSemana]);
 
   const horariosFiltrados = useMemo(() => {
     if (!tallerSeleccionado) return horariosDelDia;
-    return horariosDelDia.filter(h => h.taller === tallerSeleccionado);
+    return horariosDelDia.filter((h) => h.taller === tallerSeleccionado);
   }, [horariosDelDia, tallerSeleccionado]);
 
-  // Fetch alumnos para todos los horarios del día
   const fetchTodosAlumnos = useCallback(async () => {
     if (!cicloActual || horariosFiltrados.length === 0 || !fecha) return;
     setLoadingTodosAlumnos(true);
@@ -155,8 +132,7 @@ function AsistenciasPage() {
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) return { horarioId: h.id, alumnos: [] };
         const data = await res.json();
-        const alumnos = Array.isArray(data) ? data : (data.results || []);
-        return { horarioId: h.id, alumnos };
+        return { horarioId: h.id, alumnos: Array.isArray(data) ? data : (data.results || []) };
       });
       const results = await Promise.all(promises);
       const mapa = new Map<number, AlumnoHorario[]>();
@@ -170,20 +146,18 @@ function AsistenciasPage() {
   }, [cicloActual, horariosFiltrados, fecha, apiBase]);
 
   useEffect(() => {
-    if (tallerSeleccionado && !talleres.some(t => t.id === tallerSeleccionado)) {
+    if (tallerSeleccionado && !talleres.some((t) => t.id === tallerSeleccionado)) {
       setTallerSeleccionado(null);
       setHorarioSeleccionado(null);
-    } else if (horarioSeleccionado && !horariosFiltrados.some(h => h.id === horarioSeleccionado)) {
+    } else if (horarioSeleccionado && !horariosFiltrados.some((h) => h.id === horarioSeleccionado)) {
       setHorarioSeleccionado(null);
     }
   }, [talleres, tallerSeleccionado, horarioSeleccionado, horariosFiltrados]);
 
   useEffect(() => {
     if (horarioSeleccionado) {
-      const horario = horarios.find(h => h.id === horarioSeleccionado);
-      if (horario) {
-        setProfesorSeleccionado(horario.profesor);
-      }
+      const horario = horarios.find((h) => h.id === horarioSeleccionado);
+      if (horario) setProfesorSeleccionado(horario.profesor);
     }
   }, [horarioSeleccionado, horarios]);
 
@@ -201,47 +175,33 @@ function AsistenciasPage() {
         return;
       }
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setAlumnosHorario(data);
-      } else if (data.results) {
-        setAlumnosHorario(data.results);
-      } else {
-        console.error('Data format unexpected:', data);
-        setAlumnosHorario([]);
-      }
+      if (Array.isArray(data)) setAlumnosHorario(data);
+      else if (data.results) setAlumnosHorario(data.results);
+      else setAlumnosHorario([]);
     } catch (err) {
       console.error('Error:', err);
       setAlumnosHorario([]);
     } finally {
       setLoadingAlumnos(false);
     }
-  }, [cicloActual, horarioSeleccionado, fecha]);
+  }, [cicloActual, horarioSeleccionado, fecha, apiBase]);
 
   useEffect(() => {
-    if (horarioSeleccionado && fecha) {
-      fetchAlumnosHorario();
-    }
+    if (horarioSeleccionado && fecha) fetchAlumnosHorario();
   }, [horarioSeleccionado, fecha, fetchAlumnosHorario]);
 
-  // Fetch alumnos para todos los horarios cuando cambia la fecha o los filtros
   useEffect(() => {
-    if (fecha && horariosFiltrados.length > 0) {
-      fetchTodosAlumnos();
-    }
+    if (fecha && horariosFiltrados.length > 0) fetchTodosAlumnos();
   }, [fecha, horariosFiltrados, fetchTodosAlumnos]);
 
-  const handleCambiarEstado = async (alumno: AlumnoHorario, nuevoEstado: string, horarioId?: number, profesorId?: number) => {
-    const horarioActual = horarioId || horarioSeleccionado;
-    const profesorActual = profesorId || profesorSeleccionado;
-    
-    if (!cicloActual || !profesorActual) {
+  const handleCambiarEstado = async (alumno: AlumnoHorario, nuevoEstado: string) => {
+    if (!cicloActual || !profesorSeleccionado) {
       showToast('Seleccionar un horario primero', 'warning');
       return;
     }
     setSaving(true);
     const token = localStorage.getItem('access_token');
     const horaActual = new Date().toTimeString().slice(0, 5);
-
     try {
       let res;
       if (alumno.asistencia_id) {
@@ -256,15 +216,14 @@ function AsistenciasPage() {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             matricula: alumno.matricula_id,
-            horario: horarioActual,
-            profesor: profesorActual,
+            horario: horarioSeleccionado,
+            profesor: profesorSeleccionado,
             fecha: fecha,
             hora: horaActual,
             estado: nuevoEstado,
           }),
         });
       }
-      
       if (!res.ok) {
         const errorData = await res.json();
         console.error('Error API:', errorData);
@@ -272,12 +231,9 @@ function AsistenciasPage() {
         setSaving(false);
         return;
       }
-      
       await fetchAlumnosHorario();
       await fetchTodosAlumnos();
-      const resList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const resList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await resList.json();
       setAsistencias((data.results || data).filter((a: Asistencia) => a.activo !== false));
     } catch (err) {
@@ -292,7 +248,6 @@ function AsistenciasPage() {
     if (!cicloActual || !horarioSeleccionado || !busquedaRecuperacion) return;
     const token = localStorage.getItem('access_token');
     try {
-      // Usar el endpoint de recuperables que filtra correctamente
       const res = await fetch(
         `${apiBase}/api/ciclos/${cicloActual.id}/asistencias/recuperables/?horario_id=${horarioSeleccionado}&fecha=${fecha}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -303,7 +258,6 @@ function AsistenciasPage() {
         return;
       }
       const data = await res.json();
-      // Filtrar por búsqueda del usuario
       const filtrados = (data || []).filter((a: any) =>
         a.alumno_nombre.toLowerCase().includes(busquedaRecuperacion.toLowerCase())
       );
@@ -317,10 +271,8 @@ function AsistenciasPage() {
     if (!cicloActual || !horarioSeleccionado || !profesorSeleccionado || !alumno.matricula_id) return;
     setSaving(true);
     const token = localStorage.getItem('access_token');
-
     try {
       const horaActual = new Date().toTimeString().slice(0, 5);
-
       const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -334,7 +286,6 @@ function AsistenciasPage() {
           es_recuperacion: true,
         }),
       });
-
       if (!res.ok) {
         const errorData = await res.json();
         console.error('Error API:', errorData);
@@ -342,15 +293,12 @@ function AsistenciasPage() {
         setSaving(false);
         return;
       }
-
       setShowRecuperacion(false);
       setBusquedaRecuperacion('');
       setResultadosBusqueda([]);
       await fetchAlumnosHorario();
       await fetchTodosAlumnos();
-      const resList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const resList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await resList.json();
       setAsistencias((data.results || data).filter((a: Asistencia) => a.activo !== false));
     } catch (err) {
@@ -361,29 +309,32 @@ function AsistenciasPage() {
     }
   };
 
-  const handleEditAsistencia = (asistencia: Asistencia) => {
-    setEditandoAsistencia(asistencia);
-    setEditandoProfesorOriginal(asistencia.profesor);
+  const handleEditAsistencia = (asistencia: AsistenciaEdit) => {
+    setEditandoAsistencia(asistencia as Asistencia);
   };
 
-  const guardarEdicionAsistencia = async () => {
-    if (!editandoAsistencia || !cicloActual) return;
+  const handleEditAsistenciaFromAlumno = (alumno: AlumnoHorario) => {
+    if (!alumno.asistencia_id) return;
+    const asistencia = asistencias.find((a) => a.id === alumno.asistencia_id);
+    if (asistencia) handleEditAsistencia(asistencia);
+  };
+
+  const guardarEdicionAsistencia = async (asistencia: Asistencia) => {
+    if (!cicloActual) return;
     setSaving(true);
     const token = localStorage.getItem('access_token');
     const horaActual = new Date().toTimeString().slice(0, 5);
-
     try {
-      const res = await fetch(`${apiBase}/api/asistencias/${editandoAsistencia.id}/`, {
+      const res = await fetch(`${apiBase}/api/asistencias/${asistencia.id}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          estado: editandoAsistencia.estado,
-          observacion: editandoAsistencia.observacion,
+          estado: asistencia.estado,
+          observacion: asistencia.observacion,
           hora: horaActual,
-          profesor: editandoAsistencia.profesor,
+          profesor: asistencia.profesor,
         }),
       });
-      
       if (!res.ok) {
         const errorData = await res.json();
         console.error('Error API:', errorData);
@@ -391,13 +342,9 @@ function AsistenciasPage() {
         setSaving(false);
         return;
       }
-      
       setEditandoAsistencia(null);
-      setEditandoProfesorOriginal(null);
       await fetchAlumnosHorario();
-      const resList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const resList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await resList.json();
       setAsistencias(data.results || data);
     } catch (err) {
@@ -407,28 +354,6 @@ function AsistenciasPage() {
       setSaving(false);
     }
   };
-
-  const getEstadoInfo = (estado: string | null) => {
-    if (!estado) return { label: 'Sin registrar', color: '#6b7280', bg: '#f3f4f6' };
-    return ESTADOS.find(e => e.value === estado) || { label: estado, color: '#6b7280', bg: '#f3f4f6' };
-  };
-
-  const estadisticas = useMemo(() => {
-    const filtro = (a: Asistencia) => 
-      a.horario === horarioSeleccionado && a.fecha === fecha;
-    const asistenciaHorario = asistencias.filter(filtro);
-    return {
-      total: asistenciaHorario.length,
-      asistio: asistenciaHorario.filter(a => a.estado === 'asistio').length,
-      falta: asistenciaHorario.filter(a => a.estado === 'falta').length,
-      falta_grave: asistenciaHorario.filter(a => a.estado === 'falta_grave').length,
-    };
-  }, [asistencias, horarioSeleccionado, fecha]);
-
-  const historialAsistencias = useMemo(() => {
-    if (!horarioSeleccionado || !fecha) return [];
-    return asistencias.filter(a => a.horario === horarioSeleccionado && a.fecha === fecha);
-  }, [asistencias, horarioSeleccionado, fecha]);
 
   if (loading) {
     return (
@@ -440,496 +365,60 @@ function AsistenciasPage() {
   }
 
   return (
-    <div style={{maxWidth:'1100px',margin:'0 auto'}}>
-      <div style={{ marginBottom: '1.75rem' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
-          <h1 style={{ fontSize: '1.625rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Asistencias</h1>
-          <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#b59410', background: '#fef9e7', padding: '0.2rem 0.65rem', borderRadius: '9999px' }}>{cicloActual?.nombre}</span>
-        </div>
-        <div style={{ height: 3, width: 48, background: 'linear-gradient(90deg, #d4af37, #f0d878)', borderRadius: 2, marginTop: '0.5rem' }} />
-      </div>
+    <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+      <PageHeader title="Asistencias" cicloNombre={cicloActual?.nombre} />
 
-      <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #f1f5f9', padding: '1.25rem', marginBottom: '1.25rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: isMobile ? '0.75rem' : '1rem', alignItems: 'end' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Fecha</label>
-            <input
-              type="date"
-              value={fecha}
-              onChange={(e) => { setFecha(e.target.value); setHorarioSeleccionado(null); }}
-              style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Taller</label>
-            <select
-              value={tallerSeleccionado || ''}
-              onChange={(e) => {
-                const val = e.target.value ? parseInt(e.target.value) : null;
-                setTallerSeleccionado(val);
-                setHorarioSeleccionado(null);
-              }}
-              style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
-            >
-              <option value="">Seleccionar taller</option>
-              {talleres.map((t) => (
-                <option key={t.id} value={t.id}>{t.nombre}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Horario</label>
-            <select
-              value={horarioSeleccionado || ''}
-              onChange={(e) => setHorarioSeleccionado(e.target.value ? parseInt(e.target.value) : null)}
-              disabled={!tallerSeleccionado}
-              style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', opacity: tallerSeleccionado ? 1 : 0.5 }}
-            >
-              <option value="">{tallerSeleccionado ? 'Seleccionar horario' : 'Primero seleccione un taller'}</option>
-              {horariosFiltrados.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.dia_nombre} {h.hora_inicio?.substring(0, 5)} - {h.hora_fin?.substring(0, 5)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>
-              {horarioSeleccionado ? 'Docente (asignado al horario)' : 'Profesor'}
-            </label>
-            <select
-              value={profesorSeleccionado || ''}
-              onChange={(e) => setProfesorSeleccionado(e.target.value ? parseInt(e.target.value) : null)}
-              disabled={!!horarioSeleccionado}
-              style={{ 
-                width: '100%', 
-                padding: '0.625rem', 
-                border: '1px solid #d1d5db', 
-                borderRadius: '8px', 
-                fontSize: '0.875rem',
-                opacity: horarioSeleccionado ? 0.7 : 1,
-                background: horarioSeleccionado ? '#f9fafb' : 'white',
-              }}
-            >
-              <option value="">{horarioSeleccionado ? 'Docente del horario' : 'Seleccionar profesor'}</option>
-              {profesores.map((p) => (
-                <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
+      <AsistenciasFilterBar
+        fecha={fecha}
+        onFechaChange={setFecha}
+        tallerSeleccionado={tallerSeleccionado}
+        onTallerChange={setTallerSeleccionado}
+        horarioSeleccionado={horarioSeleccionado}
+        onHorarioChange={setHorarioSeleccionado}
+        profesorSeleccionado={profesorSeleccionado}
+        onProfesorChange={setProfesorSeleccionado}
+        talleres={talleres}
+        horariosFiltrados={horariosFiltrados}
+        profesores={profesores}
+      />
 
-      {/* Vista grouped por taller - minimalista y funcional */}
-      {tallerSeleccionado && !horarioSeleccionado && horariosFiltrados.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {loadingTodosAlumnos ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Cargando...</div>
-          ) : (
-            horariosFiltrados
-              .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio))
-              .map((horario) => {
-                const alumnosDelHorario = alumnosPorHorario.get(horario.id) || [];
-                const countAsistio = alumnosDelHorario.filter(a => a.estado === 'asistio').length;
-                const countFalta = alumnosDelHorario.filter(a => a.estado === 'falta' || a.estado === 'falta_grave').length;
-                const countPendiente = alumnosDelHorario.length - countAsistio - countFalta;
-                
-                return (
-                  <div key={horario.id} style={{ 
-                    background: 'white', 
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    overflow: 'hidden'
-                  }}>
-                    {/* Header simple */}
-                    <div style={{ 
-                      padding: '0.625rem 1rem', 
-                      background: '#f8fafc',
-                      borderBottom: '1px solid #e5e7eb',
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <span style={{ 
-                          fontWeight: '700',
-                          color: '#1e293b',
-                          fontSize: '0.9rem',
-                          fontFamily: 'monospace'
-                        }}>
-                          {horario.hora_inicio?.substring(0, 5)}
-                        </span>
-                        <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
-                          {horario.profesor_nombre}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem' }}>
-                        <span style={{ color: '#059669', fontWeight: '600' }}>{countAsistio}✔</span>
-                        <span style={{ color: '#dc2626', fontWeight: '600' }}>{countFalta}✘</span>
-                        {countPendiente > 0 && (
-                          <span style={{ color: '#d97706', fontWeight: '600' }}>{countPendiente}○</span>
-                        )}
-                      </div>
-                    </div>
-                    {/* Lista de alumnos - chips simples */}
-                    {alumnosDelHorario.length === 0 ? (
-                      <div style={{ padding: '0.75rem 1rem', color: '#9ca3af', fontSize: '0.8rem' }}>
-                        Sin alumnos
-                      </div>
-                    ) : (
-                      <div style={{ 
-                        display: 'flex', 
-                        flexWrap: 'wrap', 
-                        gap: '0.375rem', 
-                        padding: '0.625rem 1rem'
-                      }}>
-                        {alumnosDelHorario.map((alumno) => {
-                          const estadoInfo = getEstadoInfo(alumno.estado);
-                          return (
-                            <div
-                              key={alumno.matricula_id}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.375rem',
-                                padding: '0.25rem 0.625rem',
-                                background: '#f1f5f9',
-                                borderRadius: '4px',
-                                fontSize: '0.75rem',
-                              }}
-                            >
-                              <span style={{ color: '#334155' }}>{alumno.alumno_nombre}</span>
-                              <span
-                                style={{
-                                  fontWeight: '600',
-                                  color: estadoInfo.color,
-                                }}
-                              >
-                                {estadoInfo.label === 'Asistió' ? '✓' : 
-                                 estadoInfo.label === 'Falta' ? '✘' : 
-                                 estadoInfo.label === 'Falta Grave' ? '✘✘' : '○'}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-          )}
-        </div>
-      )}
+      <AsistenciaContenido
+        loading={loading}
+        fecha={fecha}
+        tallerSeleccionado={tallerSeleccionado}
+        horarioSeleccionado={horarioSeleccionado}
+        horariosDelDia={horariosDelDia}
+        horariosFiltrados={horariosFiltrados}
+        alumnosHorario={alumnosHorario}
+        loadingAlumnos={loadingAlumnos}
+        saving={saving}
+        asistencias={asistencias}
+        alumnosPorHorario={alumnosPorHorario}
+        loadingTodosAlumnos={loadingTodosAlumnos}
+        onEstadoChange={handleCambiarEstado}
+        onEditAsistenciaFromAlumno={handleEditAsistenciaFromAlumno}
+        onEditAsistencia={handleEditAsistencia}
+        onOpenRecuperacion={() => setShowRecuperacion(true)}
+      />
 
-      {!tallerSeleccionado && horariosDelDia.length > 0 && (
-        <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-          Seleccioná un taller para ver los alumnos del día
-        </div>
-      )}
+      <AsistenciaRecuperacionModal
+        isOpen={showRecuperacion}
+        busqueda={busquedaRecuperacion}
+        onBusquedaChange={setBusquedaRecuperacion}
+        onSearch={buscarAlumnoRecuperacion}
+        resultados={resultadosBusqueda}
+        onSeleccionar={agregarRecuperacion}
+        onClose={() => setShowRecuperacion(false)}
+      />
 
-      {horariosDelDia.length === 0 && !loading && (
-        <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-          No hay horarios programados para este día
-        </div>
-      )}
-
-      {horarioSeleccionado && (
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: isMobile ? '1rem' : '1.5rem' }}>
-          <div>
-            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-              <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#111827' }}>Lista de Alumnos</h3>
-                  {horarioSeleccionado && horariosFiltrados.length > 0 && (
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                      {horariosFiltrados.find(h => h.id === horarioSeleccionado)?.dia_nombre} {horariosFiltrados.find(h => h.id === horarioSeleccionado)?.hora_inicio?.substring(0, 5)} - {horariosFiltrados.find(h => h.id === horarioSeleccionado)?.hora_fin?.substring(0, 5)}
-                    </p>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <span style={{ padding: '0.25rem 0.75rem', background: '#d1fae5', color: '#059669', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '600' }}>
-                    {estadisticas.asistio} Asistieron
-                  </span>
-                  <span style={{ padding: '0.25rem 0.75rem', background: '#fef3c7', color: '#d97706', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '600' }}>
-                    {estadisticas.falta} Faltas
-                  </span>
-                  <span style={{ padding: '0.25rem 0.75rem', background: '#fee2e2', color: '#dc2626', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '600' }}>
-                    {estadisticas.falta_grave} F. Grave
-                  </span>
-                </div>
-              </div>
-
-              {loadingAlumnos ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>Cargando...</div>
-              ) : alumnosHorario.length === 0 ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>No hay alumnos matriculados en este horario</div>
-              ) : (
-                <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                  {alumnosHorario.map((alumno) => {
-                    const estadoInfo = getEstadoInfo(alumno.estado);
-                    const tieneAsistencia = !!alumno.asistencia_id;
-                    return (
-                      <div key={alumno.matricula_id} style={{ padding: '1rem', borderBottom: '1px solid #f3f4f6' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                          <div>
-                            <div style={{ fontWeight: '600', color: '#111827' }}>{alumno.alumno_nombre}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{alumno.sesiones_disponibles} sesiones disponibles</div>
-                          </div>
-                          <span 
-                            onClick={() => {
-                              if (alumno.asistencia_id) {
-                                const asistencia = historialAsistencias.find(a => a.id === alumno.asistencia_id);
-                                if (asistencia) handleEditAsistencia(asistencia);
-                              }
-                            }}
-                            style={{ 
-                              padding: '0.25rem 0.75rem', 
-                              borderRadius: '6px', 
-                              fontSize: '0.75rem', 
-                              fontWeight: '600', 
-                              background: estadoInfo.bg, 
-                              color: estadoInfo.color,
-                              cursor: tieneAsistencia ? 'pointer' : 'default',
-                              border: tieneAsistencia ? '2px solid' : 'none',
-                              borderColor: tieneAsistencia ? estadoInfo.color : 'transparent'
-                            }}
-                          >
-                            {estadoInfo.label}
-                          </span>
-                        </div>
-                        {tieneAsistencia && (
-                          <div style={{ fontSize: '0.65rem', color: '#9ca3af', textAlign: 'center', marginBottom: '0.5rem' }}>
-                            Editar desde el panel derecho
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          {ESTADOS.map((estado) => (
-                            <button
-                              key={estado.value}
-                              onClick={() => handleCambiarEstado(alumno, estado.value)}
-                              disabled={saving || tieneAsistencia}
-                              style={{
-                                flex: 1,
-                                padding: isMobile ? '0.75rem 0.5rem' : '0.5rem',
-                                minHeight: '44px',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontSize: '0.75rem',
-                                fontWeight: '600',
-                                cursor: saving || tieneAsistencia ? 'not-allowed' : 'pointer',
-                                background: '#f3f4f6',
-                                color: '#374151',
-                              }}
-                            >
-                              {estado.label}
-                            </button>
-                          ))}
-                        </div>
-                        {tieneAsistencia && (
-                          <div style={{ fontSize: '0.65rem', color: '#9ca3af', textAlign: 'center', marginTop: '0.25rem' }}>
-                            (Registrado - editar desde panel derecho)
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div style={{ padding: '1rem', borderTop: '1px solid #e5e7eb' }}>
-                <button
-                  onClick={() => setShowRecuperacion(true)}
-                  style={{ width: '100%', padding: '0.75rem', minHeight: '48px', background: '#f3f4f6', border: '1px dashed #d1d5db', borderRadius: '8px', color: '#374151', fontWeight: '500', cursor: 'pointer' }}
-                >
-                  + Agregar Recuperación
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-              <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#111827' }}>Historial del Día</h3>
-                {horarioSeleccionado && horariosFiltrados.length > 0 && (
-                  <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                    {horariosFiltrados.find(h => h.id === horarioSeleccionado)?.dia_nombre} {horariosFiltrados.find(h => h.id === horarioSeleccionado)?.hora_inicio?.substring(0, 5)} - {horariosFiltrados.find(h => h.id === horarioSeleccionado)?.hora_fin?.substring(0, 5)}
-                  </p>
-                )}
-              </div>
-              {historialAsistencias.length === 0 ? (
-                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>Sin registros</div>
-              ) : (
-                <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                  {historialAsistencias.map((a) => {
-                    const estadoInfo = getEstadoInfo(a.estado);
-                    return (
-                      <div
-                        key={a.id}
-                        onClick={() => handleEditAsistencia(a)}
-                        style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontWeight: '500', color: '#111827', fontSize: '0.875rem' }}>{a.alumno_nombre}</span>
-                          <span style={{ padding: '0.125rem 0.5rem', borderRadius: '4px', fontSize: '0.625rem', fontWeight: '600', background: estadoInfo.bg, color: estadoInfo.color }}>
-                            {estadoInfo.label}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                          {a.hora?.substring(0, 5)} {a.es_recuperacion && '(Recuperación)'}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                          Prof. {a.profesor_nombre}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showRecuperacion && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '400px', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '1rem' }}>Agregar Recuperación</h3>
-            <input
-              type="text"
-              placeholder="Buscar por nombre o DNI..."
-              value={busquedaRecuperacion}
-              onChange={(e) => setBusquedaRecuperacion(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && buscarAlumnoRecuperacion()}
-              style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', marginBottom: '1rem' }}
-            />
-            <button onClick={buscarAlumnoRecuperacion} style={{ width: '100%', padding: '0.75rem', minHeight: '44px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', marginBottom: '1rem', cursor: 'pointer' }}>Buscar</button>
-            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-              {resultadosBusqueda.length === 0 && busquedaRecuperacion && (
-                <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>
-                  No hay alumnos disponibles para recuperación en este horario
-                </div>
-              )}
-              {resultadosBusqueda.map((alumno) => (
-                <div key={alumno.matricula_id} onClick={() => agregarRecuperacion(alumno)} style={{ padding: '0.75rem', borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}>
-                  <div style={{ fontWeight: '500' }}>{alumno.alumno_nombre}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Taller: {alumno.taller_nombre} · {alumno.sesiones_disponibles} sesiones disponibles</div>
-                </div>
-              ))}
-            </div>
-            <button onClick={() => setShowRecuperacion(false)} style={{ width: '100%', padding: '0.75rem', minHeight: '44px', background: '#f3f4f6', border: 'none', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer' }}>Cancelar</button>
-          </div>
-        </div>
-      )}
-
-      {editandoAsistencia && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '400px', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '1rem' }}>Editar Asistencia</h3>
-            <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontWeight: '500', marginBottom: '0.5rem' }}>{editandoAsistencia.alumno_nombre}</div>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{editandoAsistencia.fecha} {editandoAsistencia.hora?.substring(0, 5)}</div>
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Docente</label>
-              <select
-                value={editandoAsistencia.profesor || ''}
-                onChange={(e) => {
-                  const nuevoProfesor = e.target.value ? parseInt(e.target.value) : null;
-                  setEditandoAsistencia({ ...editandoAsistencia, profesor: nuevoProfesor });
-                }}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
-              >
-                <option value="">Seleccionar docente</option>
-                {profesores.map((p) => (
-                  <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>
-                ))}
-              </select>
-            </div>
-              <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Estado</label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {ESTADOS.map((estado) => (
-                  <button
-                    key={estado.value}
-                    onClick={() => setEditandoAsistencia({ ...editandoAsistencia, estado: estado.value })}
-                    style={{
-                      flex: 1,
-                      padding: '0.75rem 0.5rem',
-                      minHeight: '44px',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontWeight: '600',
-                      background: editandoAsistencia.estado === estado.value ? estado.color : '#f3f4f6',
-                      color: editandoAsistencia.estado === estado.value ? 'white' : '#374151',
-                    }}
-                  >
-                    {estado.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>Observación</label>
-              <textarea
-                value={editandoAsistencia.observacion}
-                onChange={(e) => setEditandoAsistencia({ ...editandoAsistencia, observacion: e.target.value })}
-                rows={2}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button onClick={() => { setEditandoAsistencia(null); setEditandoProfesorOriginal(null); }} style={{ flex: 1, padding: '0.75rem', minHeight: '48px', background: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={() => {
-                if (editandoAsistencia.profesor !== editandoProfesorOriginal && editandoProfesorOriginal !== null) {
-                  setShowConfirmProfesor1(true);
-                } else {
-                  guardarEdicionAsistencia();
-                }
-              }} disabled={saving} style={{ flex: 1, padding: '0.75rem', minHeight: '48px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer' }}>
-                {saving ? 'Guardando...' : 'Guardar'}
-              </button>
-            </div>
-          </div>
-        </div>
-        )}
-
-        {showConfirmProfesor1 && (
-          <ConfirmModal
-            isOpen={showConfirmProfesor1}
-            title="Cambiar Docente"
-            message={`¿Está seguro que desea cambiar el docente de esta asistencia de "${editandoAsistencia?.profesor_nombre}"?`}
-            confirmLabel="Sí, cambiar"
-            cancelLabel="Cancelar"
-            onConfirm={() => { setShowConfirmProfesor1(false); setShowConfirmProfesor2(true); }}
-            onCancel={() => { 
-              setShowConfirmProfesor1(false); 
-              if (editandoAsistencia && editandoProfesorOriginal !== null) {
-                setEditandoAsistencia({ ...editandoAsistencia, profesor: editandoProfesorOriginal });
-              }
-            }}
-          />
-        )}
-
-        {showConfirmProfesor2 && (
-          <ConfirmModal
-            isOpen={showConfirmProfesor2}
-            title="Confirmar Cambio de Docente"
-            message="Esta acción modificará el registro de asistencia. ¿Está completamente seguro?"
-            confirmLabel="Sí, confirmar cambio"
-            cancelLabel="Volver"
-            onConfirm={() => { 
-              setShowConfirmProfesor2(false);
-              guardarEdicionAsistencia();
-            }}
-            onCancel={() => { 
-              setShowConfirmProfesor2(false); 
-              if (editandoAsistencia && editandoProfesorOriginal !== null) {
-                setEditandoAsistencia({ ...editandoAsistencia, profesor: editandoProfesorOriginal });
-              }
-            }}
-          />
-        )}
+      <AsistenciaEditModal
+        isOpen={editandoAsistencia !== null}
+        asistencia={editandoAsistencia}
+        profesores={profesores}
+        saving={saving}
+        onClose={() => setEditandoAsistencia(null)}
+        onSave={guardarEdicionAsistencia}
+      />
     </div>
   );
 }

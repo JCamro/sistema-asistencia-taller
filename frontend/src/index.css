@@ -25,6 +25,16 @@ body {
   --spacing-sm: 0.5rem;
   --spacing-md: 1rem;
   --spacing-lg: 1.5rem;
+
+  /* Color system */
+  --color-primary: #d4af37;
+  --color-primary-dark: #b8960f;
+  --color-bg-dark: #0f172a;
+  --color-bg-card: #1e293b;
+  --color-text: #e2e8f0;
+  --color-text-muted: #94a3b8;
+  --color-error: #ef4444;
+  --color-success: #22c55e;
 }
 
 /* Responsive Utility Classes */
@@ -39,6 +49,12 @@ body {
 
 @media (min-width: 769px) {
   .hide-mobile { display: block; }
+}
+
+/* Touch target accessibility */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
 }
 
 /* Main content base styles */
