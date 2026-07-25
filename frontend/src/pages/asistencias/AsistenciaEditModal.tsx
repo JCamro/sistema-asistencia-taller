@@ -39,6 +39,13 @@ interface AsistenciaEditModalProps {
   onSave: (asistencia: Asistencia) => void | Promise<void>;
 }
 
+/**
+ * AsistenciaEditModal — Modal de edición de un registro de asistencia individual
+ *
+ * Permite modificar: docente, estado (asistio/falta/falta_grave) y observación.
+ * Incluye doble confirmación al cambiar el docente para evitar modificaciones
+ * accidentales en registros de pago a profesores.
+ */
 function AsistenciaEditModal({ isOpen, asistencia, profesores, saving, onClose, onSave }: AsistenciaEditModalProps) {
   const [draft, setDraft] = useState<Asistencia | null>(null);
   const [profesorOriginal, setProfesorOriginal] = useState<number | null>(null);
@@ -61,6 +68,7 @@ function AsistenciaEditModal({ isOpen, asistencia, profesores, saving, onClose, 
 
   if (!isOpen || !draft) return null;
 
+  // Si cambió el docente, pedir confirmación antes de guardar
   const handleSave = () => {
     if (draft.profesor !== profesorOriginal && profesorOriginal !== null) {
       setShowConfirm1(true);

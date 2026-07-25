@@ -1,14 +1,27 @@
 import { memo, type ReactNode } from 'react';
 
+/**
+ * Props for the shared PageHeader component.
+ */
 interface PageHeaderProps {
+  /** Main heading text displayed at the top of the page */
   title: string;
+  /** Active cycle name shown as a badge next to the title */
   cicloNombre?: string;
+  /** Label for the optional action button (e.g. "Nuevo alumno") */
   actionLabel?: string;
+  /** Callback fired when the action button is clicked */
   onAction?: () => void;
+  /** Disables the action button (e.g. while a form is submitting) */
   actionDisabled?: boolean;
+  /** Extra content rendered inline next to the title (e.g. filters, toggles) */
   extra?: ReactNode;
 }
 
+/**
+ * Componente compartido de encabezado de página con título, badge del ciclo activo
+ * y un botón de acción opcional (normalmente "Nuevo X").
+ */
 function PageHeader({ title, cicloNombre, actionLabel, onAction, actionDisabled, extra }: PageHeaderProps) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '0.75rem' }}>

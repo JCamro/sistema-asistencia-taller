@@ -18,6 +18,18 @@ const initialFormData: AlumnoFormData = { nombre: '', apellido: '', dni: '', tel
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.6875rem', fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.04em' };
 const inputStyle: React.CSSProperties = { width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem' };
 
+/**
+ * AlumnosPage — Gestión de alumnos del ciclo activo
+ *
+ * CRUD completo con búsqueda por texto (nombre, apellido, DNI), paginación server-side
+ * y ordenamiento (más recientes, más antiguos, alfabético).
+ *
+ * Flujo de datos:
+ *   1. useQuery obtiene alumnos paginados del backend (React Query cachea 30s)
+ *   2. La búsqueda usa debounce (useDebouncedSearch) para evitar requests excesivos
+ *   3. Mutations (create/update/delete) invalidan la caché al completar
+ *   4. El modal de creación/edición comparte estado con editingId para modo dual
+ */
 function AlumnosPage() {
   const { cicloActual } = useCiclo();
   const { showToast, showApiError } = useToast();
@@ -39,8 +51,8 @@ function AlumnosPage() {
     queryKey: queryKeys.alumnos(cicloActual?.id ?? 0, currentPage, debouncedSearch, ordering),
     queryFn: async () => {
       if (!cicloActual) return { count: 0, results: [] };
-      const res = await getAlumnos(cicloActual.id, currentPage, debouncedSearch, ordering);
-      return res.data;
+      const response = await getAlumnos(cicloActual.id, currentPage, debouncedSearch, ordering);
+      return response.data;
     },
     enabled: !!cicloActual,
     staleTime: 30_000,

@@ -1,5 +1,9 @@
 import api from './axios';
 
+// =============================================================================
+// Interfaces / Tipos compartidos
+// =============================================================================
+
 // DRF paginated response wrapper
 export interface PaginatedResponse<T> {
   count: number;
@@ -242,7 +246,13 @@ export interface ResumenMensual {
   recibos: number;
 }
 
-// API Functions
+// =============================================================================
+// Funciones de API agrupadas por dominio
+// =============================================================================
+
+// --- Auth ---
+
+/** Cierra sesión enviando el refresh token al backend para blacklist y limpia localStorage */
 export const logout = async () => {
   const refreshToken = localStorage.getItem('refresh_token');
   if (refreshToken) {
@@ -252,18 +262,27 @@ export const logout = async () => {
   localStorage.removeItem('refresh_token');
 };
 
-// Configuracion
+// --- Configuración ---
+
+/** Obtiene la configuración global (ciclo activo, parámetros de pago dinámico) */
 export const getConfig = () => api.get<Configuracion>('/config/');
+/** Actualiza la configuración global */
 export const updateConfig = (data: Partial<Configuracion>) => api.patch('/config/', data);
 
-// Ciclos
+// --- Ciclos ---
+/** Lista todos los ciclos académicos */
 export const getCiclos = () => api.get<Ciclo[]>('/ciclos/');
+/** Obtiene un ciclo por ID */
 export const getCiclo = (id: number) => api.get<Ciclo>(`/ciclos/${id}/`);
+/** Crea un nuevo ciclo académico */
 export const createCiclo = (data: Partial<Ciclo>) => api.post('/ciclos/', data);
+/** Actualiza parcialmente un ciclo existente */
 export const updateCiclo = (id: number, data: Partial<Ciclo>) => api.patch(`/ciclos/${id}/`, data);
+/** Elimina un ciclo por ID */
 export const deleteCiclo = (id: number) => api.delete(`/ciclos/${id}/`);
 
-// Talleres (filtrados por ciclo)
+// --- Talleres ---
+/** Lista talleres con paginación, búsqueda y filtro opcional por ciclo */
 export const getTalleres = (cicloId?: number, page?: number, search?: string) => {
   let params = '';
   if (search) params += `search=${encodeURIComponent(search.slice(0, 100))}&`;
@@ -273,12 +292,17 @@ export const getTalleres = (cicloId?: number, page?: number, search?: string) =>
     ? api.get<PaginatedResponse<Taller>>(`/ciclos/${cicloId}/talleres/${queryString}`)
     : api.get<PaginatedResponse<Taller>>(`/talleres/${queryString}`);
 };
+/** Obtiene un taller por ID */
 export const getTaller = (id: number) => api.get<Taller>(`/talleres/${id}/`);
+/** Crea un nuevo taller */
 export const createTaller = (data: Partial<Taller>) => api.post('/talleres/', data);
+/** Actualiza parcialmente un taller */
 export const updateTaller = (id: number, data: Partial<Taller>) => api.patch(`/talleres/${id}/`, data);
+/** Elimina un taller por ID */
 export const deleteTaller = (id: number) => api.delete(`/talleres/${id}/`);
 
-// Profesores (filtrados por ciclo)
+// --- Profesores ---
+/** Lista profesores con paginación, búsqueda y filtro opcional por ciclo */
 export const getProfesores = (cicloId?: number, page?: number, search?: string) => {
   let params = '';
   if (search) params += `search=${encodeURIComponent(search.slice(0, 100))}&`;
@@ -288,12 +312,17 @@ export const getProfesores = (cicloId?: number, page?: number, search?: string) 
     ? api.get<PaginatedResponse<Profesor>>(`/ciclos/${cicloId}/profesores/${queryString}`)
     : api.get<PaginatedResponse<Profesor>>(`/profesores/${queryString}`);
 };
+/** Obtiene un profesor por ID */
 export const getProfesor = (id: number) => api.get<Profesor>(`/profesores/${id}/`);
+/** Crea un nuevo profesor */
 export const createProfesor = (data: Partial<Profesor>) => api.post('/profesores/', data);
+/** Actualiza parcialmente un profesor */
 export const updateProfesor = (id: number, data: Partial<Profesor>) => api.patch(`/profesores/${id}/`, data);
+/** Elimina un profesor por ID */
 export const deleteProfesor = (id: number) => api.delete(`/profesores/${id}/`);
 
-// Alumnos (filtrados por ciclo)
+// --- Alumnos ---
+/** Lista alumnos con paginación, búsqueda, ordenamiento y filtro opcional por ciclo */
 export const getAlumnos = (cicloId?: number, page?: number, search?: string, ordering?: string) => {
   let params = '';
   if (search) params += `search=${encodeURIComponent(search.slice(0, 100))}&`;
@@ -304,24 +333,34 @@ export const getAlumnos = (cicloId?: number, page?: number, search?: string, ord
     ? api.get<PaginatedResponse<Alumno>>(`/ciclos/${cicloId}/alumnos/${queryString}`)
     : api.get<PaginatedResponse<Alumno>>(`/alumnos/${queryString}`);
 };
+/** Obtiene un alumno por ID */
 export const getAlumno = (id: number) => api.get<Alumno>(`/alumnos/${id}/`);
+/** Crea un nuevo alumno */
 export const createAlumno = (data: Partial<Alumno>) => api.post('/alumnos/', data);
+/** Actualiza parcialmente un alumno */
 export const updateAlumno = (id: number, data: Partial<Alumno>) => api.patch(`/alumnos/${id}/`, data);
+/** Elimina un alumno por ID */
 export const deleteAlumno = (id: number) => api.delete(`/alumnos/${id}/`);
 
-// Horarios (paginado)
+// --- Horarios ---
+/** Lista horarios con paginación y filtro opcional por ciclo */
 export const getHorarios = (cicloId?: number, page?: number) => {
   const params = page ? `?page=${page}` : '';
   return cicloId 
     ? api.get<PaginatedResponse<Horario>>(`/ciclos/${cicloId}/horarios/${params}`)
     : api.get<PaginatedResponse<Horario>>(`/horarios/${params}`);
 };
+/** Obtiene un horario por ID */
 export const getHorario = (id: number) => api.get<Horario>(`/horarios/${id}/`);
+/** Crea un nuevo horario */
 export const createHorario = (data: Partial<Horario>) => api.post('/horarios/', data);
+/** Actualiza parcialmente un horario */
 export const updateHorario = (id: number, data: Partial<Horario>) => api.patch(`/horarios/${id}/`, data);
+/** Elimina un horario por ID */
 export const deleteHorario = (id: number) => api.delete(`/horarios/${id}/`);
 
-// Matriculas (paginado)
+// --- Matrículas ---
+/** Lista matrículas con filtros combinables: búsqueda, estado, taller, día, hora, ordenamiento */
 export const getMatriculas = (cicloId?: number, page?: number, search?: string, estado?: string, ordering?: string, taller?: number | string, dia?: number | string, hora?: number | string) => {
   let params = '';
   if (search) params += `search=${encodeURIComponent(search.slice(0, 100))}&`;
@@ -336,58 +375,81 @@ export const getMatriculas = (cicloId?: number, page?: number, search?: string, 
     ? api.get<PaginatedResponse<Matricula>>(`/ciclos/${cicloId}/matriculas/${queryString}`)
     : api.get<PaginatedResponse<Matricula>>(`/matriculas/${queryString}`);
 };
+/** Obtiene una matrícula por ID */
 export const getMatricula = (id: number) => api.get<Matricula>(`/matriculas/${id}/`);
+/** Crea una nueva matrícula */
 export const createMatricula = (data: Partial<Matricula>) => api.post('/matriculas/', data);
+/** Actualiza parcialmente una matrícula */
 export const updateMatricula = (id: number, data: Partial<Matricula>) => api.patch(`/matriculas/${id}/`, data);
+/** Elimina una matrícula por ID */
 export const deleteMatricula = (id: number) => api.delete(`/matriculas/${id}/`);
 
-// Asistencias (paginado)
+// --- Asistencias ---
+/** Lista asistencias con paginación y filtro opcional por ciclo */
 export const getAsistencias = (cicloId?: number, page?: number) => {
   const params = page ? `?page=${page}` : '';
   return cicloId 
     ? api.get<PaginatedResponse<Asistencia>>(`/ciclos/${cicloId}/asistencias/${params}`)
     : api.get<PaginatedResponse<Asistencia>>(`/asistencias/${params}`);
 };
+/** Registra una nueva asistencia */
 export const createAsistencia = (data: Partial<Asistencia>) => api.post('/asistencias/', data);
+/** Actualiza el estado u observación de una asistencia */
 export const updateAsistencia = (id: number, data: Partial<Asistencia>) => api.patch(`/asistencias/${id}/`, data);
 
-// Recibos
+// --- Recibos ---
+/** Lista recibos con filtros vía query string (estado, rango de fechas, etc.) */
 export const getRecibos = (cicloId?: number, params?: string) => {
   const query = params ? `?${params}` : '';
   return cicloId ? api.get<PaginatedResponse<Recibo>>(`/ciclos/${cicloId}/recibos/${query}`) : api.get<PaginatedResponse<Recibo>>(`/recibos/${query}`);
 };
+/** Obtiene un recibo por ID */
 export const getRecibo = (id: number) => api.get<Recibo>(`/recibos/${id}/`);
+/** Crea un nuevo recibo (con soporte multi-alumno vía ReciboMatricula) */
 export const createRecibo = (data: Partial<Recibo>) => api.post('/recibos/', data);
+/** Marca un recibo como pagado, opcionalmente con un monto específico */
 export const marcarReciboPagado = (id: number, monto?: number) => 
   api.patch(`/recibos/${id}/marcar_pagado/`, { monto });
 
-// Pagos Profesores
+// --- Pagos Profesores ---
+/** Lista todos los pagos a profesores registrados */
 export const getPagosProfesores = () => api.get<PagoProfesor[]>('/pagos-profesores/');
+/** Dispara el cálculo de pagos para un ciclo en un rango de fechas */
 export const calcularPagosProfesores = (cicloId: number, fechaInicio: string, fechaFin: string) => 
   api.post('/pagos-profesores/calcular-periodo/', { ciclo_id: cicloId, fecha_inicio: fechaInicio, fecha_fin: fechaFin });
 
-// Reportes
+// --- Reportes ---
+/** Resumen general del ciclo (usado en Finanzas) */
 export const getResumenCiclo = (id: number) => api.get(`/ciclos/${id}/resumen/`);
+/** Resumen financiero completo: ingresos, egresos, balance */
 export const getResumenFinanzas = (id: number) => api.get<ResumenFinanzas>(`/ciclos/${id}/resumen/`);
+/** Resumen mensual de ingresos/egresos por mes */
 export const getResumenMensual = (id: number) => api.get<ResumenMensual[]>(`/ciclos/${id}/resumen-mensual/`);
 
-// Dashboard KPIs
+// --- Dashboard ---
+/** KPIs del dashboard: alumnos activos, talleres, matrículas del ciclo */
 export const getDashboardKpis = (cicloId: number) => 
   api.get(`/ciclos/${cicloId}/dashboard/`);
 
+/** Ingresos del día y de la semana para el toggle del dashboard */
 export const getDashboardIngresos = (cicloId: number) => 
   api.get<DashboardIngresos>(`/ciclos/${cicloId}/dashboard/ingresos/`);
 
-// Precios Paquete
+// --- Precios Paquete ---
+/** Lista precios de paquetes (opcionalmente filtrados por ciclo) */
 export const getPrecios = (cicloId?: number) =>
   cicloId ? api.get<PrecioPaquete[]>(`/ciclos/${cicloId}/precios/`) : api.get<PrecioPaquete[]>('/precios/');
+/** Precios activos para un ciclo — usado por la calculadora de precios */
 export const getPreciosActivos = (cicloId: number) =>
   api.get<PrecioPaquete[]>(`/precios/activos/?ciclo_id=${cicloId}`);
+/** Crea un nuevo precio de paquete */
 export const createPrecio = (data: Partial<PrecioPaquete>) => api.post('/precios/', data);
+/** Actualiza un precio de paquete */
 export const updatePrecio = (id: number, data: Partial<PrecioPaquete>) => api.patch(`/precios/${id}/`, data);
+/** Elimina un precio de paquete */
 export const deletePrecio = (id: number) => api.delete(`/precios/${id}/`);
 
-// HoraTrabajada
+// --- Horas Trabajadas ---
 export interface HoraTrabajada {
   id: number;
   profesor: number;
@@ -419,6 +481,7 @@ export interface HoraTrabajadaDetail extends HoraTrabajada {
   updated_at: string;
 }
 
+/** Lista horas trabajadas con filtros opcionales vía query string */
 export const getHorasTrabajadas = (cicloId?: number, params?: string) => {
   const query = params ? `?${params}` : '';
   return cicloId
@@ -426,28 +489,39 @@ export const getHorasTrabajadas = (cicloId?: number, params?: string) => {
     : api.get<PaginatedResponse<HoraTrabajada>>(`/horas-trabajadas/${query}`);
 };
 
+/** Obtiene el detalle completo de una hora trabajada (incluye breakdown financiero) */
 export const getHoraTrabajada = (id: number) =>
   api.get<HoraTrabajadaDetail>(`/horas-trabajadas/${id}/`);
 
+/** Crea un registro manual de hora trabajada */
 export const createHoraTrabajada = (data: Partial<HoraTrabajadaDetail>) =>
   api.post<HoraTrabajadaDetail>('/horas-trabajadas/', data);
 
+/** Elimina un registro de hora trabajada */
 export const deleteHoraTrabajada = (id: number) =>
   api.delete(`/horas-trabajadas/${id}/`);
 
+/** Actualiza un registro de hora trabajada */
 export const updateHoraTrabajada = (id: number, data: Partial<HoraTrabajadaDetail>) =>
   api.patch<HoraTrabajadaDetail>(`/horas-trabajadas/${id}/`, data);
 
-// Egresos
+// --- Egresos ---
+/** Lista egresos con filtros opcionales vía query string */
 export const getEgresos = (cicloId?: number, params?: string) => {
   const query = params ? `?${params}` : '';
   return cicloId ? api.get<PaginatedResponse<Egreso>>(`/ciclos/${cicloId}/egresos/${query}`) : api.get<PaginatedResponse<Egreso>>(`/egresos/${query}`);
 };
+/** Obtiene un egreso por ID */
 export const getEgreso = (id: number) => api.get<Egreso>(`/egresos/${id}/`);
+/** Crea un nuevo egreso (gasto de taller, pago a profesor, o gasto personal) */
 export const createEgreso = (data: Partial<Egreso>, cicloId?: number) => 
   cicloId ? api.post(`/ciclos/${cicloId}/egresos/`, data) : api.post('/egresos/', data);
+/** Actualiza un egreso existente */
 export const updateEgreso = (id: number, data: Partial<Egreso>) => api.patch(`/egresos/${id}/`, data);
+/** Elimina un egreso */
 export const deleteEgreso = (id: number) => api.delete(`/egresos/${id}/`);
+/** Resumen de egresos agrupados por tipo (taller, profesor, personal) */
 export const getResumenEgresos = (cicloId: number) => api.get<ResumenEgresos>(`/ciclos/${cicloId}/egresos/resumen/`);
+/** Historial de pagos realizados a un profesor específico */
 export const getHistorialPagosProfesor = (profesorId: number) => 
   api.get<Egreso[]>(`/profesores/${profesorId}/historial-pagos/`);

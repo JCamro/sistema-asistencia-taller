@@ -37,6 +37,17 @@ const filterSelect: React.CSSProperties = {
   minWidth: '130px',
 };
 
+/**
+ * MatriculasFilterBar — Barra de filtros para la tabla de matrículas
+ *
+ * Filtros disponibles:
+ * - Búsqueda por texto (alumno, taller)
+ * - Dropdown de taller (todos los talleres activos)
+ * - Día de la semana (0-6, lun-dom)
+ * - Hora del día (8-21)
+ * - Estado (todas, activas, por concluir, no procesado, inactivas, concluidas)
+ * - Orden (más recientes, más antiguos, alfabético)
+ */
 function MatriculasFilterBar({
   searchText,
   onSearchChange,

@@ -104,6 +104,19 @@ function construirPromosDesdeAPI(data: PrecioPaquete[]): PromosMap {
   return promos;
 }
 
+/**
+ * CalculadoraPrecios — Herramienta interactiva para cotizar precios de matrícula
+ *
+ * Permite agregar items (instrumento o taller, con cantidad de clases) y calcula
+ * automáticamente el precio total aplicando promociones cuando corresponde:
+ *
+ * - Combo Musical: 2+ instrumentos con descuento (ej: 12+12, 12+8, 8+8)
+ * - Mixto: 1 instrumento + 1 taller con descuento
+ * - Intensivo: paquete de 20 clases con precio especial
+ *
+ * Los precios base y promociones se cargan desde la API. Si no hay datos,
+ * se usan valores por defecto como fallback.
+ */
 function CalculadoraPrecios() {
   const { cicloActual } = useCiclo();
   const windowWidth = useWindowWidth();
@@ -146,9 +159,9 @@ function CalculadoraPrecios() {
 
     if (nuevoClases === 1) {
       const nuevosItems: ItemSeleccionado[] = [];
-      for (let i = 0; i < cantidadSuelta; i++) {
+      for (let index = 0; index < cantidadSuelta; index++) {
         nuevosItems.push({
-          id: Date.now() + i,
+          id: Date.now() + index,
           tipo: nuevoTipo,
           nombre: nuevoNombre,
           clases: 1,
@@ -172,7 +185,9 @@ function CalculadoraPrecios() {
     setItems(items.filter(i => i.id !== id));
   };
 
-  // Helper para formar combos de manera óptima
+  // Forma combos de instrumentos de manera óptima: ordena promos por tamaño
+  // descendente (12+12 → 12+8 → 8+8) y empareja sin repetir instrumentos.
+  // Los instrumentos no emparejados se cobran como individuales.
   const formarCombosInstrumentos = (
     instrumentos: ItemSeleccionado[],
     precioMap: Record<number, PrecioEntry>
@@ -324,8 +339,8 @@ function CalculadoraPrecios() {
         }
 
         if (resultadoCombos.combos.length === 1) {
-          const c = resultadoCombos.combos[0];
-          promoAplicada = `Combo Musical (${c.clases1} + ${c.clases2} clases)`;
+          const combo = resultadoCombos.combos[0];
+          promoAplicada = `Combo Musical (${combo.clases1} + ${combo.clases2} clases)`;
         } else {
           promoAplicada = `Combo Musical (${resultadoCombos.combos.length} combinaciones)`;
         }

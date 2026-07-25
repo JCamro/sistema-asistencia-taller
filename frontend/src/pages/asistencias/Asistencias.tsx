@@ -48,6 +48,16 @@ interface Asistencia {
   activo: boolean;
 }
 
+/**
+ * AsistenciasPage — Pantalla de registro de asistencia diaria
+ *
+ * Esta página permite marcar asistencia (asistio/falta/falta_grave) por alumno,
+ * organizada por taller → horario. También soporta clases de recuperación y
+ * edición de registros individuales.
+ *
+ * Flujo: FilterBar (fecha, taller, horario) → Contenido (resumen de horarios
+ * o tabla + historial) → Modales (recuperación, edición)
+ */
 function AsistenciasPage() {
   const { cicloActual } = useCiclo();
   const { showToast, showApiError } = useToast();
@@ -70,17 +80,18 @@ function AsistenciasPage() {
   const [editandoAsistencia, setEditandoAsistencia] = useState<Asistencia | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // fetchData: carga horarios activos y profesores del ciclo una sola vez
   const fetchData = useCallback(async () => {
     if (!cicloActual) return;
     const token = localStorage.getItem('access_token');
     try {
-      const [horariosRes, profesRes] = await Promise.all([
+      const [horariosResponse, profesoresResponse] = await Promise.all([
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/horarios/`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/profesores/`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
-      const [horariosData, profesData] = await Promise.all([horariosRes.json(), profesRes.json()]);
-      setHorarios((horariosData.results || horariosData).filter((h: Horario) => h.activo));
-      setProfesores((profesData.results || profesData).filter((p: any) => p.activo));
+      const [horariosJsonData, profesoresJsonData] = await Promise.all([horariosResponse.json(), profesoresResponse.json()]);
+      setHorarios((horariosJsonData.results || horariosJsonData).filter((h: Horario) => h.activo));
+      setProfesores((profesoresJsonData.results || profesoresJsonData).filter((p: any) => p.activo));
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -95,11 +106,12 @@ function AsistenciasPage() {
     const token = localStorage.getItem('access_token');
     fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
       headers: { Authorization: `Bearer ${token}` },
-    }).then((r) => r.json()).then((data) => {
-      setAsistencias(data.results || data);
+    }).then((response) => response.json()).then((jsonData) => {
+      setAsistencias(jsonData.results || jsonData);
     });
   }, [cicloActual, fecha, apiBase]);
 
+  // Convertir día JS (dom=0 → sáb=6) a nuestro modelo (lun=0 → dom=6)
   const diaSemana = useMemo(() => {
     const jsDay = new Date(fecha + 'T00:00:00').getDay();
     return (jsDay + 6) % 7;
@@ -129,10 +141,10 @@ function AsistenciasPage() {
     try {
       const promises = horariosFiltrados.map(async (h) => {
         const url = `${apiBase}/api/ciclos/${cicloActual.id}/asistencias/por-horario/?horario_id=${h.id}&fecha=${fecha}`;
-        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) return { horarioId: h.id, alumnos: [] };
-        const data = await res.json();
-        return { horarioId: h.id, alumnos: Array.isArray(data) ? data : (data.results || []) };
+        const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!response.ok) return { horarioId: h.id, alumnos: [] };
+        const jsonData = await response.json();
+        return { horarioId: h.id, alumnos: Array.isArray(jsonData) ? jsonData : (jsonData.results || []) };
       });
       const results = await Promise.all(promises);
       const mapa = new Map<number, AlumnoHorario[]>();
@@ -145,8 +157,9 @@ function AsistenciasPage() {
     }
   }, [cicloActual, horariosFiltrados, fecha, apiBase]);
 
+  // Al cambiar el filtro de taller: resetear taller si ya no existe en la lista,
+  // y resetear horario si el seleccionado ya no pertenece a los filtrados
   useEffect(() => {
-    if (tallerSeleccionado && !talleres.some((t) => t.id === tallerSeleccionado)) {
       setTallerSeleccionado(null);
       setHorarioSeleccionado(null);
     } else if (horarioSeleccionado && !horariosFiltrados.some((h) => h.id === horarioSeleccionado)) {
@@ -167,16 +180,16 @@ function AsistenciasPage() {
     const token = localStorage.getItem('access_token');
     try {
       const url = `${apiBase}/api/ciclos/${cicloActual.id}/asistencias/por-horario/?horario_id=${horarioSeleccionado}&fecha=${fecha}`;
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) {
-        const errorData = await res.json();
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) {
+        const errorData = await response.json();
         console.error('Error API:', errorData);
         setAlumnosHorario([]);
         return;
       }
-      const data = await res.json();
-      if (Array.isArray(data)) setAlumnosHorario(data);
-      else if (data.results) setAlumnosHorario(data.results);
+      const jsonData = await response.json();
+      if (Array.isArray(jsonData)) setAlumnosHorario(jsonData);
+      else if (jsonData.results) setAlumnosHorario(jsonData.results);
       else setAlumnosHorario([]);
     } catch (err) {
       console.error('Error:', err);
@@ -203,15 +216,15 @@ function AsistenciasPage() {
     const token = localStorage.getItem('access_token');
     const horaActual = new Date().toTimeString().slice(0, 5);
     try {
-      let res;
+      let response;
       if (alumno.asistencia_id) {
-        res = await fetch(`${apiBase}/api/asistencias/${alumno.asistencia_id}/`, {
+        response = await fetch(`${apiBase}/api/asistencias/${alumno.asistencia_id}/`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ estado: nuevoEstado }),
         });
       } else {
-        res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
+        response = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
@@ -224,8 +237,8 @@ function AsistenciasPage() {
           }),
         });
       }
-      if (!res.ok) {
-        const errorData = await res.json();
+      if (!response.ok) {
+        const errorData = await response.json();
         console.error('Error API:', errorData);
         showApiError(new Error(JSON.stringify(errorData)));
         setSaving(false);
@@ -233,9 +246,9 @@ function AsistenciasPage() {
       }
       await fetchAlumnosHorario();
       await fetchTodosAlumnos();
-      const resList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await resList.json();
-      setAsistencias((data.results || data).filter((a: Asistencia) => a.activo !== false));
+      const responseList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, { headers: { Authorization: `Bearer ${token}` } });
+      const jsonData = await responseList.json();
+      setAsistencias((jsonData.results || jsonData).filter((a: Asistencia) => a.activo !== false));
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -248,17 +261,17 @@ function AsistenciasPage() {
     if (!cicloActual || !horarioSeleccionado || !busquedaRecuperacion) return;
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(
+      const response = await fetch(
         `${apiBase}/api/ciclos/${cicloActual.id}/asistencias/recuperables/?horario_id=${horarioSeleccionado}&fecha=${fecha}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      if (!res.ok) {
-        console.error('Error fetching recuperables:', res.status);
+      if (!response.ok) {
+        console.error('Error fetching recuperables:', response.status);
         setResultadosBusqueda([]);
         return;
       }
-      const data = await res.json();
-      const filtrados = (data || []).filter((a: any) =>
+      const jsonData = await response.json();
+      const filtrados = (jsonData || []).filter((a: any) =>
         a.alumno_nombre.toLowerCase().includes(busquedaRecuperacion.toLowerCase())
       );
       setResultadosBusqueda(filtrados.slice(0, 5));
@@ -273,7 +286,7 @@ function AsistenciasPage() {
     const token = localStorage.getItem('access_token');
     try {
       const horaActual = new Date().toTimeString().slice(0, 5);
-      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
+      const response = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -286,8 +299,8 @@ function AsistenciasPage() {
           es_recuperacion: true,
         }),
       });
-      if (!res.ok) {
-        const errorData = await res.json();
+      if (!response.ok) {
+        const errorData = await response.json();
         console.error('Error API:', errorData);
         showApiError(new Error(JSON.stringify(errorData)));
         setSaving(false);
@@ -298,9 +311,9 @@ function AsistenciasPage() {
       setResultadosBusqueda([]);
       await fetchAlumnosHorario();
       await fetchTodosAlumnos();
-      const resList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await resList.json();
-      setAsistencias((data.results || data).filter((a: Asistencia) => a.activo !== false));
+      const responseList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, { headers: { Authorization: `Bearer ${token}` } });
+      const jsonData = await responseList.json();
+      setAsistencias((jsonData.results || jsonData).filter((a: Asistencia) => a.activo !== false));
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -325,7 +338,7 @@ function AsistenciasPage() {
     const token = localStorage.getItem('access_token');
     const horaActual = new Date().toTimeString().slice(0, 5);
     try {
-      const res = await fetch(`${apiBase}/api/asistencias/${asistencia.id}/`, {
+      const response = await fetch(`${apiBase}/api/asistencias/${asistencia.id}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -335,8 +348,8 @@ function AsistenciasPage() {
           profesor: asistencia.profesor,
         }),
       });
-      if (!res.ok) {
-        const errorData = await res.json();
+      if (!response.ok) {
+        const errorData = await response.json();
         console.error('Error API:', errorData);
         showApiError(new Error(JSON.stringify(errorData)));
         setSaving(false);
@@ -344,9 +357,9 @@ function AsistenciasPage() {
       }
       setEditandoAsistencia(null);
       await fetchAlumnosHorario();
-      const resList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await resList.json();
-      setAsistencias(data.results || data);
+      const responseList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, { headers: { Authorization: `Bearer ${token}` } });
+      const jsonData = await responseList.json();
+      setAsistencias(jsonData.results || jsonData);
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);

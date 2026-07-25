@@ -36,6 +36,19 @@ interface DetalleClase {
 
 const fmt = (v: number) => v.toFixed(2);
 
+/**
+ * HorasProfesoresPage — Gestión de horas trabajadas y cálculo de pagos a profesores
+ *
+ * Dos pestañas:
+ * 1. "Horas Trabajadas" — CRUD de registros de horas con filtros por taller y rango
+ *    de fechas. Cada registro asocia profesor, horario, fecha y monto.
+ * 2. "Calcular Pago" — Ejecuta el cálculo de pagos para un período vía API y muestra
+ *    resultados por profesor con drill-down: resumen → fechas → clases individuales
+ *    → detalle de alumnos (con aporte base y adicional).
+ *
+ * El cálculo sigue la fórmula: base fija (1 alumno) + 50% adicional por alumno extra,
+ * con tope máximo configurable.
+ */
 function HorasProfesoresPage() {
   const apiBase = getApiBaseUrl();
   const { cicloActual } = useCiclo();
@@ -54,10 +67,10 @@ function HorasProfesoresPage() {
   const [hTallerId, setHTallerId] = useState<number | string>('');
   const getLimaToday = () => {
     const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
   const [hDesde, setHDesde] = useState(() => getLimaToday());
   const [hHasta, setHHasta] = useState(() => getLimaToday());
@@ -103,10 +116,10 @@ function HorasProfesoresPage() {
     const token = localStorage.getItem('access_token');
     const params = [`page=${pageNum}`];
     if (hTallerId) params.push(`horario__taller=${hTallerId}`);
-    const d = desde ?? hDesde;
-    const h = hasta ?? hHasta;
-    if (d) params.push(`fecha__gte=${d}`);
-    if (h) params.push(`fecha__lte=${h}`);
+    const desdeFecha = desde ?? hDesde;
+    const hastaFecha = hasta ?? hHasta;
+    if (desdeFecha) params.push(`fecha__gte=${desdeFecha}`);
+    if (hastaFecha) params.push(`fecha__lte=${hastaFecha}`);
     const url = `${apiBase}/api/ciclos/${cicloActual.id}/horas-trabajadas/?${params.join('&')}`;
     try {
       const [horasRes, talleresRes, profesoresRes] = await Promise.all([
@@ -147,9 +160,9 @@ function HorasProfesoresPage() {
     fetch(`${apiBase}/api/ciclos/${cicloActual.id}/horarios/?taller=${formTallerId}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.json())
-      .then(data => {
-        const list = data.results ?? data ?? [];
+      .then(response => response.json())
+      .then(jsonData => {
+        const list = jsonData.results ?? jsonData ?? [];
         setFormHorarios(list);
         // Auto-select first horario and set profesor
         if (list.length > 0) {
@@ -224,10 +237,10 @@ function HorasProfesoresPage() {
     // Load the horario's taller to set the filter
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/horarios/${h.horario}/`, {
+      const response = await fetch(`${apiBase}/api/horarios/${h.horario}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const horarioData = await res.json();
+      const horarioData = await response.json();
       setFormTallerId(horarioData.taller);
     } catch { /* use fallback */ }
     setHFormHorario(h.horario);
@@ -243,12 +256,12 @@ function HorasProfesoresPage() {
     setCalculando(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/pagos-profesores/calcular-periodo/`, {
+      const response = await fetch(`${apiBase}/api/pagos-profesores/calcular-periodo/`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ ciclo_id: cicloActual!.id, fecha_inicio: cFechaInicio, fecha_fin: cFechaFin, regenerar_horas: 'true' }),
       });
-      const data = await res.json();
-      setResultados((data.resultados ?? []).map((r: any) => ({
+      const jsonData = await response.json();
+      setResultados((jsonData.resultados ?? []).map((r: any) => ({
         profesor_id: r.profesor_id, profesor: r.profesor, pago_id: r.pago_id,
         clases_dictadas: r.clases_dictadas, total_alumnos_asistencias: r.total_alumnos_asistencias,
         monto_profesor: r.monto_profesor, ganancia_taller: r.ganancia_taller,
@@ -262,9 +275,9 @@ function HorasProfesoresPage() {
     setSelectedPago(r); setLoadingDetalles(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/pagos-profesores/${r.pago_id}/detalles/`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      setDetalles(Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : (data.detalles || [])));
+      const response = await fetch(`${apiBase}/api/pagos-profesores/${r.pago_id}/detalles/`, { headers: { Authorization: `Bearer ${token}` } });
+      const jsonData = await response.json();
+      setDetalles(Array.isArray(jsonData.results) ? jsonData.results : (Array.isArray(jsonData) ? jsonData : (jsonData.detalles || [])));
     } catch { showToast('Error al cargar detalle', 'error'); }
     setLoadingDetalles(false);
   };
@@ -280,11 +293,11 @@ function HorasProfesoresPage() {
         const token = localStorage.getItem('access_token');
         const profParam = detalle.profesor_id ? `&profesor_id=${detalle.profesor_id}` : '';
         try {
-          const res = await fetch(`${apiBase}/api/pagos-profesores/detalle-clase/?horario_id=${detalle.horario}&fecha=${detalle.fecha}${profParam}`, { headers: { Authorization: `Bearer ${token}` } });
-          const data = await res.json();
-          setDetallesCompletos(prev => ({ ...prev, [key]: data }));
+          const response = await fetch(`${apiBase}/api/pagos-profesores/detalle-clase/?horario_id=${detalle.horario}&fecha=${detalle.fecha}${profParam}`, { headers: { Authorization: `Bearer ${token}` } });
+          const jsonData = await response.json();
+          setDetallesCompletos(prev => ({ ...prev, [key]: jsonData }));
         } catch { }
-        setLoadingAlumnos(prev => { const n = new Set(prev); n.delete(key); return n; });
+        setLoadingAlumnos(prev => { const newSet = new Set(prev); newSet.delete(key); return newSet; });
       }
     }
     setExpandedRows(newExpanded);
@@ -307,12 +320,12 @@ function HorasProfesoresPage() {
 
   // orden
   const resultadosSorted = useMemo(() => {
-    const arr = [...resultados];
-    if (orden === 'az') arr.sort((a, b) => a.profesor.localeCompare(b.profesor));
-    else if (orden === 'za') arr.sort((a, b) => b.profesor.localeCompare(a.profesor));
-    else if (orden === 'mas_clases') arr.sort((a, b) => b.clases_dictadas - a.clases_dictadas);
-    else arr.sort((a, b) => a.clases_dictadas - b.clases_dictadas);
-    return arr;
+    const resultadosArray = [...resultados];
+    if (orden === 'az') resultadosArray.sort((a, b) => a.profesor.localeCompare(b.profesor));
+    else if (orden === 'za') resultadosArray.sort((a, b) => b.profesor.localeCompare(a.profesor));
+    else if (orden === 'mas_clases') resultadosArray.sort((a, b) => b.clases_dictadas - a.clases_dictadas);
+    else resultadosArray.sort((a, b) => a.clases_dictadas - b.clases_dictadas);
+    return resultadosArray;
   }, [resultados, orden]);
 
   const totalMonto = resultados.reduce((s, r) => s + r.monto_profesor, 0);
@@ -491,9 +504,9 @@ function HorasProfesoresPage() {
                         <div key={fecha} style={{ border: isDateExpanded ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
                           {/* Date header */}
                           <div onClick={() => {
-                            const n = new Set(expandedRows);
-                            n.has(dateKey) ? n.delete(dateKey) : n.add(dateKey);
-                            setExpandedRows(n);
+                            const newSet = new Set(expandedRows);
+                            newSet.has(dateKey) ? newSet.delete(dateKey) : newSet.add(dateKey);
+                            setExpandedRows(newSet);
                           }} style={{ padding: '0.625rem 1rem', cursor: 'pointer', display: 'grid', gridTemplateColumns: '100px 1fr 60px 90px 30px', gap: '0.5rem', alignItems: 'center', background: isDateExpanded ? '#f5f3ff' : '#f8fafc', fontSize: '0.8125rem' }}>
                             <span style={{ fontWeight: 700, color: '#111827' }}>{formatDateElegant(fecha)}</span>
                             <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>{dayClases} clase{dayClases !== 1 ? 's' : ''}</span>

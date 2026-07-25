@@ -15,6 +15,16 @@ import { formatLimaDate } from '../../utils/timezone';
 import { getMatriculas } from '../../api/endpoints';
 import type { Matricula, Alumno, Taller } from '../../api/endpoints';
 
+/**
+ * MatriculasPage — Pantalla de gestión de matrículas
+ *
+ * Permite crear, editar, eliminar, ver detalle y traspasar matrículas.
+ * Incluye filtros server-side (búsqueda, estado, taller, día, hora, orden)
+ * y paginación. Se apoya en MatriculasFilterBar, MatriculaFormModal,
+ * MatriculaDetailModal y TraspasoModal.
+ *
+ * Flujo: FilterBar → Tabla (ResponsiveTable) → Modales (crear/editar, detalle, traspaso)
+ */
 function MatriculasPage() {
   const { cicloActual } = useCiclo();
   const { showToast, showApiError } = useToast();
@@ -42,6 +52,7 @@ function MatriculasPage() {
   const [traspasandoTaller, setTraspasandoTaller] = useState<string>('');
   const [traspasandoLoading, setTraspasandoLoading] = useState(false);
 
+  // Mapear opción de orden a parámetro de API (Django ordering)
   const getOrderingParam = (order: string) => {
     switch (order) {
       case 'oldest': return 'fecha_matricula';
@@ -53,11 +64,11 @@ function MatriculasPage() {
   const fetchMatriculas = useCallback(async (page: number = 1, search?: string, estado?: string, ordering?: string, taller?: number | string, dia?: number | string, hora?: number | string) => {
     if (!cicloActual) return;
     try {
-      const res = await getMatriculas(cicloActual.id, page, search, estado, ordering, taller, dia, hora);
-      const matriculasData = res.data.results || res.data;
-      setMatriculas(Array.isArray(matriculasData) ? matriculasData : []);
-      setTotalPages(Math.ceil((res.data.count || 0) / 20) || 1);
-      setTotalCount(res.data.count || 0);
+      const response = await getMatriculas(cicloActual.id, page, search, estado, ordering, taller, dia, hora);
+      const matriculasJsonData = response.data.results || response.data;
+      setMatriculas(Array.isArray(matriculasJsonData) ? matriculasJsonData : []);
+      setTotalPages(Math.ceil((response.data.count || 0) / 20) || 1);
+      setTotalCount(response.data.count || 0);
       setCurrentPage(page);
     } catch (err: any) {
       console.error('Error fetching matriculas:', err);
@@ -70,14 +81,14 @@ function MatriculasPage() {
   const fetchLookups = useCallback(async () => {
     if (!cicloActual) return;
     try {
-      const [alumnosRes, talleresRes] = await Promise.all([
+      const [alumnosResponse, talleresResponse] = await Promise.all([
         api.get(`/ciclos/${cicloActual.id}/alumnos/?page_size=200`),
         api.get(`/ciclos/${cicloActual.id}/talleres/?page_size=200`),
       ]);
-      const alumnosData = alumnosRes.data.results || alumnosRes.data;
-      const talleresData = talleresRes.data.results || talleresRes.data;
-      setAlumnos(Array.isArray(alumnosData) ? alumnosData.filter((a: Alumno) => a.activo) : []);
-      setTalleres(Array.isArray(talleresData) ? talleresData.filter((t: Taller) => t.activo) : []);
+      const alumnosJsonData = alumnosResponse.data.results || alumnosResponse.data;
+      const talleresJsonData = talleresResponse.data.results || talleresResponse.data;
+      setAlumnos(Array.isArray(alumnosJsonData) ? alumnosJsonData.filter((a: Alumno) => a.activo) : []);
+      setTalleres(Array.isArray(talleresJsonData) ? talleresJsonData.filter((t: Taller) => t.activo) : []);
     } catch (err: any) {
       console.error('Error fetching lookups:', err);
       if (err.response?.status === 401) {
@@ -168,10 +179,10 @@ function MatriculasPage() {
     if (!traspasandoId) return;
     setTraspasandoLoading(true);
     try {
-      const res = await api.post(`/matriculas/${traspasandoId}/traspasar/`, {
+      const response = await api.post(`/matriculas/${traspasandoId}/traspasar/`, {
         alumno_destino_id: alumnoDestinoId,
       });
-      showToast(res.data.detail || 'Traspaso realizado exitosamente', 'success');
+      showToast(response.data.detail || 'Traspaso realizado exitosamente', 'success');
       setTraspasandoId(null);
       setTraspasandoNombre('');
       setTraspasandoTaller('');

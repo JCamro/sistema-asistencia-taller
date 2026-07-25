@@ -9,6 +9,19 @@ interface ResumenFinanzas { ciclo: string; balance: { total_ingresos: number; to
 interface ResumenMensualItem { año: number; mes: number; nombre: string; ingresos: number; egresos: number; balance: number; recibos: number }
 const PAGE_SIZE = 20;
 
+/**
+ * FinanzasPage — Resumen financiero del ciclo activo
+ *
+ * Vista con cuatro pestañas (tabs):
+ *   1. Resumen: tarjetas de ingresos, ganancia neta (con toggle mostrar/ocultar), egresos,
+ *      y métricas derivadas (ticket promedio, ratio de egresos, margen neto)
+ *   2. Mensual: tabla con desglose por mes (ingresos vs egresos, balance)
+ *   3. Ingresos: tabla paginada de recibos con estado "pagado"
+ *   4. Egresos: tabla paginada con todos los egresos del ciclo
+ *
+ * La ganancia neta se oculta por defecto (privacidad); el toggle showGanancia
+ * reemplaza "••••••" por el monto real.
+ */
 const FinanzasPage = memo(function FinanzasPage() {
   const { cicloActual } = useCiclo(); const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'resumen'|'mensual'|'ingresos'|'egresos'>('resumen');
@@ -27,6 +40,7 @@ const FinanzasPage = memo(function FinanzasPage() {
   if(!cicloActual)return null;
   if(loading)return <div style={{display:'flex',justifyContent:'center',alignItems:'center',minHeight:'60vh',color:'#6b7280',fontSize:'0.9375rem'}}>Cargando resumen financiero...</div>;
 
+  // Tabs: cada pestaña tiene su propia lógica de carga de datos
   const tabs = [{id:'resumen',label:'Resumen'},{id:'mensual',label:'Mensual'},{id:'ingresos',label:'Ingresos'},{id:'egresos',label:'Egresos'}] as const;
 
   return (<div style={{maxWidth:'1100px',margin:'0 auto'}}>

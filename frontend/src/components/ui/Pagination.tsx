@@ -2,13 +2,22 @@ import { memo } from 'react';
 import { useWindowWidth } from '../../hooks/useWindowWidth';
 
 interface PaginationProps {
+  /** Current page number (1-based) */
   currentPage: number;
+  /** Total number of pages available */
   totalPages: number;
+  /** Callback when user clicks a page number or navigation arrow */
   onPageChange: (page: number) => void;
+  /** Total item count — used for the "Showing X-Y of Z" summary, optional */
   totalCount?: number;
+  /** Items per page — used with totalCount for summary computation, defaults to 20 */
   pageSize?: number;
 }
 
+/**
+ * Componente de paginación con navegación por páginas, elipsis para rangos grandes,
+ * y diseño adaptativo: números de página en desktop, indicador compacto en mobile.
+ */
 export const Pagination = memo(function Pagination({
   currentPage,
   totalPages,

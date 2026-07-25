@@ -47,6 +47,18 @@ interface MatriculaFormModalProps {
   cicloId?: number | null;
 }
 
+/**
+ * MatriculaFormModal — Formulario de creación/edición de matrícula
+ *
+ * Secciones del formulario:
+ * 1. Datos del alumno (búsqueda con autocomplete; bloqueado en edición)
+ * 2. Taller y horarios (grilla semanal día×hora con toggle de selección)
+ * 3. Detalles de pago (sesiones, fecha, frecuencia sugerida, monto total)
+ *
+ * El precio se calcula automáticamente vía API al seleccionar taller y sesiones.
+ * En edición permite marcar activa/concluida y gestiona la sincronización de
+ * horarios (crear/eliminar registros de MatriculaHorario).
+ */
 function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: MatriculaFormModalProps) {
   const editingId = matricula?.id ?? null;
   const { showToast, showApiError } = useToast();
@@ -64,14 +76,14 @@ function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: 
   const fetchLookups = useCallback(async () => {
     if (!cicloId) return;
     try {
-      const [alumnosRes, talleresRes] = await Promise.all([
+      const [alumnosResponse, talleresResponse] = await Promise.all([
         api.get(`/ciclos/${cicloId}/alumnos/?page_size=200`),
         api.get(`/ciclos/${cicloId}/talleres/?page_size=200`),
       ]);
-      const alumnosData = alumnosRes.data.results || alumnosRes.data;
-      const talleresData = talleresRes.data.results || talleresRes.data;
-      setAlumnos(Array.isArray(alumnosData) ? alumnosData.filter((a: Alumno) => a.activo) : []);
-      setTalleres(Array.isArray(talleresData) ? talleresData.filter((t: Taller) => t.activo) : []);
+      const alumnosJsonData = alumnosResponse.data.results || alumnosResponse.data;
+      const talleresJsonData = talleresResponse.data.results || talleresResponse.data;
+      setAlumnos(Array.isArray(alumnosJsonData) ? alumnosJsonData.filter((a: Alumno) => a.activo) : []);
+      setTalleres(Array.isArray(talleresJsonData) ? talleresJsonData.filter((t: Taller) => t.activo) : []);
     } catch (err) {
       console.error('Error fetching lookups:', err);
     }
@@ -81,9 +93,9 @@ function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: 
     if (!cicloId) return;
     setHorariosLoading(true);
     try {
-      const res = await api.get(`/ciclos/${cicloId}/horarios/?taller=${tallerId}&page_size=200`);
-      const data = res.data.results || res.data;
-      setHorarios(Array.isArray(data) ? data.filter((h: Horario) => h.activo) : []);
+      const response = await api.get(`/ciclos/${cicloId}/horarios/?taller=${tallerId}&page_size=200`);
+      const jsonData = response.data.results || response.data;
+      setHorarios(Array.isArray(jsonData) ? jsonData.filter((h: Horario) => h.activo) : []);
     } catch (err: any) {
       console.error('Error fetching horarios:', err);
     } finally {
@@ -98,9 +110,9 @@ function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: 
       const loadHorarios = async () => {
         let horariosExistentes: number[] = [];
         try {
-          const res = await api.get(`/matriculas-horarios/?matricula=${matricula.id}`);
-          const data = res.data.results || res.data;
-          horariosExistentes = Array.isArray(data) ? data.map((mh: any) => mh.horario) : [];
+          const response = await api.get(`/matriculas-horarios/?matricula=${matricula.id}`);
+          const jsonData = response.data.results || response.data;
+          horariosExistentes = Array.isArray(jsonData) ? jsonData.map((mh: any) => mh.horario) : [];
         } catch (err) {
           console.error('Error loading horarios:', err);
         }
@@ -145,12 +157,12 @@ function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: 
     const calcular = async () => {
       setCalculandoPrecio(true);
       try {
-        const res = await api.get(`/matriculas/calcular-precio/?taller_id=${formData.taller}&sesiones=${formData.sesiones_contratadas}`);
-        const data = res.data;
+        const response = await api.get(`/matriculas/calcular-precio/?taller_id=${formData.taller}&sesiones=${formData.sesiones_contratadas}`);
+        const jsonData = response.data;
         if (!cancelled) {
-          setPrecioSugerido(data.precio_total > 0 ? data.precio_total : null);
-          if (data.precio_total > 0) {
-            setFormData((prev) => ({ ...prev, precio_total: data.precio_total.toString() }));
+          setPrecioSugerido(jsonData.precio_total > 0 ? jsonData.precio_total : null);
+          if (jsonData.precio_total > 0) {
+            setFormData((prev) => ({ ...prev, precio_total: jsonData.precio_total.toString() }));
           }
         }
       } catch {
@@ -175,6 +187,7 @@ function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: 
       .slice(0, 10);
   }, [alumnoSearch, alumnos]);
 
+  // Construir grilla día×hora: agrupa horarios por "dia_semana-hora" para la tabla visual
   const horariosGrid = useMemo(() => {
     const grid: { [key: string]: Horario[] } = {};
     horarios.forEach((h) => {
@@ -241,8 +254,8 @@ function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: 
       if (!editingId && formData.horarios.length > 0) {
         payload.horarios = formData.horarios;
       }
-      const res = editingId ? await api.patch(url, payload) : await api.post(url, payload);
-      const matriculaData = res.data;
+      const response = editingId ? await api.patch(url, payload) : await api.post(url, payload);
+      const matriculaData = response.data;
       if (!editingId && formData.horarios.length > 0) {
         for (const horarioId of formData.horarios) {
           try {
@@ -252,12 +265,12 @@ function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: 
           }
         }
       } else if (editingId) {
-        const resHorarios = await api.get(`/matriculas-horarios/?matricula=${editingId}`);
-        const dataHorarios = resHorarios.data.results || resHorarios.data;
-        const horariosActuales: number[] = Array.isArray(dataHorarios) ? dataHorarios.map((mh: any) => mh.horario) : [];
+        const matriculasHorariosResponse = await api.get(`/matriculas-horarios/?matricula=${editingId}`);
+        const matriculasHorariosJsonData = matriculasHorariosResponse.data.results || matriculasHorariosResponse.data;
+        const horariosActuales: number[] = Array.isArray(matriculasHorariosJsonData) ? matriculasHorariosJsonData.map((mh: any) => mh.horario) : [];
         for (const horarioId of horariosActuales) {
           if (!formData.horarios.includes(horarioId)) {
-            const mhToDelete = Array.isArray(dataHorarios) ? dataHorarios.find((mh: any) => mh.horario === horarioId) : null;
+            const mhToDelete = Array.isArray(matriculasHorariosJsonData) ? matriculasHorariosJsonData.find((mh: any) => mh.horario === horarioId) : null;
             if (mhToDelete) await api.delete(`/matriculas-horarios/${mhToDelete.id}/`);
           }
         }

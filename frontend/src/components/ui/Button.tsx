@@ -1,11 +1,18 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  /** Visual style: primary (gold gradient), secondary (dark outline), danger (red tint), ghost (transparent) */
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  /** When true, disables the button and shows a spinner with "Cargando..." text */
   isLoading?: boolean;
+  /** Size preset controlling padding and font-size */
   size?: 'sm' | 'md' | 'lg';
 }
 
+/**
+ * Botón reutilizable con variantes visuales, tamaños y estado de carga.
+ * Extiende todos los atributos nativos de <button>.
+ */
 export function Button({ 
   children, 
   variant = 'primary', 

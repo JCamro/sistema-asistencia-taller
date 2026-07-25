@@ -1,17 +1,33 @@
 import { useEffect, memo } from 'react';
 
+/**
+ * Props for the confirmation dialog modal.
+ */
 interface ConfirmModalProps {
+  /** Controls modal visibility — renders nothing when false */
   isOpen: boolean;
+  /** Dialog heading (e.g. "Confirmar eliminación") */
   title: string;
+  /** Main body text explaining what will happen */
   message: string;
+  /** Name of the item being acted upon, highlighted in a red box for emphasis */
   itemName?: string;
+  /** Label for the confirm/accept button, defaults to "Confirmar" */
   confirmLabel?: string;
+  /** Label for the cancel/back button, defaults to "Cancelar" */
   cancelLabel?: string;
+  /** Callback executed when the user confirms the action */
   onConfirm: () => void;
+  /** Callback executed when the user cancels or clicks the backdrop */
   onCancel: () => void;
+  /** Disables both buttons and shows a spinner on the confirm button while processing */
   isLoading?: boolean;
 }
 
+/**
+ * Modal de confirmación con diseño de dos botones, soporte para estado de carga,
+ * cierre con tecla Escape, y advertencia visual de acción irreversible.
+ */
 function ConfirmModal({
   isOpen,
   title,

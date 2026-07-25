@@ -19,6 +19,13 @@ const init: ProfesorFormData = { nombre:'',apellido:'',dni:'',telefono:'',email:
 const ls: React.CSSProperties = { display:'block',fontSize:'0.6875rem',fontWeight:500,color:'var(--color-text-muted)',marginBottom:'0.2rem',textTransform:'uppercase',letterSpacing:'0.04em' };
 const is: React.CSSProperties = { width:'100%',padding:'0.5rem 0.75rem',border:'1px solid #e5e7eb',borderRadius:'10px',fontSize:'0.875rem' };
 
+/**
+ * ProfesoresPage — CRUD de profesores con historial de pagos
+ *
+ * Permite crear, editar y eliminar profesores. Incluye búsqueda con debounce,
+ * paginación, y un modal de historial de pagos que muestra montos por período.
+ * Usa React Query para cache y mutaciones optimistas.
+ */
 function ProfesoresPage() {
   const { cicloActual } = useCiclo(); const { showApiError } = useToast(); const queryClient = useQueryClient(); const ww = useWindowWidth(); const mb = ww < 768;
   const { searchText: s, setSearchText: setS, debouncedValue: ds } = useDebouncedSearch();
@@ -31,8 +38,8 @@ function ProfesoresPage() {
     queryKey: queryKeys.profesores(cicloActual?.id ?? 0, cp, ds),
     queryFn: async () => {
       if (!cicloActual) return { count: 0, results: [] };
-      const r = await getProfesores(cicloActual.id, cp, ds);
-      return r.data;
+      const response = await getProfesores(cicloActual.id, cp, ds);
+      return response.data;
     },
     enabled: !!cicloActual,
     staleTime: 30_000,

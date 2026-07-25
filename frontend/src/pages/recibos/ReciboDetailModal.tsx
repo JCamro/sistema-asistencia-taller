@@ -65,6 +65,14 @@ function formatReciboDate(dateStr: string | null | undefined): string {
   return `${d}/${m}/${y}`;
 }
 
+/**
+ * ReciboDetailModal — Vista de detalle de un recibo
+ *
+ * Muestra: número, estado, fecha de emisión, método de pago, alumnos,
+ * tabla de matrículas asociadas (alumno, taller, sesiones, monto),
+ * desglose financiero (bruto, descuento, total, pagado, saldo pendiente),
+ * y tipo de paquete aplicado.
+ */
 function ReciboDetailModal({ recibo, loading, onClose }: ReciboDetailModalProps) {
   if (!recibo) return null;
   return (

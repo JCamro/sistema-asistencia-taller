@@ -38,6 +38,15 @@ interface MatriculaDetailModalProps {
 const th: React.CSSProperties = { padding: '0.5rem 0.75rem', textAlign: 'left', fontSize: '0.65rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' };
 const td: React.CSSProperties = { padding: '0.5rem 0.75rem', fontSize: '0.8125rem', color: '#1f2937' };
 
+/**
+ * MatriculaDetailModal — Vista de detalle de una matrícula
+ *
+ * Tiene dos modos (vía prop `modo`):
+ * - "asistencias": muestra tabla de asistencias del alumno con contadores
+ *   (asistió, falta, falta grave) y permite eliminar registros individuales
+ *   con doble confirmación.
+ * - "horarios": muestra los horarios semanales asociados a la matrícula.
+ */
 function MatriculaDetailModal({ isOpen, onClose, matriculaId, cicloId, modo = 'asistencias' }: MatriculaDetailModalProps) {
   const { showToast, showApiError } = useToast();
   const [matricula, setMatricula] = useState<Matricula | null>(null);
@@ -52,9 +61,9 @@ function MatriculaDetailModal({ isOpen, onClose, matriculaId, cicloId, modo = 'a
     setLoading(true);
     setAsistencias([]);
     try {
-      const res = await api.get(`/asistencias/?matricula=${id}`);
-      const data = res.data.results || res.data;
-      const lista = Array.isArray(data) ? (data as AsistenciaDetalle[]) : [];
+      const response = await api.get(`/asistencias/?matricula=${id}`);
+      const jsonData = response.data.results || response.data;
+      const lista = Array.isArray(jsonData) ? (jsonData as AsistenciaDetalle[]) : [];
       setAsistencias(lista.sort((a, b) => {
         if (a.fecha !== b.fecha) return b.fecha.localeCompare(a.fecha);
         return b.hora.localeCompare(a.hora);
@@ -70,9 +79,9 @@ function MatriculaDetailModal({ isOpen, onClose, matriculaId, cicloId, modo = 'a
     setLoading(true);
     setHorarios([]);
     try {
-      const res = await api.get(`/matriculas/${id}/horarios/`);
-      const data = res.data.results || res.data;
-      setHorarios(Array.isArray(data) ? (data as HorarioDetalle[]) : []);
+      const response = await api.get(`/matriculas/${id}/horarios/`);
+      const jsonData = response.data.results || response.data;
+      setHorarios(Array.isArray(jsonData) ? (jsonData as HorarioDetalle[]) : []);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -90,8 +99,8 @@ function MatriculaDetailModal({ isOpen, onClose, matriculaId, cicloId, modo = 'a
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await api.get(`/matriculas/${matriculaId}/`);
-        if (!cancelled) setMatricula(res.data);
+        const response = await api.get(`/matriculas/${matriculaId}/`);
+        if (!cancelled) setMatricula(response.data);
       } catch (err) {
         console.error('Error loading matricula:', err);
       }

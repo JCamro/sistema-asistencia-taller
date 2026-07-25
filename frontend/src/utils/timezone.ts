@@ -10,8 +10,12 @@
 const LIMA_OFFSET_HOURS = -5;
 
 /**
- * Convierte una fecha UTC (ISO string) a la fecha en Lima
- * Ejemplo: "2026-04-17T03:00:00+00:00" → "2026-04-16" (porque 03:00 UTC = 22:00 Lima del día anterior)
+ * Convierte una fecha UTC (ISO string) a la fecha en Lima.
+ *
+ * @param utcIsoString - Fecha en formato ISO 8601 (UTC), ej. "2026-04-17T03:00:00+00:00"
+ * @returns Fecha en formato YYYY-MM-DD en timezone Lima, o '' si el input es inválido.
+ *          Ejemplo: "2026-04-17T03:00:00+00:00" → "2026-04-16"
+ *          (porque 03:00 UTC = 22:00 Lima del día anterior)
  */
 export function utcToLimaDate(utcIsoString: string | null | undefined): string {
   if (!utcIsoString) return '';
@@ -32,8 +36,12 @@ export function utcToLimaDate(utcIsoString: string | null | undefined): string {
 }
 
 /**
- * Convierte una fecha Lima (YYYY-MM-DD) a ISO string en UTC
- * Ejemplo: "2026-04-17" → "2026-04-17T05:00:00.000Z" (midnight Lima = 05:00 UTC)
+ * Convierte una fecha Lima (YYYY-MM-DD) a ISO string en UTC.
+ *
+ * @param limaDateString - Fecha en formato YYYY-MM-DD (midnight Lima asumido)
+ * @returns ISO string UTC, o '' si el input es inválido.
+ *          Ejemplo: "2026-04-17" → "2026-04-17T05:00:00.000Z"
+ *          (midnight Lima = 05:00 UTC porque Lima es UTC-5)
  */
 export function limaDateToUtc(limaDateString: string | null | undefined): string {
   if (!limaDateString) return '';
@@ -48,7 +56,10 @@ export function limaDateToUtc(limaDateString: string | null | undefined): string
 }
 
 /**
- * Formatea una fecha UTC para mostrar en Lima (DD/MM/YYYY)
+ * Formatea una fecha UTC para mostrar en Lima (DD/MM/YYYY).
+ *
+ * @param utcIsoString - Fecha en formato ISO 8601 (UTC)
+ * @returns Fecha formateada como DD/MM/YYYY en timezone Lima, o '' si el input es inválido
  */
 export function formatLimaDate(utcIsoString: string | null | undefined): string {
   const limaDate = utcToLimaDate(utcIsoString);

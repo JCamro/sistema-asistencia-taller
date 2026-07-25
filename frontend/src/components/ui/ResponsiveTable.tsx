@@ -18,8 +18,15 @@ interface ResponsiveTableProps<T> {
   actions?: (row: T) => ReactNode;
 }
 
+/**
+ * Componente de tabla responsiva que muestra datos en formato tabla en desktop
+ * y como tarjetas (DataCard) en mobile (≤768px).
+ *
+ * @template T - Tipo de datos de cada fila de la tabla.
+ */
 function ResponsiveTable<T>({ columns, data, keyField, emptyMessage = 'Sin datos', actions }: ResponsiveTableProps<T>) {
   const width = useWindowWidth();
+  // Breakpoint: 768px — below this, switch from table to card layout
   const isMobile = width <= 768;
 
   if (data.length === 0) {

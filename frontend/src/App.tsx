@@ -89,17 +89,18 @@ function Sidebar({ cicloNombre, abierto, onToggle }: { cicloNombre: string, abie
     { to: '/finanzas', label: 'Finanzas', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
   ];
 
+  // Estructura del sidebar dividida en secciones semánticas
   const secciones = [
-    { titulo: 'Gestión', items: navItems.slice(0, 4) },
-    { titulo: 'Operaciones', items: navItems.slice(4, 7) },
-    { titulo: 'Caja', items: navItems.slice(7, 9) },
-    { titulo: 'Nómina', items: navItems.slice(9, 10) },
-    { titulo: 'Resumen', items: navItems.slice(10, 11) },
+    { titulo: 'Gestión', items: navItems.slice(0, 4) },      // Dashboard, Alumnos, Profesores, Talleres
+    { titulo: 'Operaciones', items: navItems.slice(4, 7) },   // Horarios, Matrículas, Asistencias
+    { titulo: 'Caja', items: navItems.slice(7, 9) },          // Recibos, Egresos
+    { titulo: 'Nómina', items: navItems.slice(9, 10) },      // Horas Profesores
+    { titulo: 'Resumen', items: navItems.slice(10, 11) },    // Finanzas
   ];
 
   return (
     <>
-      {/* Overlay for mobile */}
+      {/* Overlay oscuro para mobile: cierra el sidebar al tocar fuera */}
       {abierto && (
         <div 
           onClick={onToggle}
@@ -158,13 +159,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { cicloActual } = useCiclo();
   const [sidebarAbierto, setSidebarAbierto] = useState(false);
 
+  // Si no hay ciclo seleccionado, redirigir a selección
   if (!cicloActual) {
     return <Navigate to="/" replace />;
   }
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
-      {/* Hamburger menu button for mobile */}
+      {/* Botón hamburguesa: visible solo en mobile (≤768px). Controla apertura/cierre del sidebar. */}
       <button
         onClick={() => setSidebarAbierto(!sidebarAbierto)}
         style={{
@@ -203,6 +205,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
 const DashboardLayoutMemo = memo(DashboardLayout);
 
+/**
+ * ProtectedRoute — Guard de autenticación
+ *
+ * Verifica que exista un token JWT en localStorage.
+ * Si no hay token, redirige a /login.
+ * Mientras carga el estado del ciclo (CicloProvider), muestra spinner.
+ */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoading } = useCiclo();
   
@@ -218,6 +227,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Login — Pantalla de autenticación
+ *
+ * Componente inline que maneja el inicio de sesión con JWT.
+ * Si el usuario ya tiene un token válido, redirige automáticamente a selección de ciclo.
+ * Usa useLoginForm (react-hook-form) para validación de campos y estado de carga.
+ */
 function Login() {
   const navigate = useNavigate();
   const { register, handleSubmit, errors, isLoading, onSubmit } = useLoginForm();
@@ -690,7 +706,7 @@ function SeleccionCiclos() {
                   setGuardandoPassword(true);
                   const token = localStorage.getItem('access_token');
                   try {
-                    const res = await fetch(`${apiBase}/api/usuarios/cambiar-password/`, {
+                    const response = await fetch(`${apiBase}/api/usuarios/cambiar-password/`, {
                       method: 'POST',
                       headers: { 
                         'Content-Type': 'application/json',
@@ -702,14 +718,14 @@ function SeleccionCiclos() {
                         new_password_confirm: confirmarPassword,
                       }),
                     });
-                    const data = await res.json();
-                    if (res.ok) {
+                    const jsonData = await response.json();
+                    if (response.ok) {
                       setMensajePassword('✓ Contraseña actualizada correctamente');
                       setPasswordActual('');
                       setNuevaPassword('');
                       setConfirmarPassword('');
                     } else {
-                      setMensajePassword(`Error: ${data.detail || 'Error al cambiar contraseña'}`);
+                      setMensajePassword(`Error: ${jsonData.detail || 'Error al cambiar contraseña'}`);
                     }
                   } catch (err) {
                     setMensajePassword('Error: No se pudo conectar con el servidor');
@@ -756,18 +772,37 @@ const SeleccionCiclosMemo = memo(SeleccionCiclos);
 
 const DashboardMemo = memo(DashboardPage);
 
+// React Query: instancia global con staleTime de 30s, 1 retry, sin refetch al focus
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false },
   },
 });
 
+/**
+ * App — Componente raíz de la aplicación
+ *
+ * Provee la jerarquía de contextos necesaria para toda la app:
+ *   ToastProvider → BrowserRouter → CicloProvider → QueryClientProvider → ErrorBoundary → Routes
+ *
+ * La estructura de rutas está dividida en tres tipos de acceso:
+ * - /login: público, sin ciclo requerido
+ * - / (SeleccionCiclos): protegido por token, sin layout de dashboard
+ * - Rutas con DashboardLayout: protegidas y con sidebar + header (requieren ciclo activo)
+ */
 export default function App() {
   return (
+    // Proveedor de notificaciones toast — debe envolver todo para que cualquier componente pueda usarlo
     <ToastProvider>
       <BrowserRouter>
+        {/* Gestión de ciclo activo: carga ciclos disponibles, mantiene el seleccionado en estado global */}
         <CicloProvider>
+          {/*
+           * React Query: caché de datos del servidor con staleTime de 30s.
+           * Todas las páginas usan queryKeys + useQuery/useMutation para datos del backend.
+           */}
           <QueryClientProvider client={queryClient}>
+            {/* Error Boundary: captura errores de renderizado y muestra pantalla de fallback */}
             <ErrorBoundary>
               <Routes>
                 <Route path="/login" element={<LoginMemo />} />

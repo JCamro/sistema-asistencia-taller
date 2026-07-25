@@ -43,10 +43,10 @@ interface ReciboFormData {
 
 function getLimaToday(): string {
   const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 const initialFormData: ReciboFormData = {
@@ -83,6 +83,18 @@ interface ReciboFormModalProps {
   cicloId?: number | null;
 }
 
+/**
+ * ReciboFormModal — Formulario de creación/edición de recibo
+ *
+ * Flujo para crear:
+ * 1. Seleccionar matrículas (agrupadas por alumno, con checkbox)
+ * 2. El precio se calcula automáticamente vía API (descuentos por combo)
+ * 3. Se pueden editar manualmente los montos (bruto, descuento, final, pagado)
+ * 4. Seleccionar estado (pendiente/pagado/anulado) y método de pago
+ *
+ * En edición: permite cambiar montos, estado, método de pago, marcar como
+ * pagado o anular. El saldo pendiente se calcula en vivo.
+ */
 function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: ReciboFormModalProps) {
   const editingId = recibo?.id ?? null;
   const { showApiError } = useToast();
@@ -145,15 +157,15 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
     }
     setCalculandoPrecio(true);
     try {
-      const res = await api.post('/recibos/calcular-precio/', { matricula_ids: matriculaIds });
-      const data = res.data;
-      setPrecioCalculado(data);
+      const response = await api.post('/recibos/calcular-precio/', { matricula_ids: matriculaIds });
+      const jsonData = response.data;
+      setPrecioCalculado(jsonData);
       setFormData((prev) => ({
         ...prev,
-        monto_bruto: String(data.precio_bruto ?? '0'),
-        monto_total: String(data.precio_sugerido ?? '0'),
-        descuento: String(data.descuento ?? '0'),
-        paquete_aplicado: data.paquete_detectado || 'individual',
+        monto_bruto: String(jsonData.precio_bruto ?? '0'),
+        monto_total: String(jsonData.precio_sugerido ?? '0'),
+        descuento: String(jsonData.descuento ?? '0'),
+        paquete_aplicado: jsonData.paquete_detectado || 'individual',
       }));
       setPrecioEditadoManual(false);
     } catch (err) {

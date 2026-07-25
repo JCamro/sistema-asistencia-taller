@@ -1,3 +1,7 @@
+/**
+ * Indicador de carga a pantalla completa: spinner centrado con animación CSS.
+ * Se usa como fallback mientras se cargan datos iniciales o se resuelven rutas.
+ */
 export function Loading() {
   return (
     <div style={{

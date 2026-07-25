@@ -13,8 +13,23 @@ const IconClock = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="no
 const IconFile = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>;
 const IconDollar = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>;
 
+/**
+ * Dashboard — Panel de KPIs del ciclo activo
+ *
+ * Muestra indicadores clave: alumnos sin asistencia hoy, matrículas por concluir,
+ * matrículas sin recibo, y pagos incompletos. Cada KPI es clickeable y navega
+ * a la sección correspondiente.
+ *
+ * Sección de ingresos:
+ *   - Toggle día/semana: alterna entre ingresos de hoy y de la semana
+ *   - Botón mostrar/ocultar: oculta el monto real con viñetas por privacidad
+ *   - Las barras decorativas son estáticas (no representan datos reales)
+ *
+ * También incluye la calculadora de precios empotrada y accesos rápidos
+ * a las operaciones más frecuentes (matrícula, recibo, asistencia).
+ */
 export default function Dashboard() {
-  const { cicloActual } = useCiclo(); const n = useNavigate(); const { showToast } = useToast();
+  const { cicloActual } = useCiclo(); const navigate = useNavigate(); const { showToast } = useToast();
   const [kpis, setKpis] = useState<KpiData|null>(null); const [ingresos, setIngresos] = useState<DashboardIngresos|null>(null);
   const [loading, setLoading] = useState(true); const [error, setError] = useState(false);
   const [showSemana, setShowSemana] = useState(false); const [showMonto, setShowMonto] = useState(false);
@@ -26,6 +41,7 @@ export default function Dashboard() {
   if(loading) return <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'60vh',gap:'1rem'}}><div style={{width:44,height:44,border:'3px solid #f1f5f9',borderTop:'3px solid #d4af37',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/><p style={{color:'#94a3b8',fontSize:'0.875rem'}}>Cargando...</p><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
   if(error) return <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'60vh',gap:'0.75rem'}}><p style={{color:'#dc2626',fontSize:'0.9375rem'}}>Error al cargar</p><button onClick={load} style={{padding:'0.5rem 1.25rem',background:'#d4af37',color:'#0a0a0a',border:'none',borderRadius:'8px',fontWeight:600,cursor:'pointer',fontSize:'0.875rem'}}>Reintentar</button></div>;
 
+  // Ingresos: toggle entre hoy y semana. showMonto controla si se muestra el valor o viñetas.
   const ia = showSemana?ingresos?.ingresos_semana??0:ingresos?.ingresos_hoy??0;
   const pa = showSemana?ingresos?.cantidad_pagos_semana??0:ingresos?.cantidad_pagos_hoy??0;
 
@@ -38,15 +54,15 @@ export default function Dashboard() {
       <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'0.75rem'}}><button onClick={()=>setShowMonto(v=>!v)} title={showMonto?'Ocultar':'Mostrar'} className="touch-target" style={{padding:'0.35rem 0.65rem',border:'1px solid rgba(180,150,20,0.3)',borderRadius:'8px',background:'white',cursor:'pointer',fontSize:'0.75rem',color:'#8b6914',display:'flex',alignItems:'center',gap:'0.35rem',minHeight:'36px'}}><span style={{fontSize:'1rem',lineHeight:1}}>{showMonto?'👁':'👁‍🗨'}</span>{showMonto?'Ocultar':'Mostrar'}</button><div style={{display:'flex',alignItems:'flex-end',gap:'4px',height:'48px'}}>{[0.4,0.2,0.7,0.3,0.9,0.5,0.6].map((h,i)=><div key={i} style={{width:8,borderRadius:4,height:`${h*48}px`,background:i===4?'#d4af37':'rgba(180,150,20,0.2)'}}/>)}</div></div>
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'0.875rem',marginBottom:'1.75rem'}}>
-      <KpiBox label="Sin asistencia hoy" value={kpis?.alumnos_sin_asistencia_hoy??0} icon={<IconAlert/>} color="#f59e0b" bg="#fffbeb" onClick={()=>n('/asistencias')} urgency={kpis&&kpis.alumnos_sin_asistencia_hoy>0?'Revisar':undefined}/>
-      <KpiBox label="Por concluir" value={kpis?.matriculas_por_concluir??0} icon={<IconClock/>} color="#dc2626" bg="#fef2f2" onClick={()=>n('/matriculas')} urgency={kpis&&kpis.matriculas_por_concluir>0?'Urgente':undefined}/>
-      <KpiBox label="Sin recibo" value={kpis?.matriculas_sin_recibo??0} icon={<IconFile/>} color="#2563eb" bg="#eff6ff" onClick={()=>n('/recibos')}/>
-      <KpiBox label="Pago incompleto" value={kpis?.matriculas_sin_pago_completo??0} icon={<IconDollar/>} color="#059669" bg="#ecfdf5" onClick={()=>n('/recibos')}/>
+      <KpiBox label="Sin asistencia hoy" value={kpis?.alumnos_sin_asistencia_hoy??0} icon={<IconAlert/>} color="#f59e0b" bg="#fffbeb" onClick={()=>navigate('/asistencias')} urgency={kpis&&kpis.alumnos_sin_asistencia_hoy>0?'Revisar':undefined}/>
+      <KpiBox label="Por concluir" value={kpis?.matriculas_por_concluir??0} icon={<IconClock/>} color="#dc2626" bg="#fef2f2" onClick={()=>navigate('/matriculas')} urgency={kpis&&kpis.matriculas_por_concluir>0?'Urgente':undefined}/>
+      <KpiBox label="Sin recibo" value={kpis?.matriculas_sin_recibo??0} icon={<IconFile/>} color="#2563eb" bg="#eff6ff" onClick={()=>navigate('/recibos')}/>
+      <KpiBox label="Pago incompleto" value={kpis?.matriculas_sin_pago_completo??0} icon={<IconDollar/>} color="#059669" bg="#ecfdf5" onClick={()=>navigate('/recibos')}/>
     </div>
     <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap',marginBottom:'1.75rem'}}>
-      {[{label:'Nueva matrícula',path:'/matriculas'},{label:'Nuevo recibo',path:'/recibos'},{label:'Registrar asistencia',path:'/asistencias'}].map(a=>(<button key={a.label} onClick={()=>n(a.path)} style={{padding:'0.5rem 1rem',borderRadius:'10px',border:'1px solid #e5e7eb',background:'white',color:'#374151',cursor:'pointer',fontSize:'0.8125rem',fontWeight:500,display:'flex',alignItems:'center',gap:'0.375rem',transition:'all 0.15s'}} onMouseEnter={e=>{e.currentTarget.style.borderColor='#d4af37';e.currentTarget.style.color='#0f172a'}} onMouseLeave={e=>{e.currentTarget.style.borderColor='#e5e7eb';e.currentTarget.style.color='#374151'}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>{a.label}</button>))}
+      {[{label:'Nueva matrícula',path:'/matriculas'},{label:'Nuevo recibo',path:'/recibos'},{label:'Registrar asistencia',path:'/asistencias'}].map(a=>(<button key={a.label} onClick={()=>navigate(a.path)} style={{padding:'0.5rem 1rem',borderRadius:'10px',border:'1px solid #e5e7eb',background:'white',color:'#374151',cursor:'pointer',fontSize:'0.8125rem',fontWeight:500,display:'flex',alignItems:'center',gap:'0.375rem',transition:'all 0.15s'}} onMouseEnter={e=>{e.currentTarget.style.borderColor='#d4af37';e.currentTarget.style.color='#0f172a'}} onMouseLeave={e=>{e.currentTarget.style.borderColor='#e5e7eb';e.currentTarget.style.color='#374151'}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>{a.label}</button>))}
     </div>
-    <div style={{background:'white',borderRadius:'14px',padding:'1.5rem',border:'1px solid #f1f5f9',boxShadow:'0 1px 4px rgba(0,0,0,0.03)'}}><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1rem'}}><h2 style={{fontSize:'1rem',fontWeight:600,color:'#0f172a',margin:0}}>Calculadora de Precios</h2><button onClick={()=>n('/configuracion-precios')} style={{width:34,height:34,borderRadius:8,border:'1px solid #e5e7eb',background:'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}} onMouseEnter={e=>e.currentTarget.style.borderColor='#d4af37'} onMouseLeave={e=>e.currentTarget.style.borderColor='#e5e7eb'}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.8"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg></button></div><CalculadoraPrecios/></div>
+    <div style={{background:'white',borderRadius:'14px',padding:'1.5rem',border:'1px solid #f1f5f9',boxShadow:'0 1px 4px rgba(0,0,0,0.03)'}}><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1rem'}}><h2 style={{fontSize:'1rem',fontWeight:600,color:'#0f172a',margin:0}}>Calculadora de Precios</h2><button onClick={()=>navigate('/configuracion-precios')} style={{width:34,height:34,borderRadius:8,border:'1px solid #e5e7eb',background:'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}} onMouseEnter={e=>e.currentTarget.style.borderColor='#d4af37'} onMouseLeave={e=>e.currentTarget.style.borderColor='#e5e7eb'}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.8"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg></button></div><CalculadoraPrecios/></div>
   </div>);
 }
 

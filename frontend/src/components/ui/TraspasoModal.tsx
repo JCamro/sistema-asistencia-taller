@@ -19,6 +19,15 @@ interface TraspasoModalProps {
   isLoading?: boolean;
 }
 
+/**
+ * Modal de dos pasos para transferir una matrícula de un alumno a otro.
+ *
+ * Paso 1: buscar y seleccionar al alumno destino (autocomplete con dropdown).
+ * Paso 2: revisar resumen del traspaso (origen → destino, taller, advertencias) y confirmar.
+ *
+ * La transferencia implica: desactivar la matrícula origen, crear nueva matrícula
+ * para el alumno destino, y migrar todas las asistencias registradas.
+ */
 function TraspasoModal({
   isOpen,
   alumnoOrigen,
@@ -43,8 +52,8 @@ function TraspasoModal({
     fetch(`${apiBase}/api/ciclos/${cicloId}/alumnos/`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((res) => res.json())
-      .then((data) => setAlumnos(data.results || data))
+      .then((response) => response.json())
+      .then((jsonData) => setAlumnos(jsonData.results || jsonData))
       .catch(() => setAlumnos([]))
       .finally(() => setLoadingAlumnos(false));
   }, [isOpen, cicloId]);

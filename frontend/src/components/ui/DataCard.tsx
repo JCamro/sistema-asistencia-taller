@@ -1,13 +1,25 @@
 import { memo, type ReactNode, type CSSProperties } from 'react';
 
+/**
+ * Props for the DataCard sub-component used by ResponsiveTable on mobile.
+ */
 interface DataCardProps {
+  /** Optional card title rendered as an <h3> above the content */
   title?: string;
+  /** Body content — typically key-value pairs from table columns */
   children?: ReactNode;
+  /** Action buttons rendered at the bottom of the card */
   actions?: ReactNode;
+  /** Makes the entire card clickable and adds hover effects */
   onClick?: () => void;
+  /** Visual variant: 'default' has white bg + shadow, 'outlined' is transparent */
   variant?: 'default' | 'outlined';
 }
 
+/**
+ * Sub-componente de tarjeta para ResponsiveTable en vista mobile.
+ * Muestra los datos de una fila como pares clave-valor dentro de una tarjeta.
+ */
 function DataCard({ title, children, actions, onClick, variant = 'default' }: DataCardProps) {
   const baseStyles: CSSProperties = {
     background: variant === 'default' ? '#ffffff' : 'transparent',

@@ -29,9 +29,14 @@ const ICONS: Record<ToastType, string> = {
 
 const DURATION = 4000;
 
+/**
+ * Single toast notification with type-based color coding, a progress bar,
+ * and a close button. Supports error, success, warning, and info variants.
+ */
 function Toast({ toast, onDismiss }: ToastProps) {
   const colors = COLORS[toast.type];
 
+  // Auto-dismiss after DURATION ms — clears the timer on unmount or id change
   useEffect(() => {
     const timer = setTimeout(() => onDismiss(toast.id), DURATION);
     return () => clearTimeout(timer);
@@ -100,6 +105,10 @@ interface ToastContainerProps {
   onDismiss: (id: string) => void;
 }
 
+/**
+ * Fixed-position container that renders all active toasts stacked bottom-right.
+ * The toast list is rendered in reverse order so newest toasts appear at the bottom.
+ */
 function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
   if (toasts.length === 0) return null;
 

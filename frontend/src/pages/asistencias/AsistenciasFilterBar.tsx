@@ -33,6 +33,13 @@ interface AsistenciasFilterBarProps {
   profesores: ProfesorOption[];
 }
 
+/**
+ * AsistenciasFilterBar — Filtros para el registro de asistencia diaria
+ *
+ * Flujo de selección en cascada: Fecha → Taller (según día) → Horario → Profesor.
+ * Al cambiar la fecha, se resetea el horario. Al cambiar el taller, se resetea
+ * el horario. El profesor se auto-asigna desde el horario y queda bloqueado.
+ */
 function AsistenciasFilterBar({
   fecha,
   onFechaChange,

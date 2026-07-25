@@ -39,16 +39,16 @@ interface Recibo {
 
 function getLimaToday(): string {
   const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function formatReciboDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '';
-  const [y, m, d] = dateStr.split('-');
-  return `${d}/${m}/${y}`;
+  const [year, month, day] = dateStr.split('-');
+  return `${day}/${month}/${year}`;
 }
 
 function getEstadoColor(estado: string) {
@@ -75,6 +75,15 @@ function getPaqueteLabel(paquete: string) {
   return labels[paquete] || paquete;
 }
 
+/**
+ * RecibosPage — Pantalla de gestión de recibos de pago
+ *
+ * Dashboard con KPIs (total, pendiente, pagado) y tabla con filtros por estado
+ * y presets de fecha (hoy, semana, mes). Soporta multi-alumno (varios nombres
+ * en un mismo recibo). Flujo: PageHeader + KPIs → FilterBar → Tabla → Modales.
+ *
+ * Sub-componentes: RecibosFilterBar, ReciboFormModal, ReciboDetailModal
+ */
 function RecibosPage() {
   const apiBase = getApiBaseUrl();
   const { cicloActual } = useCiclo();
@@ -99,6 +108,7 @@ function RecibosPage() {
   const [pagado, setPagado] = useState(0);
   const [pendiente, setPendiente] = useState(0);
 
+  // Ref para que fetchData use valores actuales sin recrearse en cada render
   const searchRef = useRef(search);
   const filtroRef = useRef(filtroEstado);
   useEffect(() => { searchRef.current = search; }, [search]);
@@ -108,28 +118,28 @@ function RecibosPage() {
     if (!cicloActual) return;
     setCurrentPage(page);
     const token = localStorage.getItem('access_token');
-    const s = searchRef.current;
+    const searchText = searchRef.current;
     const fe = filtroRef.current;
     try {
       const params = new URLSearchParams({ ordering: '-id', page: String(page) });
       if (fe !== 'todos') params.set('estado', fe);
-      if (s) params.set('search', s);
-      const [recibosRes, matriculasRes] = await Promise.all([
+      if (searchText) params.set('search', searchText);
+      const [recibosResponse, matriculasResponse] = await Promise.all([
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/recibos/?${params}`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${apiBase}/api/ciclos/${cicloActual.id}/matriculas/?estado=no_procesado&page_size=200`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
-      const [recibosData, matriculasData] = await Promise.all([recibosRes.json(), matriculasRes.json()]);
-      const recibosArray = recibosData.results || recibosData;
+      const [recibosJsonData, matriculasJsonData] = await Promise.all([recibosResponse.json(), matriculasResponse.json()]);
+      const recibosArray = recibosJsonData.results || recibosJsonData;
       setRecibos(recibosArray);
-      setTotalCount(recibosData.count || 0);
-      setTotalPages(Math.ceil((recibosData.count || 0) / 20) || 1);
-      const todosRes = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/recibos/?page_size=500`, { headers: { Authorization: `Bearer ${token}` } });
-      const todosData = await todosRes.json();
-      const todosArr = todosData.results || todosData;
+      setTotalCount(recibosJsonData.count || 0);
+      setTotalPages(Math.ceil((recibosJsonData.count || 0) / 20) || 1);
+      const todosResponse = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/recibos/?page_size=500`, { headers: { Authorization: `Bearer ${token}` } });
+      const todosJsonData = await todosResponse.json();
+      const todosArr = todosJsonData.results || todosJsonData;
       setTotal(Array.isArray(todosArr) ? todosArr.reduce((s: number, r: any) => s + Number(r.monto_total || 0), 0) : 0);
       setPagado(Array.isArray(todosArr) ? todosArr.filter((r: any) => r.estado === 'pagado').reduce((s: number, r: any) => s + Number(r.monto_pagado || 0), 0) : 0);
       setPendiente(Array.isArray(todosArr) ? todosArr.filter((r: any) => r.estado === 'pendiente').reduce((s: number, r: any) => s + Number(r.monto_total || 0), 0) : 0);
-      setMatriculas(Array.isArray(matriculasData.results || matriculasData) ? (matriculasData.results || matriculasData) : []);
+      setMatriculas(Array.isArray(matriculasJsonData.results || matriculasJsonData) ? (matriculasJsonData.results || matriculasJsonData) : []);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -177,10 +187,10 @@ function RecibosPage() {
     setShowDetailModal(true);
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`${apiBase}/api/recibos/${recibo.id}/`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setSelectedRecibo(data);
+      const response = await fetch(`${apiBase}/api/recibos/${recibo.id}/`, { headers: { Authorization: `Bearer ${token}` } });
+      if (response.ok) {
+        const jsonData = await response.json();
+        setSelectedRecibo(jsonData);
       }
     } catch (err) {
       console.error('Error fetching receipt details:', err);

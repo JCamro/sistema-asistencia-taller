@@ -26,8 +26,25 @@ const is: React.CSSProperties = { width:'100%',padding:'0.5rem 0.75rem',border:'
 const getHoraLabel = (h: number) => `${h.toString().padStart(2, '0')}:00`;
 const normalizarHora = (h: string) => { const p = h.split(':'); return `${(parseInt(p[0]) || 0).toString().padStart(2, '0')}:${p[1]?.substring(0, 2) || '00'}`; };
 
+/**
+ * TallerDetalle — Vista detallada de un taller con gestión de horarios
+ *
+ * Muestra una grilla semanal (filas = horas, columnas = días) con las clases
+ * del taller. Desde esta vista se puede:
+ *   - Ver ocupación de cada horario (alumnos/cupo)
+ *   - Crear un horario nuevo (clic en celda vacía)
+ *   - Seleccionar un horario existente para ver/editar:
+ *     * Cambiar profesor asignado
+ *     * Cambiar tipo de pago (dinámico/fijo) y monto fijo
+ *     * Editar cupo máximo
+ *     * Ver lista de alumnos inscriptos
+ *     * Eliminar horario (solo si no tiene alumnos)
+ *
+ * Panel lateral derecho con tres estados: vacío (placeholder), crear (formulario),
+ * detalle (edición inline). Las mutaciones usan PATCH directo al backend.
+ */
 function TallerDetalle() {
-  const n = useNavigate(); const { tallerId } = useParams<{ tallerId: string }>();
+  const navigate = useNavigate(); const { tallerId } = useParams<{ tallerId: string }>();
   const { cicloActual, isLoading: isCicloLoading } = useCiclo();
   const { showToast, showApiError } = useToast();
   const apiBase = getApiBaseUrl(); const ww = useWindowWidth(); const mb = ww < 768;
@@ -74,12 +91,16 @@ function TallerDetalle() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Grilla de horarios: clave "dia-hora" → objeto Horario para lookup O(1)
   const gridHorarios = useMemo(() => {
     const g: { [key: string]: Horario } = {};
     horarios.forEach(h => { g[`${h.dia_semana}-${normalizarHora(h.hora_inicio)}`] = h; });
     return g;
   }, [horarios]);
 
+  // Al hacer clic en celda:
+  // - Si ya existe horario → modo detalle
+  // - Si está vacía → modo crear (pre-rellena día y hora)
   const handleCeldaClick = (dia: number, hora: string) => {
     const key = `${dia}-${hora}`;
     if (gridHorarios[key]) { setHorarioSeleccionado(gridHorarios[key]); setPanelEstado('detalle'); setEditandoPago(false); setCeldaSeleccionada(null); }
@@ -92,8 +113,8 @@ function TallerDetalle() {
     try {
       const payload: Record<string, unknown> = { taller: parseInt(tallerId), profesor: formData.profesor, dia_semana: formData.dia_semana, hora_inicio: formData.hora_inicio, hora_fin: `${(parseInt(hp[0]) + 1).toString().padStart(2, '0')}:${hp[1]}`, activo: true, cupo_maximo: formData.cupo_maximo, tipo_pago: crearTipoPago };
       if (crearTipoPago === 'fijo' && crearMontoFijo) payload.monto_fijo = parseFloat(crearMontoFijo);
-      const res = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/horarios/`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error(JSON.stringify(await res.json()));
+      const response = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/horarios/`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+      if (!response.ok) throw new Error(JSON.stringify(await response.json()));
       await fetchData(); setPanelEstado('vacio'); setCeldaSeleccionada(null);
     } catch (err) { showApiError(err); } finally { setSaving(false); }
   };
@@ -112,8 +133,8 @@ function TallerDetalle() {
   const patchHorario = async (payload: Record<string, unknown>, label: string) => {
     if (!horarioSeleccionado) return;
     try {
-      const res = await fetch(`${apiBase}/api/horarios/${horarioSeleccionado.id}/`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('access_token')}` }, body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error(JSON.stringify(await res.json()));
+      const response = await fetch(`${apiBase}/api/horarios/${horarioSeleccionado.id}/`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('access_token')}` }, body: JSON.stringify(payload) });
+      if (!response.ok) throw new Error(JSON.stringify(await response.json()));
       showToast(`${label} actualizado`, 'success');
       setHorarioSeleccionado(prev => prev ? { ...prev, ...payload as any } : prev);
       await fetchData();
@@ -123,7 +144,7 @@ function TallerDetalle() {
   if (isCicloLoading || loading) return <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'60vh',gap:'1rem'}}><div style={{width:40,height:40,border:'3px solid #f1f5f9',borderTop:'3px solid #d4af37',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/><p style={{color:'#94a3b8',fontSize:'0.875rem'}}>Cargando...</p><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
 
   return (<div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-    <button onClick={() => n('/talleres')} style={{ display:'flex',alignItems:'center',gap:'0.375rem',padding:'0.4rem 0.75rem',border:'1px solid #e5e7eb',borderRadius:'10px',background:'white',color:'#64748b',fontSize:'0.8125rem',cursor:'pointer',marginBottom:'1rem' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg> Volver a Talleres</button>
+    <button onClick={() => navigate('/talleres')} style={{ display:'flex',alignItems:'center',gap:'0.375rem',padding:'0.4rem 0.75rem',border:'1px solid #e5e7eb',borderRadius:'10px',background:'white',color:'#64748b',fontSize:'0.8125rem',cursor:'pointer',marginBottom:'1rem' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg> Volver a Talleres</button>
     <div style={{ marginBottom:'1.5rem' }}><div style={{ display:'flex',alignItems:'baseline',gap:'0.75rem',flexWrap:'wrap' }}><h1 style={{ fontSize:'1.625rem',fontWeight:700,color:'#0f172a',margin:0,letterSpacing:'-0.02em' }}>{taller?.nombre || '—'}</h1><span style={{ fontSize:'0.7rem',fontWeight:600,padding:'0.2rem 0.55rem',borderRadius:'9999px',background:taller?.activo?'#ecfdf5':'#f3f4f6',color:taller?.activo?'#059669':'#94a3b8' }}>{taller?.activo?'Activo':'Inactivo'}</span></div>{taller?.descripcion&&<p style={{ color:'#94a3b8',fontSize:'0.8125rem',margin:'0.25rem 0 0' }}>{taller.descripcion}</p>}<div style={{ height:3,width:48,background:'linear-gradient(90deg,#d4af37,#f0d878)',borderRadius:2,marginTop:'0.5rem' }}/></div>
 
     <div style={{ display:'flex',gap:'1rem',flexWrap:mb?'wrap':'nowrap' }}>

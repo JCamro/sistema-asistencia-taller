@@ -17,6 +17,13 @@ interface AsistenciaRecuperacionModalProps {
   onClose: () => void;
 }
 
+/**
+ * AsistenciaRecuperacionModal — Modal para agregar clases de recuperación
+ *
+ * Permite buscar alumnos por nombre/DNI que tengan matrículas activas en
+ * otros horarios (vía endpoint recuperables) y registrarlos como asistencia
+ * de recuperación en el horario actual.
+ */
 function AsistenciaRecuperacionModal({
   isOpen,
   busqueda,

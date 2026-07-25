@@ -9,6 +9,11 @@ const getBaseUrl = (): string => {
   return '/api';
 };
 
+// Instancia de axios preconfigurada para el backend Django.
+// Incluye:
+//   - Base URL desde variable de entorno VITE_API_URL o fallback a ruta relativa
+//   - Interceptor de request que adjunta el access token JWT
+//   - Interceptor de response que intenta refresh automático en 401 y redirige a /login si falla
 const api = axios.create({
   baseURL: getBaseUrl(),
   headers: {
@@ -16,6 +21,7 @@ const api = axios.create({
   },
 });
 
+// Request interceptor: adjunta el token JWT a cada petición saliente
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
@@ -29,6 +35,8 @@ api.interceptors.request.use(
   }
 );
 
+// Response interceptor: ante un 401, intenta refrescar el token.
+// Si el refresh falla, limpia tokens y redirige a /login.
 api.interceptors.response.use(
   (response) => response,
   async (error) => {

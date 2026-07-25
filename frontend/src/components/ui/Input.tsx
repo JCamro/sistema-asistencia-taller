@@ -1,10 +1,16 @@
 import React from 'react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  /** Label text displayed above the input */
   label?: string;
+  /** Error message displayed below the input with an icon and red styling */
   error?: string;
 }
 
+/**
+ * Campo de entrada reutilizable con label opcional, mensaje de error,
+ * y estilos consistentes con el tema oscuro de la aplicación.
+ */
 export function Input({ label, error, className = '', style, ...props }: InputProps) {
   return (
     <div style={{ width: '100%' }}>

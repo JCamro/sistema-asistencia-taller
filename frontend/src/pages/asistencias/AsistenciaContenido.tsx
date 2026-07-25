@@ -68,6 +68,16 @@ interface AsistenciaContenidoProps {
   onOpenRecuperacion: () => void;
 }
 
+/**
+ * AsistenciaContenido — Layout principal de la sección de asistencias
+ *
+ * Estados de la interfaz:
+ * - Sin taller seleccionado: muestra resumen de todos los horarios del día
+ *   (AsistenciasResumenHorarios) o mensaje de "seleccioná un taller"
+ * - Con horario seleccionado: layout de dos columnas con la tabla editable
+ *   (AsistenciaTable) a la izquierda y el historial del día
+ *   (AsistenciaHistorialDia) a la derecha
+ */
 function AsistenciaContenido({
   loading,
   fecha,

@@ -36,6 +36,13 @@ interface AsistenciaHistorialDiaProps {
   onEditAsistencia: (asistencia: Asistencia) => void;
 }
 
+/**
+ * AsistenciaHistorialDia — Panel de historial de asistencias del día
+ *
+ * Muestra la lista de registros de asistencia ya guardados para un horario
+ * en la fecha seleccionada. Cada fila es clickeable para abrir el modal
+ * de edición (AsistenciaEditModal). Indica si es clase de recuperación.
+ */
 function AsistenciaHistorialDia({
   asistencias,
   horarioSeleccionado,

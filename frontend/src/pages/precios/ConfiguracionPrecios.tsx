@@ -12,6 +12,18 @@ type FormMode = 'create'|'edit'|null;
 const labelStyle: React.CSSProperties = { display:'block',fontSize:'0.6875rem',fontWeight:500,color:'#94a3b8',marginBottom:'0.25rem',textTransform:'uppercase',letterSpacing:'0.04em' };
 const inputStyle: React.CSSProperties = { width:'100%',padding:'0.5rem 0.75rem',border:'1px solid #e5e7eb',borderRadius:'10px',fontSize:'0.875rem',background:'white' };
 
+/**
+ * ConfiguracionPrecios — Administración de precios y paquetes promocionales
+ *
+ * Permite gestionar:
+ * - Precios individuales por tipo (instrumento / taller) y cantidad de clases
+ * - Paquetes promocionales (Combo Musical, Mixto, Intensivo)
+ * - Configuración de pago a profesores (base y tope dinámicos)
+ *
+ * La configuración de pagos a profesores afecta el cálculo en HorasProfesores.
+ * Los precios aquí definidos alimentan la CalculadoraPrecios y el motor de
+ * precios del backend (matrículas y recibos).
+ */
 export default function ConfiguracionPrecios() {
   const { cicloActual } = useCiclo(); const toast = useToast(); const ww = useWindowWidth(); const mb = ww < 768;
   const [precios, setPrecios] = useState<PrecioPaquete[]>([]); const [loading, setLoading] = useState(true);
@@ -22,7 +34,7 @@ export default function ConfiguracionPrecios() {
   const [precioTotal, setPrecioTotal] = useState(''); const [guardando, setGuardando] = useState(false);
 
   const cargarPrecios = useCallback(async()=>{if(!cicloActual)return;setLoading(true);try{setPrecios((await getPrecios(cicloActual.id)).data)}catch{toast.showToast('Error al cargar precios','error')}finally{setLoading(false)}},[cicloActual,toast]);
-  const cargarConfig = useCallback(async()=>{try{const r=await getConfig();const b=r.data.pago_dinamico_base;const t=r.data.pago_dinamico_tope;setPagoBase(b!=null?Number(b).toFixed(2):'17.00');setPagoTope(t!=null?Number(t).toFixed(2):'35.00')}catch{setPagoBase('17.00');setPagoTope('35.00')}},[]);
+  const cargarConfig = useCallback(async()=>{try{const response=await getConfig();const b=response.data.pago_dinamico_base;const t=response.data.pago_dinamico_tope;setPagoBase(b!=null?Number(b).toFixed(2):'17.00');setPagoTope(t!=null?Number(t).toFixed(2):'35.00')}catch{setPagoBase('17.00');setPagoTope('35.00')}},[]);
   const guardarConfigPagos = async()=>{setGuardandoConfig(true);try{await updateConfig({pago_dinamico_base:parseFloat(pagoBase),pago_dinamico_tope:parseFloat(pagoTope)});toast.showToast('Configuración actualizada','success')}catch{toast.showToast('Error','error')}finally{setGuardandoConfig(false)}};
   useEffect(()=>{cargarPrecios();cargarConfig()},[cargarPrecios,cargarConfig]);
 
@@ -31,11 +43,12 @@ export default function ConfiguracionPrecios() {
   const cancelar = ()=>{setFormMode(null);setEditando(null)};
   const calcSesion = ():string=>{const t=parseFloat(precioTotal)||0;const tc=cantidadClases+(cantidadClasesSecundaria||0);return tc>0?(t/tc).toFixed(2):'0.00'};
   const guardar = async()=>{if(!cicloActual||!precioTotal)return;setGuardando(true);try{const d={ciclo:cicloActual.id,tipo_taller:tipoTaller,tipo_paquete:tipoPaquete,cantidad_clases:cantidadClases,cantidad_clases_secundaria:cantidadClasesSecundaria,precio_total:parseFloat(precioTotal),precio_por_sesion:parseFloat(calcSesion()),activo:true};if(formMode==='edit'&&editando){await updatePrecio(editando.id,d);toast.showToast('Precio actualizado','success')}else{await createPrecio(d);toast.showToast('Precio creado','success')}setFormMode(null);setEditando(null);await cargarPrecios()}catch(e:unknown){const err=e as{response?:{data?:{detail?:string}}};toast.showToast(err.response?.data?.detail||'Error','error')}finally{setGuardando(false)}};
-  const eliminar = async(p:PrecioPaquete)=>{const l=`${TPL[p.tipo_paquete]} - ${p.tipo_taller} - ${formatClases(p.cantidad_clases)}`;if(!window.confirm(`¿Eliminar "${l}"?`))return;try{await deletePrecio(p.id);toast.showToast('Precio eliminado','success');await cargarPrecios()}catch{toast.showToast('Error','error')}};
+  const eliminar = async(precioPaquete:PrecioPaquete)=>{const label=`${TPL[precioPaquete.tipo_paquete]} - ${precioPaquete.tipo_taller} - ${formatClases(precioPaquete.cantidad_clases)}`;if(!window.confirm(`¿Eliminar "${label}"?`))return;try{await deletePrecio(precioPaquete.id);toast.showToast('Precio eliminado','success');await cargarPrecios()}catch{toast.showToast('Error','error')}};
 
   if(!cicloActual)return <div style={{textAlign:'center',padding:'3rem',color:'#94a3b8'}}>Seleccioná un ciclo</div>;
   if(loading)return <div style={{display:'flex',justifyContent:'center',padding:'3rem'}}><div style={{width:36,height:36,border:'3px solid #f1f5f9',borderTop:'3px solid #d4af37',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/></div>;
 
+  // Agrupar precios por tipo: individuales (instrumento/taller) y promocionales
   const pi = precios.filter(p=>p.tipo_paquete==='individual'); const pp = precios.filter(p=>p.tipo_paquete!=='individual');
   const ii = pi.filter(p=>p.tipo_taller==='instrumento').sort((a,b)=>a.cantidad_clases-b.cantidad_clases);
   const it = pi.filter(p=>p.tipo_taller==='taller').sort((a,b)=>a.cantidad_clases-b.cantidad_clases);

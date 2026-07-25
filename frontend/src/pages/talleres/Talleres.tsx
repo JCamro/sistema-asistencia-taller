@@ -18,8 +18,21 @@ const init: TallerFormData = { nombre: '', tipo: 'taller', descripcion: '', acti
 const ls: React.CSSProperties = { display:'block',fontSize:'0.6875rem',fontWeight:500,color:'var(--color-text-muted)',marginBottom:'0.2rem',textTransform:'uppercase',letterSpacing:'0.04em' };
 const is: React.CSSProperties = { width:'100%',padding:'0.5rem 0.75rem',border:'1px solid #e5e7eb',borderRadius:'10px',fontSize:'0.875rem' };
 
+/**
+ * TalleresPage — Catálogo de talleres e instrumentos del ciclo activo
+ *
+ * Vista de cards con filtro por tipo (Todos / Instrumento / Taller) y
+ * búsqueda por texto con debounce. Cada card muestra:
+ *   - Barra de color (violeta = instrumento, ámbar = taller)
+ *   - Nombre, tipo, descripción, estado (activo/inactivo)
+ *   - Botones de acción: editar, eliminar
+ *
+ * Al hacer clic en una card, navega a /talleres/:id (TallerDetalle).
+ * CRUD mediante React Query: useQuery para listado, useMutation para
+ * crear/editar/eliminar con invalidación de caché.
+ */
 function TalleresPage() {
-  const n = useNavigate(); const { cicloActual } = useCiclo(); const { showApiError } = useToast(); const queryClient = useQueryClient(); const ww = useWindowWidth(); const mb = ww < 768;
+  const navigate = useNavigate(); const { cicloActual } = useCiclo(); const { showApiError } = useToast(); const queryClient = useQueryClient(); const ww = useWindowWidth(); const mb = ww < 768;
   const { searchText: s, setSearchText: setS, debouncedValue: ds } = useDebouncedSearch();
   const [ft, setFt] = useState(''); const [sm, setSm] = useState(false); const [eid, setEid] = useState<number|null>(null);
   const [fd, setFd] = useState(init); const [sv, setSv] = useState(false); const [did, setDid] = useState<number|null>(null); const [dn, setDn] = useState('');
@@ -29,8 +42,8 @@ function TalleresPage() {
     queryKey: queryKeys.talleres(cicloActual?.id ?? 0, cp, ds),
     queryFn: async () => {
       if (!cicloActual) return { count: 0, results: [] };
-      const r = await getTalleres(cicloActual.id, cp, ds);
-      return r.data;
+      const response = await getTalleres(cicloActual.id, cp, ds);
+      return response.data;
     },
     enabled: !!cicloActual,
     staleTime: 30_000,
@@ -83,7 +96,7 @@ function TalleresPage() {
       <div style={{textAlign:'center',padding:'3rem',background:'white',borderRadius:'14px',border:'1px dashed #e5e7eb'}}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="1.5" style={{marginBottom:'0.75rem'}}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg><p style={{color:'var(--color-text-muted)',marginBottom:'1rem',fontSize:'0.875rem'}}>{ds||ft?'No se encontraron talleres':'No hay talleres'}</p>{!ds&&!ft&&<Button onClick={oc} size="sm">Crear primer taller</Button>}</div>
     ):(
       <div style={{display:'grid',gridTemplateColumns:`repeat(auto-fill,minmax(${mb?'155px':'250px'},1fr))`,gap:'0.875rem'}}>
-        {ft2.map(tl=>{const ii=tl.tipo==='instrumento';const c=ii?'#7c3aed':'#d97706';return(<div key={tl.id} onClick={()=>n(`/talleres/${tl.id}`)} style={{background:'white',borderRadius:'14px',border:'1px solid #f1f5f9',overflow:'hidden',cursor:'pointer',transition:'box-shadow 0.2s,transform 0.15s'}} onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 6px 20px rgba(0,0,0,0.08)';e.currentTarget.style.transform='translateY(-3px)'}} onMouseLeave={e=>{e.currentTarget.style.boxShadow='none';e.currentTarget.style.transform='none'}}><div style={{height:6,background:c}}/><div style={{padding:'1.125rem 1.25rem 1rem'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem',gap:'0.5rem'}}><h3 style={{fontSize:'1rem',fontWeight:600,color:'var(--color-bg-dark)',margin:0,lineHeight:1.3}}>{tl.nombre}</h3><span style={{padding:'0.15rem 0.5rem',borderRadius:'9999px',fontSize:'0.6rem',fontWeight:600,background:tl.activo?'#ecfdf5':'#f3f4f6',color:tl.activo?'var(--color-success)':'var(--color-text-muted)',whiteSpace:'nowrap',flexShrink:0}}>{tl.activo?'Activo':'Inactivo'}</span></div><span style={{display:'inline-block',padding:'0.15rem 0.5rem',borderRadius:'5px',fontSize:'0.65rem',fontWeight:500,background:ii?'#f5f3ff':'#fefce8',color:c,marginBottom:'0.5rem'}}>{ii?'Instrumento':'Taller'}</span><p style={{fontSize:'0.8125rem',color:'var(--color-text-muted)',lineHeight:1.5,marginBottom:'0.75rem',overflow:'hidden',textOverflow:'ellipsis',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'} as React.CSSProperties}>{tl.descripcion||'Sin descripción'}</p><div style={{display:'flex',gap:'0.375rem'}}><button onClick={e=>{e.stopPropagation();n(`/talleres/${tl.id}`)}} className="touch-target" style={{flex:1,padding:'0.4rem',borderRadius:'8px',border:'none',background:'#f1f5f9',color:'#475569',fontSize:'0.75rem',fontWeight:500,cursor:'pointer'}}>Ver</button><button onClick={e=>{e.stopPropagation();he(tl)}} className="touch-target" style={{flex:1,padding:'0.4rem',borderRadius:'8px',border:'none',background:'#f1f5f9',color:'var(--color-primary)',fontSize:'0.75rem',fontWeight:500,cursor:'pointer'}}>Editar</button><button onClick={e=>{e.stopPropagation();hd(tl.id,tl.nombre)}} disabled={did===tl.id} className="touch-target" style={{flex:1,padding:'0.4rem',borderRadius:'8px',border:'none',background:'#f1f5f9',color:did===tl.id?'var(--color-text-muted)':'var(--color-error)',fontSize:'0.75rem',fontWeight:500,cursor:did===tl.id?'not-allowed':'pointer'}}>{did===tl.id?'...':'Eliminar'}</button></div></div></div>)})}
+        {ft2.map(taller=>{const esInstrumento=taller.tipo==='instrumento';const color=esInstrumento?'#7c3aed':'#d97706';return(<div key={taller.id} onClick={()=>navigate(`/talleres/${taller.id}`)} style={{background:'white',borderRadius:'14px',border:'1px solid #f1f5f9',overflow:'hidden',cursor:'pointer',transition:'box-shadow 0.2s,transform 0.15s'}} onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 6px 20px rgba(0,0,0,0.08)';e.currentTarget.style.transform='translateY(-3px)'}} onMouseLeave={e=>{e.currentTarget.style.boxShadow='none';e.currentTarget.style.transform='none'}}><div style={{height:6,background:color}}/><div style={{padding:'1.125rem 1.25rem 1rem'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem',gap:'0.5rem'}}><h3 style={{fontSize:'1rem',fontWeight:600,color:'var(--color-bg-dark)',margin:0,lineHeight:1.3}}>{taller.nombre}</h3><span style={{padding:'0.15rem 0.5rem',borderRadius:'9999px',fontSize:'0.6rem',fontWeight:600,background:taller.activo?'#ecfdf5':'#f3f4f6',color:taller.activo?'var(--color-success)':'var(--color-text-muted)',whiteSpace:'nowrap',flexShrink:0}}>{taller.activo?'Activo':'Inactivo'}</span></div><span style={{display:'inline-block',padding:'0.15rem 0.5rem',borderRadius:'5px',fontSize:'0.65rem',fontWeight:500,background:esInstrumento?'#f5f3ff':'#fefce8',color:color,marginBottom:'0.5rem'}}>{esInstrumento?'Instrumento':'Taller'}</span><p style={{fontSize:'0.8125rem',color:'var(--color-text-muted)',lineHeight:1.5,marginBottom:'0.75rem',overflow:'hidden',textOverflow:'ellipsis',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'} as React.CSSProperties}>{taller.descripcion||'Sin descripción'}</p><div style={{display:'flex',gap:'0.375rem'}}><button onClick={e=>{e.stopPropagation();navigate(`/talleres/${taller.id}`)}} className="touch-target" style={{flex:1,padding:'0.4rem',borderRadius:'8px',border:'none',background:'#f1f5f9',color:'#475569',fontSize:'0.75rem',fontWeight:500,cursor:'pointer'}}>Ver</button><button onClick={e=>{e.stopPropagation();he(taller)}} className="touch-target" style={{flex:1,padding:'0.4rem',borderRadius:'8px',border:'none',background:'#f1f5f9',color:'var(--color-primary)',fontSize:'0.75rem',fontWeight:500,cursor:'pointer'}}>Editar</button><button onClick={e=>{e.stopPropagation();hd(taller.id,taller.nombre)}} disabled={did===taller.id} className="touch-target" style={{flex:1,padding:'0.4rem',borderRadius:'8px',border:'none',background:'#f1f5f9',color:did===taller.id?'var(--color-text-muted)':'var(--color-error)',fontSize:'0.75rem',fontWeight:500,cursor:did===taller.id?'not-allowed':'pointer'}}>{did===taller.id?'...':'Eliminar'}</button></div></div></div>)})}
       </div>
     )}
     {tp>1&&<Pagination currentPage={cp} totalPages={tp} totalCount={totalCount} onPageChange={pc}/>}

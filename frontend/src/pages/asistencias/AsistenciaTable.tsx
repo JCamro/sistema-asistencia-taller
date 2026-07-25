@@ -48,6 +48,14 @@ function getEstadoInfo(estado: string | null) {
   return ESTADOS.find((e) => e.value === estado) || { label: estado, color: '#6b7280', bg: '#f3f4f6' };
 }
 
+/**
+ * AsistenciaTable — Tabla editable de alumnos para marcar asistencia
+ *
+ * Muestra la lista de alumnos de un horario específico con tres botones
+ * de estado (Asistió / Falta / Falta Grave) y un badge del estado actual.
+ * Una vez registrada la asistencia, los botones se bloquean y el badge
+ * se vuelve clickeable para editar desde el panel derecho (historial).
+ */
 function AsistenciaTable({
   alumnosHorario,
   loadingAlumnos,

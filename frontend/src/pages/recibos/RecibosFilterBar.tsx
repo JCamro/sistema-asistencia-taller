@@ -9,6 +9,14 @@ interface RecibosFilterBarProps {
   onPresetChange: (value: string) => void;
 }
 
+/**
+ * RecibosFilterBar — Filtros para la tabla de recibos
+ *
+ * Controles:
+ * - Búsqueda por texto (número de recibo o nombre de alumno)
+ * - Dropdown de estado (todos, pendientes, pagados, anulados)
+ * - Presets de fecha (todas las fechas, del día, de la semana, del mes)
+ */
 function RecibosFilterBar({
   search,
   onSearchChange,

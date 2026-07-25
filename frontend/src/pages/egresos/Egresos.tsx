@@ -10,6 +10,19 @@ import { useWindowWidth } from '../../hooks/useWindowWidth';
 const labelStyle: React.CSSProperties = { display:'block',fontSize:'0.6875rem',fontWeight:500,color:'#94a3b8',marginBottom:'0.2rem',textTransform:'uppercase',letterSpacing:'0.04em' };
 const inputStyle: React.CSSProperties = { width:'100%',padding:'0.5rem 0.75rem',border:'1px solid #e5e7eb',borderRadius:'10px',fontSize:'0.875rem' };
 
+/**
+ * EgresosPage — Gestión de egresos (gastos) del ciclo activo
+ *
+ * CRUD de egresos con:
+ *   - Resumen visual: tarjetas de gasto taller, gasto personal y total
+ *   - Filtros por tipo (gasto_taller / gasto_personal) y estado (pendiente / cancelado)
+ *   - Tabla responsive con paginación server-side
+ *   - Modal de creación/edición con formulario completo (tipo, monto, descripción,
+ *     fecha, método de pago, categoría, beneficiario, profesor asociado)
+ *
+ * Flujo de datos: fetch directo con Promise.all (egresos + resumen + profesores),
+ * sin React Query. Las mutaciones recargan los datos manualmente.
+ */
 const EgresosPage = () => {
   const { cicloActual } = useCiclo(); const toast = useToast(); const ww = useWindowWidth(); const mb = ww < 768;
   const [egresos, setEgresos] = useState<any[]>([]); const [profesores, setProfesores] = useState<any[]>([]);

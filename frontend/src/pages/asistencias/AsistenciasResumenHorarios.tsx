@@ -28,6 +28,13 @@ function getEstadoInfo(estado: string | null) {
   return found || { label: estado, color: '#6b7280', bg: '#f3f4f6' };
 }
 
+/**
+ * AsistenciasResumenHorarios — Vista resumen de todos los horarios de un día
+ *
+ * Se muestra cuando el usuario selecciona un taller pero NO un horario específico.
+ * Para cada horario del taller en ese día, muestra un contador de asistencias
+ * (asistieron ✓, faltas ✘, pendientes ○) y la lista de alumnos con su estado.
+ */
 function AsistenciasResumenHorarios({ horarios, alumnosPorHorario, loading }: AsistenciasResumenHorariosProps) {
   if (horarios.length === 0) return null;
   return (

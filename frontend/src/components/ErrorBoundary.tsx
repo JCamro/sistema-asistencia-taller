@@ -10,6 +10,11 @@ interface State {
   error: Error | null;
 }
 
+/**
+ * Fallback UI displayed when the ErrorBoundary catches an error.
+ * Shows an error message with two recovery options: retry (re-mount children)
+ * and go home (retry + navigate to root).
+ */
 function Fallback({ onRetry }: { onRetry: () => void }) {
   const navigate = useNavigate();
 
@@ -97,20 +102,38 @@ function Fallback({ onRetry }: { onRetry: () => void }) {
   );
 }
 
+/**
+ * React Error Boundary que captura errores de renderizado en el árbol de componentes
+ * y muestra una UI de fallback en lugar de crashear toda la aplicación.
+ * 
+ * Wraps the entire app to catch unhandled render errors and provide a recovery path.
+ */
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false, error: null };
   }
 
+  /**
+   * Called during the render phase when a descendant component throws an error.
+   * Updates state to trigger the fallback UI without causing an unmount/remount cycle.
+   */
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
+  /**
+   * Called after an error has been thrown by a descendant.
+   * Used for side effects like logging — does NOT update state (use getDerivedStateFromError for that).
+   */
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('ErrorBoundary caught:', error, info);
   }
 
+  /**
+   * Resets the error state, effectively remounting the children to attempt recovery.
+   * Called by the Fallback UI's retry buttons.
+   */
   private handleRetry = () => {
     this.setState({ hasError: false, error: null });
   };

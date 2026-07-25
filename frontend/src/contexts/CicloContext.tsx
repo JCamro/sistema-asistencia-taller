@@ -27,6 +27,17 @@ interface CicloContextType {
 
 const CicloContext = createContext<CicloContextType | undefined>(undefined);
 
+/**
+ * Contexto y provider para la gestión del ciclo académico activo.
+ * 
+ * Al montar, consulta `/api/ciclos/` y `/api/config/` para determinar qué ciclo está activo.
+ * Resuelve el ciclo activo con esta prioridad:
+ *   1. Configuración del backend (DB)
+ *   2. Fallback a localStorage (ciclo_activo_id)
+ *   3. Fallback al primer ciclo con activo=true o el primer ciclo disponible
+ *
+ * Expone: cicloActual, ciclos (lista), setCicloActual, seleccionarCiclo (navega a /dashboard), recargar, isLoading.
+ */
 export function CicloProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [cicloActual, setCicloActualState] = useState<Ciclo | null>(null);
@@ -51,12 +62,14 @@ export function CicloProvider({ children }: { children: ReactNode }) {
         setCiclos(results);
 
         let activo: Ciclo | null = null;
+        // Resolución del ciclo activo: DB → localStorage → primer ciclo disponible
         const localStorageCicloId = localStorage.getItem('ciclo_activo_id');
 
         if (configRes.data.ciclo_activo) {
           activo = results.find((c: Ciclo) => c.id === configRes.data.ciclo_activo) || null;
         }
 
+        // Fallback a localStorage cuando la DB no tiene ciclo activo configurado
         if (!activo && localStorageCicloId) {
           activo = results.find((c: Ciclo) => c.id === parseInt(localStorageCicloId)) || null;
         }
@@ -77,6 +90,7 @@ export function CicloProvider({ children }: { children: ReactNode }) {
     recargar();
   }, [recargar]);
 
+  // Actualiza el ciclo activo localmente y persiste en el backend (fire-and-forget)
   const setCicloActual = (ciclo: Ciclo | null) => {
     setCicloActualState(ciclo);
 
@@ -85,6 +99,7 @@ export function CicloProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Selecciona un ciclo y redirige al dashboard. Guarda en localStorage y backend.
   const seleccionarCiclo = async (ciclo: Ciclo) => {
     localStorage.setItem('ciclo_activo_id', String(ciclo.id));
     setCicloActualState(ciclo);
@@ -100,9 +115,14 @@ export function CicloProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Hook para acceder al contexto de ciclo desde cualquier componente dentro del provider.
+ * Si el provider no está montado, devuelve valores por defecto seguros (sin lanzar error).
+ */
 export function useCiclo() {
   const context = useContext(CicloContext);
   if (!context) {
+    // Safe defaults when used outside CicloProvider — prevents crashes on Login/page-refresh edge cases
     return {
       cicloActual: null,
       ciclos: [],
