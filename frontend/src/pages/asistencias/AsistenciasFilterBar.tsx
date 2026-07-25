@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { useWindowWidth } from '../hooks/useWindowWidth';
+import { useWindowWidth } from '../../hooks/useWindowWidth';
 
 interface TallerOption {
   id: number;

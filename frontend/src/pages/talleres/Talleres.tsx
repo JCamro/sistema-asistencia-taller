@@ -1,17 +1,17 @@
 import { useState, memo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { useCiclo } from '../contexts/CicloContext';
-import { useToast } from '../contexts/ToastContext';
-import ConfirmModal from '../components/ui/ConfirmModal';
-import PageHeader from '../components/ui/PageHeader';
-import { Pagination } from '../components/ui/Pagination';
-import { Button } from '../components/ui/Button';
-import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
-import { getTalleres, createTaller, updateTaller, deleteTaller } from '../api/endpoints';
-import { queryKeys } from '../api/queryKeys';
-import type { Taller } from '../api/endpoints';
-import { useWindowWidth } from '../hooks/useWindowWidth';
+import { useCiclo } from '../../contexts/CicloContext';
+import { useToast } from '../../contexts/ToastContext';
+import ConfirmModal from '../../components/ui/ConfirmModal';
+import PageHeader from '../../components/ui/PageHeader';
+import { Pagination } from '../../components/ui/Pagination';
+import { Button } from '../../components/ui/Button';
+import { useDebouncedSearch } from '../../hooks/useDebouncedSearch';
+import { getTalleres, createTaller, updateTaller, deleteTaller } from '../../api/endpoints';
+import { queryKeys } from '../../api/queryKeys';
+import type { Taller } from '../../api/endpoints';
+import { useWindowWidth } from '../../hooks/useWindowWidth';
 
 interface TallerFormData { nombre: string; tipo: string; descripcion: string; activo: boolean; }
 const init: TallerFormData = { nombre: '', tipo: 'taller', descripcion: '', activo: true };

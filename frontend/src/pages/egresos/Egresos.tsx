@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useCiclo } from '../contexts/CicloContext';
-import { useToast } from '../contexts/ToastContext';
-import { ResponsiveTable } from '../components/ui/ResponsiveTable';
-import { Pagination } from '../components/ui/Pagination';
-import { getEgresos, createEgreso, updateEgreso, deleteEgreso, getResumenEgresos, getProfesores } from '../api/endpoints';
-import { formatMonto } from '../utils/formatters';
-import { useWindowWidth } from '../hooks/useWindowWidth';
+import { useCiclo } from '../../contexts/CicloContext';
+import { useToast } from '../../contexts/ToastContext';
+import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
+import { Pagination } from '../../components/ui/Pagination';
+import { getEgresos, createEgreso, updateEgreso, deleteEgreso, getResumenEgresos, getProfesores } from '../../api/endpoints';
+import { formatMonto } from '../../utils/formatters';
+import { useWindowWidth } from '../../hooks/useWindowWidth';
 
 const labelStyle: React.CSSProperties = { display:'block',fontSize:'0.6875rem',fontWeight:500,color:'#94a3b8',marginBottom:'0.2rem',textTransform:'uppercase',letterSpacing:'0.04em' };
 const inputStyle: React.CSSProperties = { width:'100%',padding:'0.5rem 0.75rem',border:'1px solid #e5e7eb',borderRadius:'10px',fontSize:'0.875rem' };

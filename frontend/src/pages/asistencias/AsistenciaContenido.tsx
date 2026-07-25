@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import { useWindowWidth } from '../hooks/useWindowWidth';
+import { useWindowWidth } from '../../hooks/useWindowWidth';
 import AsistenciaTable from './AsistenciaTable';
 import AsistenciaHistorialDia from './AsistenciaHistorialDia';
 import AsistenciasResumenHorarios from './AsistenciasResumenHorarios';

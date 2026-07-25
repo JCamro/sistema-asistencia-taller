@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCiclo } from '../contexts/CicloContext';
-import { useToast } from '../contexts/ToastContext';
-import { getDashboardKpis, getDashboardIngresos } from '../api/endpoints';
-import type { DashboardIngresos } from '../api/endpoints';
-import CalculadoraPrecios from './CalculadoraPrecios';
+import { useCiclo } from '../../contexts/CicloContext';
+import { useToast } from '../../contexts/ToastContext';
+import { getDashboardKpis, getDashboardIngresos } from '../../api/endpoints';
+import type { DashboardIngresos } from '../../api/endpoints';
+import CalculadoraPrecios from '../precios/CalculadoraPrecios';
 
 interface KpiData { alumnos_sin_asistencia_hoy: number; matriculas_por_concluir: number; matriculas_sin_recibo: number; matriculas_sin_pago_completo: number; }
 

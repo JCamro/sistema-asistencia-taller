@@ -1,8 +1,8 @@
 import { useState, useEffect, memo } from 'react';
-import api from '../api/axios';
-import { useToast } from '../contexts/ToastContext';
-import { useWindowWidth } from '../hooks/useWindowWidth';
-import type { Alumno, Matricula } from '../api/endpoints';
+import api from '../../api/axios';
+import { useToast } from '../../contexts/ToastContext';
+import { useWindowWidth } from '../../hooks/useWindowWidth';
+import type { Alumno, Matricula } from '../../api/endpoints';
 
 interface PrecioCalculado {
   precio_bruto: number;

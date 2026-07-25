@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, memo } from 'react';
-import api from '../api/axios';
-import { useToast } from '../contexts/ToastContext';
-import ConfirmModal from '../components/ui/ConfirmModal';
-import type { Matricula } from '../api/endpoints';
+import api from '../../api/axios';
+import { useToast } from '../../contexts/ToastContext';
+import ConfirmModal from '../../components/ui/ConfirmModal';
+import type { Matricula } from '../../api/endpoints';
 
 interface AsistenciaDetalle {
   id: number;

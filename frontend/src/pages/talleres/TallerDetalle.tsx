@@ -1,10 +1,10 @@
 import { useState, useEffect, memo, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useCiclo } from '../contexts/CicloContext';
-import { useToast } from '../contexts/ToastContext';
-import ConfirmModal from '../components/ui/ConfirmModal';
-import { getApiBaseUrl } from '../utils/api';
-import { useWindowWidth } from '../hooks/useWindowWidth';
+import { useCiclo } from '../../contexts/CicloContext';
+import { useToast } from '../../contexts/ToastContext';
+import ConfirmModal from '../../components/ui/ConfirmModal';
+import { getApiBaseUrl } from '../../utils/api';
+import { useWindowWidth } from '../../hooks/useWindowWidth';
 
 interface Taller { id: number; nombre: string; descripcion: string; activo: boolean; }
 interface Profesor { id: number; nombre: string; apellido: string; activo: boolean; }

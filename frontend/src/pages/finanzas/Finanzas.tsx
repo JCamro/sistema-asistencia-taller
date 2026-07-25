@@ -1,9 +1,9 @@
 import { useState, useEffect, memo, useCallback } from 'react';
-import { useCiclo } from '../contexts/CicloContext';
-import { useToast } from '../contexts/ToastContext';
-import { formatMonto } from '../utils/formatters';
-import { getResumenFinanzas, getResumenMensual, getEgresos, getRecibos } from '../api/endpoints';
-import type { PaginatedResponse, Recibo, Egreso } from '../api/endpoints';
+import { useCiclo } from '../../contexts/CicloContext';
+import { useToast } from '../../contexts/ToastContext';
+import { formatMonto } from '../../utils/formatters';
+import { getResumenFinanzas, getResumenMensual, getEgresos, getRecibos } from '../../api/endpoints';
+import type { PaginatedResponse, Recibo, Egreso } from '../../api/endpoints';
 
 interface ResumenFinanzas { ciclo: string; balance: { total_ingresos: number; total_egresos: number; ganancia_neta: number; porcentaje_egresos: number; porcentaje_ganancia: number; ticket_promedio: number }; ingresos: { recibos_pagados: number; num_recibos: number }; egresos: { gasto_taller: number; gasto_personal: number }; }
 interface ResumenMensualItem { año: number; mes: number; nombre: string; ingresos: number; egresos: number; balance: number; recibos: number }

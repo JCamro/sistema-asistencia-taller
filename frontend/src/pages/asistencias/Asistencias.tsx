@@ -1,8 +1,8 @@
 import { useState, useEffect, memo, useCallback, useMemo } from 'react';
-import { useCiclo } from '../contexts/CicloContext';
-import { useToast } from '../contexts/ToastContext';
-import PageHeader from '../components/ui/PageHeader';
-import { getApiBaseUrl } from '../utils/api';
+import { useCiclo } from '../../contexts/CicloContext';
+import { useToast } from '../../contexts/ToastContext';
+import PageHeader from '../../components/ui/PageHeader';
+import { getApiBaseUrl } from '../../utils/api';
 import AsistenciasFilterBar from './AsistenciasFilterBar';
 import AsistenciaContenido, { type AsistenciaEdit } from './AsistenciaContenido';
 import AsistenciaRecuperacionModal from './AsistenciaRecuperacionModal';

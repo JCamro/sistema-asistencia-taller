@@ -1,8 +1,8 @@
 import { useState, useEffect, memo, useCallback, useMemo, useRef } from 'react';
-import { useCiclo } from '../contexts/CicloContext';
-import { useToast } from '../contexts/ToastContext';
-import { getApiBaseUrl } from '../utils/api';
-import { useWindowWidth } from '../hooks/useWindowWidth';
+import { useCiclo } from '../../contexts/CicloContext';
+import { useToast } from '../../contexts/ToastContext';
+import { getApiBaseUrl } from '../../utils/api';
+import { useWindowWidth } from '../../hooks/useWindowWidth';
 
 interface Taller { id: number; nombre: string; tipo: string; }
 interface Alumno { id: number; nombre: string; apellido: string; edad: number | null; }

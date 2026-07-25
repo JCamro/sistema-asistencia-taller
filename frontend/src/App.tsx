@@ -6,20 +6,20 @@ import { ToastProvider } from './contexts/ToastContext';
 import { getApiBaseUrl } from './utils/api';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useLoginForm } from './hooks/useLoginForm';
-import DashboardPage from './pages/Dashboard';
-import AlumnosPage from './pages/Alumnos';
-import ProfesoresPage from './pages/Profesores';
-import TalleresPage from './pages/Talleres';
-import TallerDetalle from './pages/TallerDetalle';
-import HorariosPage from './pages/Horarios';
-import MatriculasPage from './pages/Matriculas';
-import AsistenciasPage from './pages/Asistencias';
-import RecibosPage from './pages/Recibos';
-import PagosProfesoresPage from './pages/HorasProfesores';
-import EgresosPage from './pages/Egresos';
-import FinanzasPage from './pages/Finanzas';
-import ConfiguracionPreciosPage from './pages/ConfiguracionPrecios';
-import CalculadoraPreciosPage from './pages/CalculadoraPrecios';
+import DashboardPage from './pages/dashboard/Dashboard';
+import AlumnosPage from './pages/alumnos/Alumnos';
+import ProfesoresPage from './pages/profesores/Profesores';
+import TalleresPage from './pages/talleres/Talleres';
+import TallerDetalle from './pages/talleres/TallerDetalle';
+import HorariosPage from './pages/horarios/Horarios';
+import MatriculasPage from './pages/matriculas/Matriculas';
+import AsistenciasPage from './pages/asistencias/Asistencias';
+import RecibosPage from './pages/recibos/Recibos';
+import PagosProfesoresPage from './pages/profesores/HorasProfesores';
+import EgresosPage from './pages/egresos/Egresos';
+import FinanzasPage from './pages/finanzas/Finanzas';
+import ConfiguracionPreciosPage from './pages/precios/ConfiguracionPrecios';
+import CalculadoraPreciosPage from './pages/precios/CalculadoraPrecios';
 
 const Loading = memo(function Loading() {
   return (

@@ -1,5 +1,5 @@
 import { useState, useEffect, memo } from 'react';
-import ConfirmModal from '../components/ui/ConfirmModal';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 
 const ESTADOS = [
   { value: 'asistio', label: 'Asistió', color: '#059669', bg: '#d1fae5' },

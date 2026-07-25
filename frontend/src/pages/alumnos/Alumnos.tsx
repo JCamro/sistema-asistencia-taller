@@ -1,16 +1,16 @@
 import { useState, memo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useCiclo } from '../contexts/CicloContext';
-import { useToast } from '../contexts/ToastContext';
-import ConfirmModal from '../components/ui/ConfirmModal';
-import PageHeader from '../components/ui/PageHeader';
-import { ResponsiveTable } from '../components/ui/ResponsiveTable';
-import { Pagination } from '../components/ui/Pagination';
-import { Button } from '../components/ui/Button';
-import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
-import { getAlumnos, createAlumno, updateAlumno, deleteAlumno } from '../api/endpoints';
-import { queryKeys } from '../api/queryKeys';
-import type { Alumno } from '../api/endpoints';
+import { useCiclo } from '../../contexts/CicloContext';
+import { useToast } from '../../contexts/ToastContext';
+import ConfirmModal from '../../components/ui/ConfirmModal';
+import PageHeader from '../../components/ui/PageHeader';
+import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
+import { Pagination } from '../../components/ui/Pagination';
+import { Button } from '../../components/ui/Button';
+import { useDebouncedSearch } from '../../hooks/useDebouncedSearch';
+import { getAlumnos, createAlumno, updateAlumno, deleteAlumno } from '../../api/endpoints';
+import { queryKeys } from '../../api/queryKeys';
+import type { Alumno } from '../../api/endpoints';
 
 interface AlumnoFormData { nombre: string; apellido: string; dni: string; telefono: string; email: string; fecha_nacimiento: string; activo: boolean; }
 const initialFormData: AlumnoFormData = { nombre: '', apellido: '', dni: '', telefono: '', email: '', fecha_nacimiento: '', activo: true };

@@ -1,19 +1,19 @@
 import { useState, useEffect, memo, useCallback } from 'react';
-import { useCiclo } from '../contexts/CicloContext';
-import { useToast } from '../contexts/ToastContext';
-import ConfirmModal from '../components/ui/ConfirmModal';
-import PageHeader from '../components/ui/PageHeader';
-import { ResponsiveTable } from '../components/ui/ResponsiveTable';
-import { Pagination } from '../components/ui/Pagination';
-import TraspasoModal from '../components/ui/TraspasoModal';
+import { useCiclo } from '../../contexts/CicloContext';
+import { useToast } from '../../contexts/ToastContext';
+import ConfirmModal from '../../components/ui/ConfirmModal';
+import PageHeader from '../../components/ui/PageHeader';
+import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
+import { Pagination } from '../../components/ui/Pagination';
+import TraspasoModal from '../../components/ui/TraspasoModal';
 import MatriculasFilterBar from './MatriculasFilterBar';
 import MatriculaFormModal from './MatriculaFormModal';
 import MatriculaDetailModal from './MatriculaDetailModal';
-import api from '../api/axios';
-import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
-import { formatLimaDate } from '../utils/timezone';
-import { getMatriculas } from '../api/endpoints';
-import type { Matricula, Alumno, Taller } from '../api/endpoints';
+import api from '../../api/axios';
+import { useDebouncedSearch } from '../../hooks/useDebouncedSearch';
+import { formatLimaDate } from '../../utils/timezone';
+import { getMatriculas } from '../../api/endpoints';
+import type { Matricula, Alumno, Taller } from '../../api/endpoints';
 
 function MatriculasPage() {
   const { cicloActual } = useCiclo();

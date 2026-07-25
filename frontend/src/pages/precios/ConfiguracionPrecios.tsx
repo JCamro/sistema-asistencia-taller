@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useCiclo } from '../contexts/CicloContext';
-import { useToast } from '../contexts/ToastContext';
-import { getPrecios, createPrecio, updatePrecio, deletePrecio, getConfig, updateConfig, type PrecioPaquete } from '../api/endpoints';
-import { useWindowWidth } from '../hooks/useWindowWidth';
+import { useCiclo } from '../../contexts/CicloContext';
+import { useToast } from '../../contexts/ToastContext';
+import { getPrecios, createPrecio, updatePrecio, deletePrecio, getConfig, updateConfig, type PrecioPaquete } from '../../api/endpoints';
+import { useWindowWidth } from '../../hooks/useWindowWidth';
 
 const formatClases = (n:number):string => n===1?'1 clase':`${n} clases`;
 const SUGERENCIAS = [4,8,12,16,20,24];

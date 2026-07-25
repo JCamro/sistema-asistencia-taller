@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useCiclo } from '../contexts/CicloContext';
-import { useToast } from '../contexts/ToastContext';
-import { ResponsiveTable } from '../components/ui/ResponsiveTable';
-import { getApiBaseUrl } from '../utils/api';
-import { formatMonto } from '../utils/formatters';
-import { useWindowWidth } from '../hooks/useWindowWidth';
+import { useCiclo } from '../../contexts/CicloContext';
+import { useToast } from '../../contexts/ToastContext';
+import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
+import { getApiBaseUrl } from '../../utils/api';
+import { formatMonto } from '../../utils/formatters';
+import { useWindowWidth } from '../../hooks/useWindowWidth';
 import {
   createHoraTrabajada, updateHoraTrabajada,
   deleteHoraTrabajada,
-} from '../api/endpoints';
+} from '../../api/endpoints';
 
 const TABS = [
   { key: 'horas', label: 'Horas Trabajadas' },

@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
-import { useCiclo } from '../contexts/CicloContext';
-import PageHeader from '../components/ui/PageHeader';
-import { ResponsiveTable } from '../components/ui/ResponsiveTable';
-import { Pagination } from '../components/ui/Pagination';
-import { getApiBaseUrl } from '../utils/api';
-import { useWindowWidth } from '../hooks/useWindowWidth';
+import { useCiclo } from '../../contexts/CicloContext';
+import PageHeader from '../../components/ui/PageHeader';
+import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
+import { Pagination } from '../../components/ui/Pagination';
+import { getApiBaseUrl } from '../../utils/api';
+import { useWindowWidth } from '../../hooks/useWindowWidth';
 import RecibosFilterBar from './RecibosFilterBar';
 import ReciboFormModal from './ReciboFormModal';
 import ReciboDetailModal from './ReciboDetailModal';

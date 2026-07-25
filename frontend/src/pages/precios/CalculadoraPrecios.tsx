@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, memo } from 'react';
-import { useCiclo } from '../contexts/CicloContext';
-import { getPreciosActivos, type PrecioPaquete } from '../api/endpoints';
-import { useWindowWidth } from '../hooks/useWindowWidth';
+import { useCiclo } from '../../contexts/CicloContext';
+import { getPreciosActivos, type PrecioPaquete } from '../../api/endpoints';
+import { useWindowWidth } from '../../hooks/useWindowWidth';
 
 interface PrecioEntry {
   total: number;

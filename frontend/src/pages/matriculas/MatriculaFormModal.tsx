@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
-import api from '../api/axios';
-import { useToast } from '../contexts/ToastContext';
-import type { Matricula, Alumno, Taller, Horario } from '../api/endpoints';
-import { utcToLimaDate } from '../utils/timezone';
+import api from '../../api/axios';
+import { useToast } from '../../contexts/ToastContext';
+import type { Matricula, Alumno, Taller, Horario } from '../../api/endpoints';
+import { utcToLimaDate } from '../../utils/timezone';
 
 const HORAS_GRID = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 const DIAS_GRID = [
