@@ -160,6 +160,7 @@ function AsistenciasPage() {
   // Al cambiar el filtro de taller: resetear taller si ya no existe en la lista,
   // y resetear horario si el seleccionado ya no pertenece a los filtrados
   useEffect(() => {
+    if (tallerSeleccionado && !talleres.some(t => t.id === tallerSeleccionado)) {
       setTallerSeleccionado(null);
       setHorarioSeleccionado(null);
     } else if (horarioSeleccionado && !horariosFiltrados.some((h) => h.id === horarioSeleccionado)) {
