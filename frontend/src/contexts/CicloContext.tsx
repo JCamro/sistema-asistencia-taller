@@ -81,7 +81,20 @@ export function CicloProvider({ children }: { children: ReactNode }) {
         setCicloActualState(activo);
         setIsLoading(false);
       })
-      .catch(() => {
+      .catch((error) => {
+        // Si el backend no responde o el token es inválido, limpiar sesión y redirigir
+        const isAuthError = error.response?.status === 401 || error.response?.status === 403;
+        const isNetworkError = !error.response;
+        if (isAuthError || isNetworkError) {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('ciclo_activo_id');
+          setCiclos([]);
+          setCicloActualState(null);
+          setIsLoading(false);
+          navigate('/login', { replace: true });
+          return;
+        }
         setIsLoading(false);
       });
   }, []);
