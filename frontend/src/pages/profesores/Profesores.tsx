@@ -1,4 +1,4 @@
-import { useState, memo } from 'react';
+import { useState, memo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCiclo } from '../../contexts/CicloContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -20,6 +20,27 @@ const init: ProfesorFormData = { nombre:'',apellido:'',dni:'',telefono:'',email:
 const ls: React.CSSProperties = { display:'block',fontSize:'0.6875rem',fontWeight:500,color:'var(--color-text-muted)',marginBottom:'0.2rem',textTransform:'uppercase',letterSpacing:'0.04em' };
 const is: React.CSSProperties = { width:'100%',padding:'0.5rem 0.75rem',border:'1px solid #e5e7eb',borderRadius:'10px',fontSize:'0.875rem' };
 
+const ProfesoresFilterBar = memo(function ProfesoresFilterBar({
+  onSearchChange,
+}: {
+  onSearchChange: (v: string) => void;
+}) {
+  const { searchText, setSearchText, debouncedValue } = useDebouncedSearch();
+
+  useEffect(() => {
+    onSearchChange(debouncedValue);
+  }, [debouncedValue, onSearchChange]);
+
+  return (
+    <div style={{background:'white',borderRadius:'12px',border:'1px solid #f1f5f9',padding:'0.75rem 1rem',marginBottom:'0.75rem'}}>
+      <div style={{position:'relative'}}>
+        <svg style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input placeholder="Buscar..." value={searchText} onChange={e => setSearchText(e.target.value)} style={{width:'100%',padding:'0.5rem 0.75rem 0.5rem 2.25rem',border:'1px solid #e5e7eb',borderRadius:'10px',fontSize:'0.875rem'}}/>
+      </div>
+    </div>
+  );
+});
+
 /**
  * ProfesoresPage — CRUD de profesores con historial de pagos
  *
@@ -29,13 +50,14 @@ const is: React.CSSProperties = { width:'100%',padding:'0.5rem 0.75rem',border:'
  */
 function ProfesoresPage() {
   const { cicloActual } = useCiclo(); const { showApiError } = useToast(); const queryClient = useQueryClient(); const ww = useWindowWidth(); const mb = ww < 768;
-  const { searchText: s, setSearchText: setS, debouncedValue: ds } = useDebouncedSearch();
+  const [ds, setDs] = useState('');
   const [sm, setSm] = useState(false); const [eid, setEid] = useState<number|null>(null); const [fd, setFd] = useState(init);
   const [sv, setSv] = useState(false); const [did, setDid] = useState<number|null>(null); const [dn, setDn] = useState('');
   const [ho, setHo] = useState(false); const [hp, setHp] = useState<any[]>([]); const [hl, setHl] = useState(false);
   const [cp, setCp] = useState(1);
+  const handleSearchChange = useCallback((value: string) => { setDs(value); setCp(1); }, []);
 
-  const { data: profesoresResponse, isLoading, error } = useQuery({
+  const { data: profesoresResponse, isPending, error } = useQuery({
     queryKey: queryKeys.profesores(cicloActual?.id ?? 0, cp, ds),
     queryFn: async () => {
       if (!cicloActual) return { count: 0, results: [] };
@@ -80,12 +102,12 @@ function ProfesoresPage() {
   const vh = async (pid:number) => { setHo(true); setHl(true); try { setHp((await getHistorialPagosProfesor(pid)).data) } catch{} finally{setHl(false)} };
   const pc = (pg:number) => setCp(pg);
 
-  if(isLoading) return <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'60vh',gap:'1rem'}}><div style={{width:40,height:40,border:'3px solid #f1f5f9',borderTop:'3px solid var(--color-primary)',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/></div>;
+  if (isPending && !profesoresResponse) return <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'60vh',gap:'1rem'}}><div style={{width:40,height:40,border:'3px solid #f1f5f9',borderTop:'3px solid var(--color-primary)',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/></div>;
   if (error) return <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1rem' }}><p style={{ color: 'var(--color-error)', fontSize: '0.875rem' }}>Error al cargar profesores.</p><Button onClick={() => queryClient.invalidateQueries({ queryKey: queryKeys.profesores(cicloActual?.id ?? 0) })}>Reintentar</Button></div>;
 
   return (<div style={{maxWidth:'1100px',margin:'0 auto'}}>
     <PageHeader title="Profesores" cicloNombre={cicloActual?.nombre} actionLabel="Nuevo profesor" onAction={oc} />
-    <div style={{background:'white',borderRadius:'12px',border:'1px solid #f1f5f9',padding:'0.75rem 1rem',marginBottom:'0.75rem'}}><div style={{position:'relative'}}><svg style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input placeholder="Buscar..." value={s} onChange={e=>{setS(e.target.value); setCp(1);}} style={{width:'100%',padding:'0.5rem 0.75rem 0.5rem 2.25rem',border:'1px solid #e5e7eb',borderRadius:'10px',fontSize:'0.875rem'}}/></div></div>
+    <ProfesoresFilterBar onSearchChange={handleSearchChange} />
     <div style={{background:'white',borderRadius:'12px',border:'1px solid #f1f5f9',overflow:'hidden'}}>
       <ResponsiveTable<Profesor> columns={[
         {key:'nombre',label:'Nombre',render:pr=><span style={{fontWeight:600,color:'var(--color-bg-dark)'}}>{pr.nombre} {pr.apellido}</span>},{key:'dni',label:'DNI'},{key:'telefono',label:'Teléfono',render:pr=>pr.telefono||<span style={{color:'var(--color-text-muted)'}}>—</span>},

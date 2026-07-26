@@ -1,4 +1,4 @@
-import { useState, memo } from 'react';
+import { useState, memo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCiclo } from '../../contexts/CicloContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -19,6 +19,32 @@ const initialFormData: AlumnoFormData = { nombre: '', apellido: '', dni: '', tel
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.6875rem', fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.04em' };
 const inputStyle: React.CSSProperties = { width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem' };
 
+const AlumnosFilterBar = memo(function AlumnosFilterBar({
+  sortOrder,
+  onSortChange,
+  onSearchChange,
+}: {
+  sortOrder: 'recent' | 'oldest' | 'alpha';
+  onSortChange: (v: string) => void;
+  onSearchChange: (v: string) => void;
+}) {
+  const { searchText, setSearchText, debouncedValue } = useDebouncedSearch();
+
+  useEffect(() => {
+    onSearchChange(debouncedValue);
+  }, [debouncedValue, onSearchChange]);
+
+  return (
+    <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #f1f5f9', padding: '0.75rem 1rem', marginBottom: '0.75rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+      <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+        <svg style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Buscar por nombre, apellido o DNI..." value={searchText} onChange={e => setSearchText(e.target.value)} style={{ width: '100%', padding: '0.5rem 0.75rem 0.5rem 2.25rem', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem' }} />
+      </div>
+      <select value={sortOrder} onChange={e => onSortChange(e.target.value)} style={{ padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem', background: 'white', minWidth: 160 }}><option value="recent">Más recientes</option><option value="oldest">Más antiguos</option><option value="alpha">Orden alfabético</option></select>
+    </div>
+  );
+});
+
 /**
  * AlumnosPage — Gestión de alumnos del ciclo activo
  *
@@ -35,7 +61,7 @@ function AlumnosPage() {
   const { cicloActual } = useCiclo();
   const { showToast, showApiError } = useToast();
   const queryClient = useQueryClient();
-  const { searchText, setSearchText, debouncedValue: debouncedSearch } = useDebouncedSearch();
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<AlumnoFormData>(initialFormData);
@@ -48,7 +74,16 @@ function AlumnosPage() {
 
   const ordering = getOrderingParam(sortOrder);
 
-  const { data: alumnosResponse, isLoading, error } = useQuery({
+  const handleSearchChange = useCallback((value: string) => {
+    setDebouncedSearch(value);
+    setCurrentPage(1);
+  }, []);
+  const handleSortChange = useCallback((value: string) => {
+    setSortOrder(value as 'recent' | 'oldest' | 'alpha');
+    setCurrentPage(1);
+  }, []);
+
+  const { data: alumnosResponse, isPending, error } = useQuery({
     queryKey: queryKeys.alumnos(cicloActual?.id ?? 0, currentPage, debouncedSearch, ordering),
     queryFn: async () => {
       if (!cicloActual) return { count: 0, results: [] };
@@ -101,20 +136,14 @@ function AlumnosPage() {
   const openCreateModal = () => { setEditingId(null); setFormData(initialFormData); setShowModal(true); };
   const handlePageChange = (p: number) => setCurrentPage(p);
 
-  if (isLoading) return <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1rem' }}><div style={{ width: 40, height: 40, border: '3px solid #f1f5f9', borderTop: '3px solid var(--color-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /><p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Cargando alumnos...</p><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
+  if (isPending && !alumnosResponse) return <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1rem' }}><div style={{ width: 40, height: 40, border: '3px solid #f1f5f9', borderTop: '3px solid var(--color-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /><p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Cargando alumnos...</p><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
 
   if (error) return <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1rem' }}><p style={{ color: 'var(--color-error)', fontSize: '0.875rem' }}>Error al cargar alumnos.</p><Button onClick={() => queryClient.invalidateQueries({ queryKey: queryKeys.alumnos(cicloActual?.id ?? 0) })}>Reintentar</Button></div>;
 
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
       <PageHeader title="Alumnos" cicloNombre={cicloActual?.nombre} actionLabel="Nuevo alumno" onAction={openCreateModal} />
-      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #f1f5f9', padding: '0.75rem 1rem', marginBottom: '0.75rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
-          <svg style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" placeholder="Buscar por nombre, apellido o DNI..." value={searchText} onChange={e => setSearchText(e.target.value)} style={{ width: '100%', padding: '0.5rem 0.75rem 0.5rem 2.25rem', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem' }} />
-        </div>
-        <select value={sortOrder} onChange={e => { setSortOrder(e.target.value as any); setCurrentPage(1); }} style={{ padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem', background: 'white', minWidth: 160 }}><option value="recent">Más recientes</option><option value="oldest">Más antiguos</option><option value="alpha">Orden alfabético</option></select>
-      </div>
+      <AlumnosFilterBar sortOrder={sortOrder} onSortChange={handleSortChange} onSearchChange={handleSearchChange} />
       <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #f1f5f9', overflow: 'hidden' }}>
         <ResponsiveTable<Alumno> columns={[
           { key: 'nombre', label: 'Nombre', render: a => <span style={{ fontWeight: 600, color: 'var(--color-bg-dark)' }}>{a.nombre} {a.apellido}</span> },
