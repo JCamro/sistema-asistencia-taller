@@ -10,6 +10,7 @@ import SeleccionCiclos from './pages/ciclos/SeleccionCiclos';
 import DashboardPage from './pages/dashboard/Dashboard';
 import AlumnosPage from './pages/alumnos/Alumnos';
 import ProfesoresPage from './pages/profesores/Profesores';
+import ProfesorDetallePage from './pages/profesores/ProfesorDetalle';
 import TalleresPage from './pages/talleres/Talleres';
 import TallerDetalle from './pages/talleres/TallerDetalle';
 import HorariosPage from './pages/horarios/Horarios';
@@ -63,6 +64,7 @@ export default function App() {
                 <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><DashboardPage /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/alumnos" element={<ProtectedRoute><DashboardLayout><AlumnosPage /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/profesores" element={<ProtectedRoute><DashboardLayout><ProfesoresPage /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/profesores/:profesorId" element={<ProtectedRoute><DashboardLayout><ProfesorDetallePage /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/talleres" element={<ProtectedRoute><DashboardLayout><TalleresPage /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/talleres/:tallerId" element={<ProtectedRoute><DashboardLayout><TallerDetalle /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/horarios" element={<ProtectedRoute><DashboardLayout><HorariosPage /></DashboardLayout></ProtectedRoute>} />

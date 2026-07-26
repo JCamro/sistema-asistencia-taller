@@ -62,6 +62,7 @@ urlpatterns = [
     path('ciclos/<int:ciclo_id>/talleres/<int:pk>/', TallerViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='ciclo-talleres-detail'),
     path('ciclos/<int:ciclo_id>/profesores/', ProfesorViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-profesores'),
     path('ciclos/<int:ciclo_id>/profesores/<int:pk>/', ProfesorViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='ciclo-profesores-detail'),
+    path('ciclos/<int:ciclo_id>/profesores/<int:pk>/detalle/', ProfesorViewSet.as_view({'get': 'detalle'}), name='ciclo-profesor-detalle'),
     path('ciclos/<int:ciclo_id>/horarios/', HorarioViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-horarios'),
     path('ciclos/<int:ciclo_id>/horarios/<int:pk>/', HorarioViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='ciclo-horarios-detail'),
     path('ciclos/<int:ciclo_id>/matriculas/', MatriculaViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-matriculas'),

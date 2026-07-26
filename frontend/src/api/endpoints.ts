@@ -728,3 +728,48 @@ export const getAlumnoDetalle = (cicloId: number, alumnoId: number) =>
 /** Detalle completo de una matrícula dentro de un ciclo */
 export const getMatriculaDetalle = (cicloId: number, matriculaId: number) =>
   api.get<MatriculaDetalleResponse>(`/ciclos/${cicloId}/matriculas/${matriculaId}/detalle/`);
+
+export interface ProfesorDetalleHorario {
+  id: number;
+  taller: string;
+  taller_id: number;
+  dia: string;
+  hora_inicio: string;
+  hora_fin: string;
+}
+
+export interface ProfesorDetallePago {
+  id: number;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  monto_final: string;
+  horas_calculadas: number;
+  total_alumnos_asistencias: number;
+  estado: string;
+  ganancia_taller: string;
+}
+
+export interface ProfesorDetalleData {
+  id: number;
+  nombre: string;
+  apellido: string;
+  nombre_completo: string;
+  dni: string;
+  telefono: string;
+  email: string;
+  fecha_nacimiento: string | null;
+  edad: number | null;
+  activo: boolean;
+  es_gerente: boolean;
+  observaciones: string;
+  horarios: ProfesorDetalleHorario[];
+  pagos: ProfesorDetallePago[];
+}
+
+export interface ProfesorDetalleResponse {
+  profesor: ProfesorDetalleData;
+}
+
+/** Detalle completo de un profesor dentro de un ciclo */
+export const getProfesorDetalle = (cicloId: number, profesorId: number) =>
+  api.get<ProfesorDetalleResponse>(`/ciclos/${cicloId}/profesores/${profesorId}/detalle/`);
