@@ -354,22 +354,26 @@ class MatriculaViewSet(viewsets.ModelViewSet):
         recibo_matricula = matricula.recibos.select_related('recibo').first()
         recibo = recibo_matricula.recibo if recibo_matricula else None
 
-        horarios = matricula.horarios.select_related('horario').all()
+        horarios = matricula.horarios.select_related('horario__profesor').all()
         horarios_data = [{
             'id': mh.horario.id,
             'dia': mh.horario.get_dia_semana_display(),
             'dia_numero': mh.horario.dia_semana,
             'hora_inicio': str(mh.horario.hora_inicio),
             'hora_fin': str(mh.horario.hora_fin),
+            'profesor_nombre': f"{mh.horario.profesor.apellido}, {mh.horario.profesor.nombre}" if mh.horario.profesor else '',
         } for mh in horarios]
 
-        asistencias = matricula.asistencias.select_related('horario').all()
+        asistencias = matricula.asistencias.select_related('horario', 'profesor').all()
         asistencias_data = [{
             'id': a.id,
             'fecha': str(a.fecha),
             'estado': a.estado,
             'es_recuperacion': a.es_recuperacion,
             'horario': str(a.horario),
+            'profesor_nombre': f"{a.profesor.apellido}, {a.profesor.nombre}" if a.profesor else '',
+            'hora': str(a.hora) if a.hora else '',
+            'observacion': a.observacion or '',
         } for a in asistencias]
 
         return Response({

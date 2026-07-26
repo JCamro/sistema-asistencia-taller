@@ -120,16 +120,16 @@ function HorasProfesoresPage() {
     const hastaFecha = hasta ?? hHasta;
     if (desdeFecha) params.push(`fecha__gte=${desdeFecha}`);
     if (hastaFecha) params.push(`fecha__lte=${hastaFecha}`);
-    const url = `${apiBase}/api/ciclos/${cicloActual.id}/horas-trabajadas/?${params.join('&')}`;
+    const url = `${apiBase}/ciclos/${cicloActual.id}/horas-trabajadas/?${params.join('&')}`;
     try {
       const [horasRes, talleresRes, profesoresRes] = await Promise.all([
         fetch(url, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/?page=1`, {
+        fetch(`${apiBase}/ciclos/${cicloActual.id}/talleres/?page=1`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/profesores/?page=1`, {
+        fetch(`${apiBase}/ciclos/${cicloActual.id}/profesores/?page=1`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -157,7 +157,7 @@ function HorasProfesoresPage() {
       return;
     }
     const token = localStorage.getItem('access_token');
-    fetch(`${apiBase}/api/ciclos/${cicloActual.id}/horarios/?taller=${formTallerId}`, {
+    fetch(`${apiBase}/ciclos/${cicloActual.id}/horarios/?taller=${formTallerId}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(response => response.json())
@@ -237,7 +237,7 @@ function HorasProfesoresPage() {
     // Load the horario's taller to set the filter
     const token = localStorage.getItem('access_token');
     try {
-      const response = await fetch(`${apiBase}/api/horarios/${h.horario}/`, {
+      const response = await fetch(`${apiBase}/horarios/${h.horario}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const horarioData = await response.json();
@@ -256,7 +256,7 @@ function HorasProfesoresPage() {
     setCalculando(true);
     const token = localStorage.getItem('access_token');
     try {
-      const response = await fetch(`${apiBase}/api/pagos-profesores/calcular-periodo/`, {
+      const response = await fetch(`${apiBase}/pagos-profesores/calcular-periodo/`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ ciclo_id: cicloActual!.id, fecha_inicio: cFechaInicio, fecha_fin: cFechaFin, regenerar_horas: 'true' }),
       });
@@ -275,7 +275,7 @@ function HorasProfesoresPage() {
     setSelectedPago(r); setLoadingDetalles(true);
     const token = localStorage.getItem('access_token');
     try {
-      const response = await fetch(`${apiBase}/api/pagos-profesores/${r.pago_id}/detalles/`, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch(`${apiBase}/pagos-profesores/${r.pago_id}/detalles/`, { headers: { Authorization: `Bearer ${token}` } });
       const jsonData = await response.json();
       setDetalles(Array.isArray(jsonData.results) ? jsonData.results : (Array.isArray(jsonData) ? jsonData : (jsonData.detalles || [])));
     } catch { showToast('Error al cargar detalle', 'error'); }
@@ -293,7 +293,7 @@ function HorasProfesoresPage() {
         const token = localStorage.getItem('access_token');
         const profParam = detalle.profesor_id ? `&profesor_id=${detalle.profesor_id}` : '';
         try {
-          const response = await fetch(`${apiBase}/api/pagos-profesores/detalle-clase/?horario_id=${detalle.horario}&fecha=${detalle.fecha}${profParam}`, { headers: { Authorization: `Bearer ${token}` } });
+          const response = await fetch(`${apiBase}/pagos-profesores/detalle-clase/?horario_id=${detalle.horario}&fecha=${detalle.fecha}${profParam}`, { headers: { Authorization: `Bearer ${token}` } });
           const jsonData = await response.json();
           setDetallesCompletos(prev => ({ ...prev, [key]: jsonData }));
         } catch { }

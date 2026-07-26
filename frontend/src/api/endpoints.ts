@@ -308,6 +308,9 @@ export interface MatriculaDetalleAsistencia {
   estado: string;
   es_recuperacion: boolean;
   horario: string;
+  profesor_nombre: string;
+  hora: string;
+  observacion: string;
 }
 
 export interface MatriculaDetalleRecibo {
@@ -381,9 +384,39 @@ export interface PorHorarioResponse {
     asistencia_id: number | null;
     estado: string | null;
     observacion: string;
+    profesor_id: number | null;
+    profesor_nombre: string;
     es_recuperacion: boolean;
     hora: string | null;
   }[];
+}
+
+export interface PorDiaHorario {
+  horario_id: number;
+  taller_id: number;
+  taller_nombre: string;
+  hora_inicio: string;
+  hora_fin: string;
+  profesor_id: number | null;
+  profesor_nombre: string | null;
+  es_feriado: boolean;
+  alumnos: {
+    matricula_id: number;
+    alumno_id: number;
+    alumno_nombre: string;
+    sesiones_disponibles: number;
+    asistencia_id: number | null;
+    estado: string | null;
+    observacion: string;
+  }[];
+}
+
+export interface PorDiaResponse {
+  fecha: string;
+  dia_semana: number;
+  es_feriado: boolean;
+  motivo: string | null;
+  horarios: PorDiaHorario[];
 }
 
 // =============================================================================

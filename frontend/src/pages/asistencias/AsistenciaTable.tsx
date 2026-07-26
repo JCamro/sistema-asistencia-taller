@@ -8,6 +8,8 @@ interface AlumnoHorario {
   asistencia_id: number | null;
   estado: string | null;
   observacion: string;
+  profesor_id?: number | null;
+  profesor_nombre?: string;
 }
 
 interface HorarioOption {

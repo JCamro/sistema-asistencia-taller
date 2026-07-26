@@ -77,9 +77,9 @@ function TallerDetalle() {
     const token = localStorage.getItem('access_token');
     try {
       const [tr, hr, pr] = await Promise.all([
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/talleres/${tallerId}/`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/api/horarios/?taller=${tallerId}&page_size=100`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/profesores/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/ciclos/${cicloActual.id}/talleres/${tallerId}/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/horarios/?taller=${tallerId}&page_size=100`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/ciclos/${cicloActual.id}/profesores/`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const parse = async (r: Response) => { try { return JSON.parse(await r.text()); } catch { return { error: true }; } };
       const [tD, hD, pD] = await Promise.all([parse(tr), parse(hr), parse(pr)]);
@@ -113,7 +113,7 @@ function TallerDetalle() {
     try {
       const payload: Record<string, unknown> = { taller: parseInt(tallerId), profesor: formData.profesor, dia_semana: formData.dia_semana, hora_inicio: formData.hora_inicio, hora_fin: `${(parseInt(hp[0]) + 1).toString().padStart(2, '0')}:${hp[1]}`, activo: true, cupo_maximo: formData.cupo_maximo, tipo_pago: crearTipoPago };
       if (crearTipoPago === 'fijo' && crearMontoFijo) payload.monto_fijo = parseFloat(crearMontoFijo);
-      const response = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/horarios/`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+      const response = await fetch(`${apiBase}/ciclos/${cicloActual.id}/horarios/`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
       if (!response.ok) throw new Error(JSON.stringify(await response.json()));
       await fetchData(); setPanelEstado('vacio'); setCeldaSeleccionada(null);
     } catch (err) { showApiError(err); } finally { setSaving(false); }
@@ -126,14 +126,14 @@ function TallerDetalle() {
   };
   const confirmDeleteHorario = async () => {
     if (!horarioSeleccionado) return;
-    try { await fetch(`${apiBase}/api/horarios/${horarioSeleccionado.id}/`, { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }); await fetchData(); setPanelEstado('vacio'); setHorarioSeleccionado(null); }
+    try { await fetch(`${apiBase}/horarios/${horarioSeleccionado.id}/`, { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } }); await fetchData(); setPanelEstado('vacio'); setHorarioSeleccionado(null); }
     catch (err) { showApiError(err); } finally { setShowDeleteModal(false); }
   };
 
   const patchHorario = async (payload: Record<string, unknown>, label: string) => {
     if (!horarioSeleccionado) return;
     try {
-      const response = await fetch(`${apiBase}/api/horarios/${horarioSeleccionado.id}/`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('access_token')}` }, body: JSON.stringify(payload) });
+      const response = await fetch(`${apiBase}/horarios/${horarioSeleccionado.id}/`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('access_token')}` }, body: JSON.stringify(payload) });
       if (!response.ok) throw new Error(JSON.stringify(await response.json()));
       showToast(`${label} actualizado`, 'success');
       setHorarioSeleccionado(prev => prev ? { ...prev, ...payload as any } : prev);

@@ -3,6 +3,7 @@ import { useWindowWidth } from '../../hooks/useWindowWidth';
 import AsistenciaTable from './AsistenciaTable';
 import AsistenciaHistorialDia from './AsistenciaHistorialDia';
 import AsistenciasResumenHorarios from './AsistenciasResumenHorarios';
+import AsistenciasDashboard from './AsistenciasDashboard';
 
 interface AlumnoHorario {
   matricula_id: number;
@@ -12,6 +13,8 @@ interface AlumnoHorario {
   asistencia_id: number | null;
   estado: string | null;
   observacion: string;
+  profesor_id?: number | null;
+  profesor_nombre?: string;
 }
 
 interface Horario {
@@ -59,15 +62,16 @@ interface AsistenciaContenidoProps {
   alumnosHorario: AlumnoHorario[];
   loadingAlumnos: boolean;
   saving: boolean;
-  asistencias: AsistenciaItem[];
   alumnosPorHorario: Map<number, AlumnoHorario[]>;
   loadingTodosAlumnos: boolean;
   esFeriado?: boolean;
   motivoFeriado?: string | null;
+  erroresPorHorario?: Map<number, boolean>;
   onEstadoChange: (alumno: AlumnoHorario, estado: string) => void;
   onEditAsistenciaFromAlumno: (alumno: AlumnoHorario) => void;
   onEditAsistencia: (asistencia: AsistenciaEdit) => void;
   onOpenRecuperacion: () => void;
+  onDashboardHorarioClick: (horarioId: number) => void;
 }
 
 /**
@@ -90,33 +94,48 @@ function AsistenciaContenido({
   alumnosHorario,
   loadingAlumnos,
   saving,
-  asistencias,
   alumnosPorHorario,
   loadingTodosAlumnos,
   esFeriado,
   motivoFeriado,
+  erroresPorHorario,
   onEstadoChange,
   onEditAsistenciaFromAlumno,
   onEditAsistencia,
   onOpenRecuperacion,
+  onDashboardHorarioClick,
 }: AsistenciaContenidoProps) {
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 768;
 
   const estadisticas = useMemo(() => {
-    const asistenciaHorario = asistencias.filter((a) => a.horario === horarioSeleccionado && a.fecha === fecha && a.activo !== false);
+    const asistencias = alumnosHorario.filter(a => a.asistencia_id !== null);
     return {
-      total: asistenciaHorario.length,
-      asistio: asistenciaHorario.filter((a) => a.estado === 'asistio').length,
-      falta: asistenciaHorario.filter((a) => a.estado === 'falta').length,
-      falta_grave: asistenciaHorario.filter((a) => a.estado === 'falta_grave').length,
+      total: asistencias.length,
+      asistio: asistencias.filter(a => a.estado === 'asistio').length,
+      falta: asistencias.filter(a => a.estado === 'falta').length,
+      falta_grave: asistencias.filter(a => a.estado === 'falta_grave').length,
     };
-  }, [asistencias, horarioSeleccionado, fecha]);
+  }, [alumnosHorario]);
 
   const historialAsistencias = useMemo<AsistenciaItem[]>(() => {
     if (!horarioSeleccionado || !fecha) return [];
-    return asistencias.filter((a) => a.horario === horarioSeleccionado && a.fecha === fecha && a.activo !== false);
-  }, [asistencias, horarioSeleccionado, fecha]);
+    return alumnosHorario
+      .filter(a => a.asistencia_id !== null)
+      .map(a => ({
+        id: a.asistencia_id!,
+        horario: horarioSeleccionado,
+        fecha,
+        alumno_nombre: a.alumno_nombre,
+        estado: a.estado || 'sin_registrar',
+        observacion: a.observacion || '',
+        hora: '',
+        es_recuperacion: false,
+        profesor: a.profesor_id,
+        profesor_nombre: a.profesor_nombre || '',
+        activo: true,
+      } as AsistenciaItem));
+  }, [alumnosHorario, horarioSeleccionado, fecha]);
   return (
     <>
       {tallerSeleccionado && !horarioSeleccionado && (
@@ -128,9 +147,16 @@ function AsistenciaContenido({
       )}
 
       {!tallerSeleccionado && horariosDelDia.length > 0 && (
-        <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-          Seleccioná un taller para ver los alumnos del día
-        </div>
+        <AsistenciasDashboard
+          fecha={fecha}
+          horariosDelDia={horariosDelDia}
+          alumnosPorHorario={alumnosPorHorario}
+          loading={loadingTodosAlumnos}
+          esFeriado={esFeriado}
+          motivoFeriado={motivoFeriado}
+          erroresPorHorario={erroresPorHorario}
+          onHorarioClick={onDashboardHorarioClick}
+        />
       )}
 
       {horariosDelDia.length === 0 && !loading && (

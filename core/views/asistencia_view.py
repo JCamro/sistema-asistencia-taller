@@ -98,6 +98,8 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
                 'asistencia_id': asistencia.id if asistencia else None,
                 'estado': asistencia.estado if asistencia else None,
                 'observacion': asistencia.observacion if asistencia else '',
+                'profesor_id': asistencia.profesor_id if asistencia else None,
+                'profesor_nombre': f"{asistencia.profesor.apellido}, {asistencia.profesor.nombre}" if (asistencia and asistencia.profesor) else '',
                 'es_recuperacion': False,
                 'hora': asistencia.hora.strftime('%H:%M') if asistencia else None,
             })
@@ -116,8 +118,10 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
                     'sesiones_disponibles': asist.matricula.sesiones_disponibles,
                     'asistencia_id': asist.id,
                     'estado': asist.estado,
-                    'observacion': asist.observacion,
-                    'es_recuperacion': True,
+                'observacion': asist.observacion,
+                'profesor_id': asist.profesor_id,
+                'profesor_nombre': f"{asist.profesor.apellido}, {asist.profesor.nombre}" if asist.profesor else '',
+                'es_recuperacion': True,
                 'hora': asist.hora.strftime('%H:%M'),
             })
 
@@ -125,6 +129,114 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
             'es_feriado': es_feriado,
             'motivo': motivo_feriado,
             'resultados': resultados,
+        })
+
+    @action(detail=False, methods=['get'], url_path='por-dia')
+    def por_dia(self, request, ciclo_id=None):
+        if not ciclo_id:
+            return Response({'error': 'Se requiere ciclo_id'}, status=status.HTTP_400_BAD_REQUEST)
+
+        fecha_str = request.query_params.get('fecha', '').strip()
+        if not fecha_str:
+            return Response({'error': 'Se requiere fecha (YYYY-MM-DD)'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            fecha = date.fromisoformat(fecha_str)
+        except (ValueError, TypeError):
+            return Response({'error': 'Formato de fecha inválido. Usar YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+
+        dia_semana = fecha.weekday()
+
+        horarios = Horario.objects.filter(
+            ciclo_id=ciclo_id,
+            dia_semana=dia_semana,
+            activo=True
+        ).select_related('taller', 'profesor')
+
+        horario_ids = [h.id for h in horarios]
+
+        feriados = list(Feriado.objects.filter(ciclo_id=ciclo_id, fecha=fecha))
+        feriado_global = next((f for f in feriados if f.taller_id is None and f.horario_id is None), None)
+
+        mh_por_horario = {}
+        for mh in MatriculaHorario.objects.filter(
+            horario_id__in=horario_ids,
+            matricula__activo=True,
+            matricula__concluida=False,
+            matricula__fecha_matricula__isnull=False,
+            matricula__fecha_matricula__date__lte=fecha,
+        ).select_related('matricula__alumno'):
+            mh_por_horario.setdefault(mh.horario_id, []).append(mh)
+
+        asis_por_matricula = {}
+        for a in Asistencia.objects.filter(
+            horario_id__in=horario_ids,
+            fecha=fecha
+        ).select_related('matricula'):
+            if a.matricula_id:
+                asis_por_matricula[a.matricula_id] = a
+
+        asis_recuperacion_por_horario = {}
+        for a in Asistencia.objects.filter(
+            horario_id__in=horario_ids,
+            fecha=fecha,
+            es_recuperacion=True
+        ).select_related('matricula__alumno'):
+            if a.matricula_id:
+                asis_recuperacion_por_horario.setdefault(a.horario_id, {})[a.matricula_id] = a
+
+        resultado = []
+        for h in horarios:
+            feriado_horario = next(
+                (f for f in feriados if f.horario_id == h.id or (f.taller_id == h.taller_id and f.horario_id is None)),
+                None
+            )
+            es_feriado = feriado_global is not None or feriado_horario is not None
+
+            alumnos_data = []
+            for mh in mh_por_horario.get(h.id, []):
+                asis = asis_por_matricula.get(mh.matricula_id)
+                alumnos_data.append({
+                    'matricula_id': mh.matricula_id,
+                    'alumno_id': mh.matricula.alumno.id,
+                    'alumno_nombre': f"{mh.matricula.alumno.apellido}, {mh.matricula.alumno.nombre}",
+                    'sesiones_disponibles': mh.matricula.sesiones_disponibles,
+                    'asistencia_id': asis.id if asis else None,
+                    'estado': asis.estado if asis else None,
+                    'observacion': asis.observacion if asis else '',
+                })
+
+            alumnos_regulares_matricula_ids = {mh.matricula_id for mh in mh_por_horario.get(h.id, [])}
+            for a_matricula_id, a in asis_recuperacion_por_horario.get(h.id, {}).items():
+                if a_matricula_id not in alumnos_regulares_matricula_ids:
+                    alumnos_data.append({
+                        'matricula_id': a.matricula_id,
+                        'alumno_id': a.matricula.alumno.id,
+                        'alumno_nombre': f"{a.matricula.alumno.apellido}, {a.matricula.alumno.nombre}",
+                        'sesiones_disponibles': a.matricula.sesiones_disponibles,
+                        'asistencia_id': a.id,
+                        'estado': a.estado,
+                        'observacion': a.observacion or '',
+                    })
+
+            resultado.append({
+                'horario_id': h.id,
+                'taller_id': h.taller.id,
+                'taller_nombre': h.taller.nombre,
+                'hora_inicio': str(h.hora_inicio),
+                'hora_fin': str(h.hora_fin),
+                'profesor_id': h.profesor.id if h.profesor else None,
+                'profesor_nombre': f"{h.profesor.apellido}, {h.profesor.nombre}" if h.profesor else None,
+                'es_feriado': es_feriado,
+                'alumnos': alumnos_data,
+            })
+
+        return Response({
+            'fecha': fecha_str,
+            'dia_semana': dia_semana,
+            'es_feriado': feriado_global is not None,
+            'motivo': feriado_global.motivo if feriado_global else None,
+            'horarios': resultado,
         })
 
     @action(detail=False, methods=['get'], url_path='recuperables')

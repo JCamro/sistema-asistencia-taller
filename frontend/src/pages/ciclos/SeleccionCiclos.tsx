@@ -58,7 +58,7 @@ function SeleccionCiclos() {
     setGuardando(true);
     const token = localStorage.getItem('access_token');
     try {
-      await fetch(`${apiBase}/api/ciclos/`, {
+      await fetch(`${apiBase}/ciclos/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ nombre, tipo, fecha_inicio: fechaInicio, fecha_fin: fechaFin, activo: true })
@@ -91,7 +91,7 @@ function SeleccionCiclos() {
     setGuardando(true);
     const token = localStorage.getItem('access_token');
     try {
-      await fetch(`${apiBase}/api/ciclos/${cicloEditando.id}/`, {
+      await fetch(`${apiBase}/ciclos/${cicloEditando.id}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ nombre, tipo, fecha_inicio: fechaInicio, fecha_fin: fechaFin, activo })
@@ -110,7 +110,7 @@ function SeleccionCiclos() {
     if (!confirmar) return;
     const token = localStorage.getItem('access_token');
     try {
-      await fetch(`${apiBase}/api/ciclos/${id}/`, {
+      await fetch(`${apiBase}/ciclos/${id}/`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -397,7 +397,7 @@ function SeleccionCiclos() {
                   setGuardandoPassword(true);
                   const token = localStorage.getItem('access_token');
                   try {
-                    const response = await fetch(`${apiBase}/api/usuarios/cambiar-password/`, {
+                    const response = await fetch(`${apiBase}/usuarios/cambiar-password/`, {
                       method: 'POST',
                       headers: { 
                         'Content-Type': 'application/json',

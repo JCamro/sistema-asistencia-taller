@@ -1,19 +1,23 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCiclo } from '../../contexts/CicloContext';
 import { useToast } from '../../contexts/ToastContext';
 import PageHeader from '../../components/ui/PageHeader';
 import { getMatriculaDetalle } from '../../api/endpoints';
 import { MATRICULA_ESTADOS, RECIBO_ESTADOS, ASISTENCIA_ESTADOS, BTN_PRIMARY } from '../../theme/colors';
+import ReciboDetailModal from '../recibos/ReciboDetailModal';
 import type { MatriculaDetalleResponse } from '../../api/endpoints';
 
 function MatriculaDetallePage() {
   const { matriculaId } = useParams<{ matriculaId: string }>();
   const navigate = useNavigate();
   const { cicloActual } = useCiclo();
-  const { showApiError } = useToast();
+  const { showToast, showApiError } = useToast();
   const [data, setData] = useState<MatriculaDetalleResponse['matricula'] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [reciboDetail, setReciboDetail] = useState<any>(null);
+  const [loadingReciboDetail, setLoadingReciboDetail] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!cicloActual || !matriculaId) return;
@@ -29,9 +33,49 @@ function MatriculaDetallePage() {
     }
   }, [cicloActual, matriculaId, showApiError]);
 
+  const handleDeleteAsistencia = useCallback(async (asistenciaId: number) => {
+    if (!cicloActual) return;
+    if (deleteConfirmId !== asistenciaId) {
+      setDeleteConfirmId(asistenciaId);
+      return;
+    }
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/asistencias/${asistenciaId}/`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('Error al eliminar');
+      showToast('Asistencia eliminada', 'success');
+      fetchData();
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setDeleteConfirmId(null);
+    }
+  }, [cicloActual, deleteConfirmId, fetchData, showToast, showApiError]);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const estado = data ? (MATRICULA_ESTADOS[data.estado] || MATRICULA_ESTADOS.inactiva) : MATRICULA_ESTADOS.inactiva;
+  const recibo = data?.recibo ? (RECIBO_ESTADOS[data.recibo.estado] || RECIBO_ESTADOS.sin_recibo) : RECIBO_ESTADOS.sin_recibo;
+  const progress = data ? Math.min(100, (data.sesiones_consumidas / data.sesiones_contratadas) * 100) : 0;
+
+  const asistenciasAgrupadas = useMemo(() => {
+    if (!data) return [];
+    const grupos: Record<string, typeof data.asistencias> = {};
+    for (const a of data.asistencias) {
+      const fecha = new Date(a.fecha + 'T00:00:00');
+      const key = fecha.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
+      if (!grupos[key]) grupos[key] = [];
+      grupos[key].push(a);
+    }
+    return Object.entries(grupos).sort(([, itemsA], [, itemsB]) => {
+      return new Date(itemsB[0].fecha).getTime() - new Date(itemsA[0].fecha).getTime();
+    });
+  }, [data?.asistencias]);
 
   if (loading) {
     return (
@@ -49,10 +93,6 @@ function MatriculaDetallePage() {
       </div>
     );
   }
-
-  const estado = MATRICULA_ESTADOS[data.estado] || MATRICULA_ESTADOS.inactiva;
-  const recibo = data.recibo ? (RECIBO_ESTADOS[data.recibo.estado] || RECIBO_ESTADOS.sin_recibo) : RECIBO_ESTADOS.sin_recibo;
-  const progress = Math.min(100, (data.sesiones_consumidas / data.sesiones_contratadas) * 100);
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
@@ -105,10 +145,26 @@ function MatriculaDetallePage() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1rem', color: '#111827' }}>Recibo</h3>
                 <button
-                  onClick={() => navigate(`/recibos?highlight=${data.recibo?.id}`)}
+                  onClick={async () => {
+                    if (!data.recibo?.id) return;
+                    setLoadingReciboDetail(true);
+                    try {
+                      const token = localStorage.getItem('access_token');
+                      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/recibos/${data.recibo.id}/`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                      });
+                      if (!res.ok) throw new Error('Error al cargar recibo');
+                      const json = await res.json();
+                      setReciboDetail(json);
+                    } catch (err) {
+                      showApiError(err);
+                    } finally {
+                      setLoadingReciboDetail(false);
+                    }
+                  }}
                   style={{ padding: '0.4rem 1rem', borderRadius: '8px', border: 'none', background: BTN_PRIMARY.background, color: BTN_PRIMARY.color, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
                 >
-                  Ir a Recibo
+                  Ver Recibo
                 </button>
               </div>
               <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '10px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
@@ -149,19 +205,75 @@ function MatriculaDetallePage() {
             {data.asistencias.length === 0 ? (
               <div style={{ color: '#4b5563', fontSize: '0.875rem' }}>Sin asistencias registradas</div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                {data.asistencias.map((a) => {
-                  const asistencia = ASISTENCIA_ESTADOS[a.estado] || ASISTENCIA_ESTADOS.sin_registrar;
-                  return (
-                    <div key={a.id} style={{ padding: '0.5rem 0.75rem', borderRadius: '8px', background: asistencia.bg, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '0.8125rem', color: '#374151' }}>{a.fecha} {a.horario && <span style={{ color: '#4b5563' }}>· {a.horario}</span>}</span>
-                      <span title={asistencia.description} style={{ fontSize: '0.75rem', fontWeight: 600, color: asistencia.color }}>
-                        {asistencia.label}
-                        {a.es_recuperacion && <span style={{ marginLeft: 4, color: '#d4af37' }}>Recup.</span>}
-                      </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {asistenciasAgrupadas.map(([monthKey, asistenciasMes]) => (
+                  <div key={monthKey}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '6px', marginBottom: '0.25rem' }}>
+                      {monthKey}
                     </div>
-                  );
-                })}
+                    <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                      {asistenciasMes.map((a, idx) => {
+                        const asistencia = ASISTENCIA_ESTADOS[a.estado] || ASISTENCIA_ESTADOS.sin_registrar;
+                        const fecha = new Date(a.fecha + 'T00:00:00');
+                        return (
+                          <div key={a.id} style={{
+                            display: 'flex', alignItems: 'center', gap: '0.75rem',
+                            padding: '0.5rem 0.75rem',
+                            borderBottom: idx < asistenciasMes.length - 1 ? '1px solid #f1f5f9' : 'none',
+                          }}>
+                            <div style={{ minWidth: '90px' }}>
+                              <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#374151' }}>
+                                {fecha.toLocaleDateString('es-PE', { weekday: 'short' })}
+                              </span>
+                              <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>
+                                {a.fecha.split('-').slice(1).reverse().join('/')}
+                              </span>
+                            </div>
+
+                            <span style={{ fontSize: '0.75rem', color: '#6b7280', minWidth: '50px' }}>{a.horario}</span>
+
+                            {a.es_recuperacion && (
+                              <span style={{ padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, background: '#fef9e7', color: '#8b6914' }}>
+                                Recup.
+                              </span>
+                            )}
+
+                            <span style={{
+                              padding: '0.2rem 0.55rem', borderRadius: '9999px', fontSize: '0.7rem', fontWeight: 600,
+                              background: asistencia.bg, color: asistencia.color
+                            }}>
+                              {asistencia.label}
+                            </span>
+
+                            <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: 'auto' }}>
+                              {a.profesor_nombre || '—'}
+                            </span>
+
+                            <button
+                              onClick={() => navigate(`/asistencias?fecha=${a.fecha}`)}
+                              style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid #e5e7eb', background: 'white', color: '#374151', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer' }}
+                            >
+                              Ver
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteAsistencia(a.id)}
+                              style={{
+                                padding: '0.25rem 0.5rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer',
+                                border: deleteConfirmId === a.id ? '1px solid #dc2626' : '1px solid transparent',
+                                background: deleteConfirmId === a.id ? '#fee2e2' : 'transparent',
+                                color: deleteConfirmId === a.id ? '#dc2626' : '#ef4444',
+                                marginLeft: '0.25rem',
+                              }}
+                            >
+                              {deleteConfirmId === a.id ? 'Confirmar' : 'Eliminar'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -174,6 +286,12 @@ function MatriculaDetallePage() {
       >
         ← Volver a Matrículas
       </button>
+
+      <ReciboDetailModal
+        recibo={reciboDetail}
+        loading={loadingReciboDetail}
+        onClose={() => setReciboDetail(null)}
+      />
     </div>
   );
 }

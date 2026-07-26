@@ -8,7 +8,7 @@ import AsistenciasFilterBar from './AsistenciasFilterBar';
 import AsistenciaContenido, { type AsistenciaEdit } from './AsistenciaContenido';
 import AsistenciaRecuperacionModal from './AsistenciaRecuperacionModal';
 import AsistenciaEditModal from './AsistenciaEditModal';
-import type { PorHorarioResponse } from '../../api/endpoints';
+import type { PorDiaResponse, PorHorarioResponse } from '../../api/endpoints';
 
 interface Horario {
   id: number;
@@ -31,6 +31,8 @@ interface AlumnoHorario {
   asistencia_id: number | null;
   estado: string | null;
   observacion: string;
+  profesor_id?: number | null;
+  profesor_nombre?: string;
 }
 
 interface Asistencia {
@@ -66,7 +68,6 @@ function AsistenciasPage() {
   const apiBase = getApiBaseUrl();
   const [searchParams, setSearchParams] = useSearchParams();
   const [horarios, setHorarios] = useState<Horario[]>([]);
-  const [asistencias, setAsistencias] = useState<Asistencia[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingAlumnos, setLoadingAlumnos] = useState(false);
   const fecha = searchParams.get('fecha') || new Date().toISOString().split('T')[0];
@@ -85,11 +86,13 @@ function AsistenciasPage() {
   const [saving, setSaving] = useState(false);
   const [esFeriado, setEsFeriado] = useState(false);
   const [motivoFeriado, setMotivoFeriado] = useState<string | null>(null);
+  const [erroresPorHorario, setErroresPorHorario] = useState<Map<number, boolean>>(new Map());
 
   const setFecha = (value: string) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set('fecha', value);
+      next.delete('horario');
       return next;
     });
   };
@@ -115,14 +118,31 @@ function AsistenciasPage() {
     setProfesorSeleccionado(null);
   };
 
+  const handleDashboardHorarioClick = useCallback((horarioId: number) => {
+    const horario = horarios.find(h => h.id === horarioId);
+    if (horario) {
+      setProfesorSeleccionado(horario.profesor);
+      setProfesorBloqueado(true);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('taller', String(horario.taller));
+        next.set('horario', String(horarioId));
+        return next;
+      });
+    }
+  }, [horarios, setSearchParams]);
+
   // fetchData: carga horarios activos y profesores del ciclo una sola vez
   const fetchData = useCallback(async () => {
     if (!cicloActual) return;
     const token = localStorage.getItem('access_token');
+    const fechaParam = searchParams.get('fecha') || new Date().toISOString().split('T')[0];
+    const jsDay = new Date(fechaParam + 'T00:00:00').getDay();
+    const diaSemana = (jsDay + 6) % 7;
     try {
       const [horariosResponse, profesoresResponse] = await Promise.all([
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/horarios/`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/profesores/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/ciclos/${cicloActual.id}/horarios/?dia_semana=${diaSemana}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/ciclos/${cicloActual.id}/profesores/`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const [horariosJsonData, profesoresJsonData] = await Promise.all([horariosResponse.json(), profesoresResponse.json()]);
       setHorarios((horariosJsonData.results || horariosJsonData).filter((h: Horario) => h.activo));
@@ -132,19 +152,9 @@ function AsistenciasPage() {
     } finally {
       setLoading(false);
     }
-  }, [cicloActual, apiBase]);
+  }, [cicloActual, apiBase, searchParams]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-
-  useEffect(() => {
-    if (!cicloActual) return;
-    const token = localStorage.getItem('access_token');
-    fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then((response) => response.json()).then((jsonData) => {
-      setAsistencias(jsonData.results || jsonData);
-    });
-  }, [cicloActual, fecha, apiBase]);
 
   // Convertir día JS (dom=0 → sáb=6) a nuestro modelo (lun=0 → dom=6)
   const diaSemana = useMemo(() => {
@@ -174,17 +184,28 @@ function AsistenciasPage() {
     setLoadingTodosAlumnos(true);
     const token = localStorage.getItem('access_token');
     try {
-      const promises = horariosFiltrados.map(async (h) => {
-        const url = `${apiBase}/api/ciclos/${cicloActual.id}/asistencias/por-horario/?horario_id=${h.id}&fecha=${fecha}`;
-        const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        if (!response.ok) return { horarioId: h.id, alumnos: [] };
-        const jsonData: PorHorarioResponse = await response.json();
-        return { horarioId: h.id, alumnos: jsonData.resultados || [] };
-      });
-      const results = await Promise.all(promises);
+      const url = `${apiBase}/ciclos/${cicloActual.id}/asistencias/por-dia/?fecha=${fecha}`;
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) {
+        console.error('Error fetching por-dia:', response.status);
+        setAlumnosPorHorario(new Map());
+        setErroresPorHorario(new Map());
+        return;
+      }
+      const jsonData: PorDiaResponse = await response.json();
+
       const mapa = new Map<number, AlumnoHorario[]>();
-      results.forEach(({ horarioId, alumnos }) => mapa.set(horarioId, alumnos));
+      let algunFeriado = jsonData.es_feriado;
+
+      for (const h of jsonData.horarios) {
+        mapa.set(h.horario_id, h.alumnos || []);
+        if (h.es_feriado) algunFeriado = true;
+      }
+
       setAlumnosPorHorario(mapa);
+      setErroresPorHorario(new Map());
+      setEsFeriado(algunFeriado);
+      if (jsonData.motivo) setMotivoFeriado(jsonData.motivo);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -196,12 +217,20 @@ function AsistenciasPage() {
   // y resetear horario si el seleccionado ya no pertenece a los filtrados
   useEffect(() => {
     if (tallerSeleccionado && !talleres.some(t => t.id === tallerSeleccionado)) {
-      setTallerSeleccionado(null);
-      setHorarioSeleccionado(null);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('taller');
+        next.delete('horario');
+        return next;
+      });
     } else if (horarioSeleccionado && !horariosFiltrados.some((h) => h.id === horarioSeleccionado)) {
-      setHorarioSeleccionado(null);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('horario');
+        return next;
+      });
     }
-  }, [talleres, tallerSeleccionado, horarioSeleccionado, horariosFiltrados]);
+  }, [talleres, tallerSeleccionado, horarioSeleccionado, horariosFiltrados, setSearchParams]);
 
   useEffect(() => {
     if (horarioSeleccionado) {
@@ -218,7 +247,7 @@ function AsistenciasPage() {
     setLoadingAlumnos(true);
     const token = localStorage.getItem('access_token');
     try {
-      const url = `${apiBase}/api/ciclos/${cicloActual.id}/asistencias/por-horario/?horario_id=${horarioSeleccionado}&fecha=${fecha}`;
+      const url = `${apiBase}/ciclos/${cicloActual.id}/asistencias/por-horario/?horario_id=${horarioSeleccionado}&fecha=${fecha}`;
       const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) {
         const errorData = await response.json();
@@ -265,13 +294,13 @@ function AsistenciasPage() {
     try {
       let response;
       if (alumno.asistencia_id) {
-        response = await fetch(`${apiBase}/api/asistencias/${alumno.asistencia_id}/`, {
+        response = await fetch(`${apiBase}/asistencias/${alumno.asistencia_id}/`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ estado: nuevoEstado }),
+          body: JSON.stringify({ estado: nuevoEstado, profesor: profesorSeleccionado }),
         });
       } else {
-        response = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
+        response = await fetch(`${apiBase}/ciclos/${cicloActual.id}/asistencias/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
@@ -291,15 +320,33 @@ function AsistenciasPage() {
         setSaving(false);
         return;
       }
-      const nuevosAlumnos = await fetchAlumnosHorario();
-      await fetchTodosAlumnos();
-      const responseList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, { headers: { Authorization: `Bearer ${token}` } });
-      const jsonData = await responseList.json();
-      setAsistencias((jsonData.results || jsonData).filter((a: Asistencia) => a.activo !== false));
-      const alumnoActualizado = nuevosAlumnos.find((a) => a.alumno_id === alumno.alumno_id);
-      if (sesionesPrevias > 0 && alumnoActualizado && alumnoActualizado.sesiones_disponibles === 0) {
+      // Optimistic local state update
+      setAlumnosHorario(prev => prev.map(a => 
+        a.matricula_id === alumno.matricula_id
+          ? { ...a, estado: nuevoEstado, asistencia_id: a.asistencia_id || 0 }
+          : a
+      ));
+
+      if (horarioSeleccionado) {
+        setAlumnosPorHorario(prev => {
+          const next = new Map(prev);
+          const alumnos = next.get(horarioSeleccionado) || [];
+          next.set(horarioSeleccionado, alumnos.map(a =>
+            a.matricula_id === alumno.matricula_id
+              ? { ...a, estado: nuevoEstado, asistencia_id: a.asistencia_id || 0 }
+              : a
+          ));
+          return next;
+        });
+      }
+
+      if (alumno.asistencia_id === null && sesionesPrevias === 1) {
         showToast(`La matrícula de ${alumno.alumno_nombre} ha concluido`, 'success');
       }
+
+      // Silent background refresh
+      fetchAlumnosHorario().catch(console.error);
+      fetchTodosAlumnos().catch(console.error);
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -313,7 +360,7 @@ function AsistenciasPage() {
     const token = localStorage.getItem('access_token');
     try {
       const response = await fetch(
-        `${apiBase}/api/ciclos/${cicloActual.id}/asistencias/recuperables/?horario_id=${horarioSeleccionado}&fecha=${fecha}`,
+        `${apiBase}/ciclos/${cicloActual.id}/asistencias/recuperables/?horario_id=${horarioSeleccionado}&fecha=${fecha}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!response.ok) {
@@ -332,12 +379,16 @@ function AsistenciasPage() {
   };
 
   const agregarRecuperacion = async (alumno: any) => {
-    if (!cicloActual || !horarioSeleccionado || !profesorSeleccionado || !alumno.matricula_id) return;
+    if (!cicloActual || !horarioSeleccionado || !alumno.matricula_id) return;
+    if (!profesorSeleccionado) {
+      showToast('No se pudo determinar el profesor del horario. Reintente.', 'warning');
+      return;
+    }
     setSaving(true);
     const token = localStorage.getItem('access_token');
     try {
       const horaActual = new Date().toTimeString().slice(0, 5);
-      const response = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, {
+      const response = await fetch(`${apiBase}/ciclos/${cicloActual.id}/asistencias/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -357,14 +408,38 @@ function AsistenciasPage() {
         setSaving(false);
         return;
       }
+      const responseData = await response.json();
       setShowRecuperacion(false);
       setBusquedaRecuperacion('');
       setResultadosBusqueda([]);
-      await fetchAlumnosHorario();
-      await fetchTodosAlumnos();
-      const responseList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, { headers: { Authorization: `Bearer ${token}` } });
-      const jsonData = await responseList.json();
-      setAsistencias((jsonData.results || jsonData).filter((a: Asistencia) => a.activo !== false));
+
+      const profRecup = profesores.find((p: any) => p.id === profesorSeleccionado);
+      const nombreProfRecup = profRecup ? `${profRecup.nombre || ''} ${profRecup.apellido || ''}`.trim() : '';
+      const nuevoAlumno: AlumnoHorario = {
+        matricula_id: alumno.matricula_id,
+        alumno_id: alumno.alumno_id,
+        alumno_nombre: alumno.alumno_nombre,
+        sesiones_disponibles: alumno.sesiones_disponibles ?? 0,
+        asistencia_id: responseData.id,
+        estado: 'asistio',
+        observacion: '',
+        profesor_id: profesorSeleccionado,
+        profesor_nombre: nombreProfRecup,
+      };
+
+      setAlumnosHorario(prev => [...prev, nuevoAlumno]);
+
+      if (horarioSeleccionado) {
+        setAlumnosPorHorario(prev => {
+          const next = new Map(prev);
+          const existing = next.get(horarioSeleccionado) || [];
+          next.set(horarioSeleccionado, [...existing, nuevoAlumno]);
+          return next;
+        });
+      }
+
+      fetchAlumnosHorario().catch(console.error);
+      fetchTodosAlumnos().catch(console.error);
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -379,8 +454,24 @@ function AsistenciasPage() {
 
   const handleEditAsistenciaFromAlumno = (alumno: AlumnoHorario) => {
     if (!alumno.asistencia_id) return;
-    const asistencia = asistencias.find((a) => a.id === alumno.asistencia_id);
-    if (asistencia) handleEditAsistencia(asistencia);
+    const profesor = profesores.find((p: any) => p.id === profesorSeleccionado);
+    const asistencia: Asistencia = {
+      id: alumno.asistencia_id,
+      matricula: alumno.matricula_id,
+      alumno_id: alumno.alumno_id,
+      alumno_nombre: alumno.alumno_nombre,
+      horario: horarioSeleccionado!,
+      taller_nombre: horarios.find(h => h.id === horarioSeleccionado)?.taller_nombre || '',
+      profesor: profesorSeleccionado,
+      profesor_nombre: profesor ? `${profesor.nombre} ${profesor.apellido}` : '',
+      fecha,
+      hora: '',
+      estado: alumno.estado || '',
+      observacion: alumno.observacion || '',
+      es_recuperacion: false,
+      activo: true,
+    };
+    setEditandoAsistencia(asistencia);
   };
 
   const guardarEdicionAsistencia = async (asistencia: Asistencia) => {
@@ -389,7 +480,7 @@ function AsistenciasPage() {
     const token = localStorage.getItem('access_token');
     const horaActual = new Date().toTimeString().slice(0, 5);
     try {
-      const response = await fetch(`${apiBase}/api/asistencias/${asistencia.id}/`, {
+      const response = await fetch(`${apiBase}/asistencias/${asistencia.id}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -407,10 +498,12 @@ function AsistenciasPage() {
         return;
       }
       setEditandoAsistencia(null);
-      await fetchAlumnosHorario();
-      const responseList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, { headers: { Authorization: `Bearer ${token}` } });
-      const jsonData = await responseList.json();
-      setAsistencias(jsonData.results || jsonData);
+      setAlumnosHorario(prev => prev.map(a =>
+        a.asistencia_id === asistencia.id
+          ? { ...a, estado: asistencia.estado, observacion: asistencia.observacion }
+          : a
+      ));
+      fetchAlumnosHorario().catch(console.error);
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -459,15 +552,16 @@ function AsistenciasPage() {
         alumnosHorario={alumnosHorario}
         loadingAlumnos={loadingAlumnos}
         saving={saving}
-        asistencias={asistencias}
         alumnosPorHorario={alumnosPorHorario}
         loadingTodosAlumnos={loadingTodosAlumnos}
         esFeriado={esFeriado}
         motivoFeriado={motivoFeriado}
+        erroresPorHorario={erroresPorHorario}
         onEstadoChange={handleCambiarEstado}
         onEditAsistenciaFromAlumno={handleEditAsistenciaFromAlumno}
         onEditAsistencia={handleEditAsistencia}
         onOpenRecuperacion={() => setShowRecuperacion(true)}
+        onDashboardHorarioClick={handleDashboardHorarioClick}
       />
 
       <AsistenciaRecuperacionModal

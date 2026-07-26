@@ -125,15 +125,15 @@ function RecibosPage() {
       if (fe !== 'todos') params.set('estado', fe);
       if (searchText) params.set('search', searchText);
       const [recibosResponse, matriculasResponse] = await Promise.all([
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/recibos/?${params}`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/api/ciclos/${cicloActual.id}/matriculas/?estado=no_procesado&page_size=200`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/ciclos/${cicloActual.id}/recibos/?${params}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiBase}/ciclos/${cicloActual.id}/matriculas/?estado=no_procesado&page_size=200`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const [recibosJsonData, matriculasJsonData] = await Promise.all([recibosResponse.json(), matriculasResponse.json()]);
       const recibosArray = recibosJsonData.results || recibosJsonData;
       setRecibos(recibosArray);
       setTotalCount(recibosJsonData.count || 0);
       setTotalPages(Math.ceil((recibosJsonData.count || 0) / 20) || 1);
-      const todosResponse = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/recibos/?page_size=500`, { headers: { Authorization: `Bearer ${token}` } });
+      const todosResponse = await fetch(`${apiBase}/ciclos/${cicloActual.id}/recibos/?page_size=500`, { headers: { Authorization: `Bearer ${token}` } });
       const todosJsonData = await todosResponse.json();
       const todosArr = todosJsonData.results || todosJsonData;
       setTotal(Array.isArray(todosArr) ? todosArr.reduce((s: number, r: any) => s + Number(r.monto_total || 0), 0) : 0);
@@ -187,7 +187,7 @@ function RecibosPage() {
     setShowDetailModal(true);
     const token = localStorage.getItem('access_token');
     try {
-      const response = await fetch(`${apiBase}/api/recibos/${recibo.id}/`, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch(`${apiBase}/recibos/${recibo.id}/`, { headers: { Authorization: `Bearer ${token}` } });
       if (response.ok) {
         const jsonData = await response.json();
         setSelectedRecibo(jsonData);

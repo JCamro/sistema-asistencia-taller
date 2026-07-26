@@ -69,7 +69,7 @@ function AsistenciasFilterBar({
           <input
             type="date"
             value={fecha}
-            onChange={(e) => { onFechaChange(e.target.value); onHorarioChange(null); }}
+            onChange={(e) => onFechaChange(e.target.value)}
             style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
           />
         </div>
@@ -77,10 +77,7 @@ function AsistenciasFilterBar({
           <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Taller</label>
           <select
             value={tallerSeleccionado || ''}
-            onChange={(e) => {
-              onTallerChange(e.target.value ? parseInt(e.target.value) : null);
-              onHorarioChange(null);
-            }}
+            onChange={(e) => onTallerChange(e.target.value ? parseInt(e.target.value) : null)}
             style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
           >
             <option value="">Seleccionar taller</option>

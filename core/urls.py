@@ -70,6 +70,7 @@ urlpatterns = [
     path('ciclos/<int:ciclo_id>/alumnos/<int:pk>/detalle/', AlumnoViewSet.as_view({'get': 'detalle'}), name='ciclo-alumno-detalle'),
     path('ciclos/<int:ciclo_id>/asistencias/', AsistenciaViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-asistencias'),
     path('ciclos/<int:ciclo_id>/asistencias/por-horario/', AsistenciaViewSet.as_view({'get': 'por_horario'}), name='ciclo-asistencias-por-horario'),
+    path('ciclos/<int:ciclo_id>/asistencias/por-dia/', AsistenciaViewSet.as_view({'get': 'por_dia'}), name='ciclo-asistencias-por-dia'),
     path('ciclos/<int:ciclo_id>/asistencias/recuperables/', AsistenciaViewSet.as_view({'get': 'recuperables'}), name='ciclo-asistencias-recuperables'),
     path('ciclos/<int:ciclo_id>/recibos/', ReciboViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-recibos'),
     path('ciclos/<int:ciclo_id>/feriados/', FeriadoViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-feriados'),
