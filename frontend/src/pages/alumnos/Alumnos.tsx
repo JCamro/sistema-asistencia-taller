@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { useDebouncedSearch } from '../../hooks/useDebouncedSearch';
 import { getAlumnos, createAlumno, updateAlumno, deleteAlumno } from '../../api/endpoints';
 import { queryKeys } from '../../api/queryKeys';
+import { AVATAR } from '../../theme/colors';
 import type { Alumno } from '../../api/endpoints';
 
 interface AlumnoFormData { nombre: string; apellido: string; dni: string; telefono: string; email: string; fecha_nacimiento: string; activo: boolean; }
@@ -118,7 +119,7 @@ function AlumnosPage() {
         <ResponsiveTable<Alumno> columns={[
           { key: 'nombre', label: 'Nombre', render: a => <span style={{ fontWeight: 600, color: 'var(--color-bg-dark)' }}>{a.nombre} {a.apellido}</span> },
           { key: 'dni', label: 'DNI' }, { key: 'telefono', label: 'Teléfono', render: a => a.telefono || <span style={{ color: 'var(--color-text-muted)' }}>—</span> },
-          { key: 'edad', label: 'Edad', align: 'center', render: a => a.edad !== null ? <span style={{ padding: '0.2rem 0.55rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, background: '#f5f3ff', color: '#7c3aed' }}>{a.edad} años</span> : <span style={{ color: 'var(--color-text-muted)' }}>—</span> },
+          { key: 'edad', label: 'Edad', align: 'center', render: a => a.edad !== null ? <span style={{ padding: '0.2rem 0.55rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, background: AVATAR.bg, color: AVATAR.color }}>{a.edad} años</span> : <span style={{ color: 'var(--color-text-muted)' }}>—</span> },
           { key: 'email', label: 'Email', render: a => a.email || <span style={{ color: 'var(--color-text-muted)' }}>—</span> },
           { key: 'activo', label: 'Estado', align: 'center', render: a => <span style={{ padding: '0.2rem 0.6rem', borderRadius: '9999px', fontSize: '0.7rem', fontWeight: 600, background: a.activo ? '#ecfdf5' : '#f3f4f6', color: a.activo ? 'var(--color-success)' : 'var(--color-text-muted)' }}>{a.activo ? 'Activo' : 'Inactivo'}</span> },
           { key: 'created_at', label: 'Registro', align: 'center', render: a => a.created_at ? (() => { const [y,m,d] = a.created_at.split('T')[0].split('-'); return `${d}/${m}/${y}`; })() : '—' },

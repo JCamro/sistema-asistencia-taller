@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, memo } from 'react';
 import { useCiclo } from '../../contexts/CicloContext';
 import { getPreciosActivos, type PrecioPaquete } from '../../api/endpoints';
 import { useWindowWidth } from '../../hooks/useWindowWidth';
+import { BTN_PRIMARY } from '../../theme/colors';
 
 interface PrecioEntry {
   total: number;
@@ -523,9 +524,9 @@ function CalculadoraPrecios() {
                         flex: 1,
                         padding: '0.75rem 0.5rem',
                         minHeight: '44px',
-                        border: nuevoClases === n ? '2px solid #8b5cf6' : '1px solid #d1d5db',
+                        border: nuevoClases === n ? '2px solid #d4af37' : '1px solid #d1d5db',
                         borderRadius: '8px',
-                        background: nuevoClases === n ? '#ede9fe' : 'white',
+                        background: nuevoClases === n ? '#fef9e7' : 'white',
                         fontWeight: nuevoClases === n ? '600' : '400',
                         cursor: 'pointer',
                       }}
@@ -586,8 +587,8 @@ function CalculadoraPrecios() {
                 style={{
                   padding: '0.75rem',
                   minHeight: '48px',
-                  background: !nuevoNombre.trim() ? '#e5e7eb' : '#8b5cf6',
-                  color: 'white',
+                  background: !nuevoNombre.trim() ? '#e5e7eb' : BTN_PRIMARY.background,
+                  color: BTN_PRIMARY.color,
                   border: 'none',
                   borderRadius: '8px',
                   fontWeight: '600',
@@ -616,7 +617,7 @@ function CalculadoraPrecios() {
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: '0.75rem',
-                      background: item.tipo === 'instrumento' ? '#ede9fe' : '#fef3c7',
+                      background: item.tipo === 'instrumento' ? '#fef9e7' : '#fef3c7',
                       borderRadius: '8px',
                     }}
                   >
@@ -713,7 +714,7 @@ function CalculadoraPrecios() {
                   </thead>
                   <tbody>
                     <tr>
-                      <td style={{ padding: '0.5rem', fontWeight: '500', color: '#8b5cf6' }}>Instrumento</td>
+                      <td style={{ padding: '0.5rem', fontWeight: '500', color: '#d4af37' }}>Instrumento</td>
                       {[1, 8, 12, 20].map(n => (
                         <td key={n} style={{ padding: '0.5rem', textAlign: 'center' }}>
                           {precios.instrumento[n]?.total.toFixed(2) ?? '-'}
@@ -736,7 +737,7 @@ function CalculadoraPrecios() {
                 </h4>
                 <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.75rem' }}>
                   {Object.keys(promos.combo_musical).length > 0 && (
-                    <div style={{ padding: '0.5rem', background: '#ede9fe', borderRadius: '6px' }}>
+                    <div style={{ padding: '0.5rem', background: '#fef9e7', borderRadius: '6px' }}>
                       <strong>Combo Musical (2 Instrumentos):</strong>
                       {Object.entries(promos.combo_musical)
                         .sort(([a], [b]) => {

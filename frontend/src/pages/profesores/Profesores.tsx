@@ -12,6 +12,7 @@ import { getHistorialPagosProfesor, getProfesores, createProfesor, updateProfeso
 import { queryKeys } from '../../api/queryKeys';
 import { formatMonto } from '../../utils/formatters';
 import { useWindowWidth } from '../../hooks/useWindowWidth';
+import { AVATAR } from '../../theme/colors';
 import type { Profesor } from '../../api/endpoints';
 
 interface ProfesorFormData { nombre: string; apellido: string; dni: string; telefono: string; email: string; fecha_nacimiento: string; activo: boolean; es_gerente: boolean; observaciones: string; }
@@ -88,11 +89,11 @@ function ProfesoresPage() {
     <div style={{background:'white',borderRadius:'12px',border:'1px solid #f1f5f9',overflow:'hidden'}}>
       <ResponsiveTable<Profesor> columns={[
         {key:'nombre',label:'Nombre',render:pr=><span style={{fontWeight:600,color:'var(--color-bg-dark)'}}>{pr.nombre} {pr.apellido}</span>},{key:'dni',label:'DNI'},{key:'telefono',label:'Teléfono',render:pr=>pr.telefono||<span style={{color:'var(--color-text-muted)'}}>—</span>},
-        {key:'edad',label:'Edad',align:'center',render:pr=>pr.edad!==null?<span style={{padding:'0.2rem 0.55rem',borderRadius:'6px',fontSize:'0.75rem',fontWeight:600,background:'#f5f3ff',color:'#7c3aed'}}>{pr.edad} años</span>:<span style={{color:'var(--color-text-muted)'}}>—</span>},
-        {key:'es_gerente',label:'Rol',align:'center',render:pr=><span style={{padding:'0.2rem 0.55rem',borderRadius:'9999px',fontSize:'0.7rem',fontWeight:600,background:pr.es_gerente?'#fef9e7':'#f5f3ff',color:pr.es_gerente?'#8b6914':'#7c3aed'}}>{pr.es_gerente?'Gerente':'Profesor'}</span>},
+        {key:'edad',label:'Edad',align:'center',render:pr=>pr.edad!==null?<span style={{padding:'0.2rem 0.55rem',borderRadius:'6px',fontSize:'0.75rem',fontWeight:600,background:AVATAR.bg,color:AVATAR.color}}>{pr.edad} años</span>:<span style={{color:'var(--color-text-muted)'}}>—</span>},
+        {key:'es_gerente',label:'Rol',align:'center',render:pr=><span style={{padding:'0.2rem 0.55rem',borderRadius:'9999px',fontSize:'0.7rem',fontWeight:600,background:pr.es_gerente?'#fef9e7':AVATAR.bg,color:pr.es_gerente?'#8b6914':AVATAR.color}}>{pr.es_gerente?'Gerente':'Profesor'}</span>},
         {key:'created_at',label:'Registro',align:'center',render:pr=>pr.created_at?(():string=>{const[y,m,d]=pr.created_at.split('T')[0].split('-');return`${d}/${m}/${y}`})():'—'},
       ]} data={profesores} keyField="id"
-      actions={pr=>(<><button onClick={()=>vh(pr.id)} className="touch-target" style={{background:'none',border:'none',color:'#7c3aed',cursor:'pointer',fontSize:'0.8125rem',fontWeight:500,padding:'0.35rem 0.5rem'}}>Historial</button><button onClick={()=>he(pr)} className="touch-target" style={{background:'none',border:'none',color:'var(--color-primary)',cursor:'pointer',fontSize:'0.8125rem',fontWeight:500,padding:'0.35rem 0.5rem'}}>Editar</button><button onClick={()=>hd(pr.id,`${pr.nombre} ${pr.apellido}`)} disabled={did===pr.id} className="touch-target" style={{background:'none',border:'none',color:did===pr.id?'var(--color-text-muted)':'var(--color-error)',cursor:did===pr.id?'not-allowed':'pointer',fontSize:'0.8125rem',fontWeight:500,padding:'0.35rem 0.5rem'}}>{did===pr.id?'...':'Eliminar'}</button></>)}
+      actions={pr=>(<><button onClick={()=>vh(pr.id)} className="touch-target" style={{background:'none',border:'none',color:AVATAR.color,cursor:'pointer',fontSize:'0.8125rem',fontWeight:500,padding:'0.35rem 0.5rem'}}>Historial</button><button onClick={()=>he(pr)} className="touch-target" style={{background:'none',border:'none',color:'var(--color-primary)',cursor:'pointer',fontSize:'0.8125rem',fontWeight:500,padding:'0.35rem 0.5rem'}}>Editar</button><button onClick={()=>hd(pr.id,`${pr.nombre} ${pr.apellido}`)} disabled={did===pr.id} className="touch-target" style={{background:'none',border:'none',color:did===pr.id?'var(--color-text-muted)':'var(--color-error)',cursor:did===pr.id?'not-allowed':'pointer',fontSize:'0.8125rem',fontWeight:500,padding:'0.35rem 0.5rem'}}>{did===pr.id?'...':'Eliminar'}</button></>)}
       emptyMessage={ds?'No se encontraron resultados':'No hay profesores registrados'}/>
       {tp>1&&<Pagination currentPage={cp} totalPages={tp} totalCount={totalCount} onPageChange={pc}/>}
     </div>

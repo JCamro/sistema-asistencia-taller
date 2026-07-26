@@ -28,6 +28,9 @@ interface AsistenciasFilterBarProps {
   onHorarioChange: (value: number | null) => void;
   profesorSeleccionado: number | null;
   onProfesorChange: (value: number | null) => void;
+  profesorBloqueado: boolean;
+  onToggleProfesorBloqueado: () => void;
+  onClear: () => void;
   talleres: TallerOption[];
   horariosFiltrados: HorarioOption[];
   profesores: ProfesorOption[];
@@ -49,6 +52,9 @@ function AsistenciasFilterBar({
   onHorarioChange,
   profesorSeleccionado,
   onProfesorChange,
+  profesorBloqueado,
+  onToggleProfesorBloqueado,
+  onClear,
   talleres,
   horariosFiltrados,
   profesores,
@@ -98,27 +104,56 @@ function AsistenciasFilterBar({
           </select>
         </div>
         <div>
-          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>
-            {horarioSeleccionado ? 'Docente (asignado al horario)' : 'Profesor'}
-          </label>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
+              {horarioSeleccionado ? 'Docente (asignado al horario)' : 'Profesor'}
+            </label>
+            {horarioSeleccionado && (
+              <button
+                type="button"
+                onClick={onToggleProfesorBloqueado}
+                style={{
+                  fontSize: '0.75rem',
+                  color: profesorBloqueado ? '#d97706' : '#059669',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  textDecoration: 'underline',
+                }}
+              >
+                {profesorBloqueado ? 'Cambiar profesor' : 'Bloquear del horario'}
+              </button>
+            )}
+          </div>
           <select
             value={profesorSeleccionado || ''}
             onChange={(e) => onProfesorChange(e.target.value ? parseInt(e.target.value) : null)}
-            disabled={!!horarioSeleccionado}
+            disabled={horarioSeleccionado ? profesorBloqueado : false}
             style={{
               width: '100%',
               padding: '0.625rem',
               border: '1px solid #d1d5db',
               borderRadius: '8px',
               fontSize: '0.875rem',
-              opacity: horarioSeleccionado ? 0.7 : 1,
-              background: horarioSeleccionado ? '#f9fafb' : 'white',
+              opacity: horarioSeleccionado && profesorBloqueado ? 0.7 : 1,
+              background: horarioSeleccionado && profesorBloqueado ? '#f9fafb' : 'white',
             }}
           >
             <option value="">{horarioSeleccionado ? 'Docente del horario' : 'Seleccionar profesor'}</option>
             {profesores.map((p) => <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>)}
           </select>
         </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
+        <button
+          onClick={onClear}
+          type="button"
+          style={{ padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '8px', background: 'white', color: '#6b7280', fontSize: '0.8125rem', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 12l6-6m-6 6l6 6"/></svg>
+          Limpiar filtros
+        </button>
       </div>
     </div>
   );

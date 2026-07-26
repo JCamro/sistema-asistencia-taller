@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup: Dashboard de Asistencia</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+  .page { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .header h1 { font-size: 24px; font-weight: 600; }
+  .header .cycle-badge { background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 13px; margin-left: 8px; }
+  .date-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .date-nav button { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 14px; }
+  .date-nav button:hover { background: #f0f0f0; }
+  .date-nav .today { background: #1a1a2e; color: white; border-color: #1a1a2e; }
+  .date-nav .date-display { font-size: 18px; font-weight: 600; }
+  .summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .summary-card { background: white; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .summary-card .number { font-size: 32px; font-weight: 700; }
+  .summary-card .label { font-size: 13px; color: #666; margin-top: 4px; }
+  .summary-card.total .number { color: #1a1a2e; }
+  .summary-card.completed .number { color: #059669; }
+  .summary-card.pending .number { color: #d97706; }
+  .summary-card.holiday .number { color: #dc2626; }
+  .schedule-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 16px; }
+  .schedule-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; transition: box-shadow 0.2s; }
+  .schedule-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+  .schedule-card .card-header { padding: 16px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+  .schedule-card .card-header .taller-name { font-weight: 600; font-size: 15px; }
+  .schedule-card .card-header .time { font-size: 13px; color: #666; }
+  .schedule-card .card-body { padding: 16px; }
+  .schedule-card .profesor { font-size: 13px; color: #666; margin-bottom: 12px; }
+  .schedule-card .profesor .suplente { color: #d97706; font-weight: 500; }
+  .schedule-card .progress-section { margin-bottom: 12px; }
+  .schedule-card .progress-bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+  .schedule-card .progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+  .schedule-card .progress-fill.complete { background: #059669; }
+  .schedule-card .progress-fill.partial { background: #d97706; }
+  .schedule-card .progress-fill.empty { background: #e5e7eb; }
+  .schedule-card .progress-text { font-size: 12px; color: #666; margin-top: 4px; }
+  .schedule-card .card-footer { padding: 12px 16px; background: #fafafa; display: flex; justify-content: space-between; align-items: center; }
+  .schedule-card .card-footer .status { font-size: 12px; font-weight: 500; padding: 4px 8px; border-radius: 6px; }
+  .status-completo { background: #d1fae5; color: #065f46; }
+  .status-pendiente { background: #fef3c7; color: #92400e; }
+  .status-feriado { background: #fee2e2; color: #991b1b; }
+  .schedule-card .card-footer .action { font-size: 12px; color: #1a1a2e; font-weight: 500; }
+  .schedule-card.feriado { opacity: 0.7; border: 2px dashed #fca5a5; }
+  .legend { display: flex; gap: 16px; margin-bottom: 24px; font-size: 13px; color: #666; }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-green { background: #059669; }
+  .dot-yellow { background: #d97706; }
+  .dot-red { background: #dc2626; }
+  .dot-gray { background: #9ca3af; }
+  .section-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #1a1a2e; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>Asistencias <span class="cycle-badge">Ciclo Anual 2026</span></h1>
+  </div>
+
+  <div class="date-nav">
+    <button>← Anterior</button>
+    <span class="date-display">Viernes, 25 de Julio 2026</button>
+    <button>Siguiente →</button>
+    <button class="today">Hoy</button>
+  </div>
+
+  <div class="summary-cards">
+    <div class="summary-card total">
+      <div class="number">8</div>
+      <div class="label">Horarios hoy</div>
+    </div>
+    <div class="summary-card completed">
+      <div class="number">3</div>
+      <div class="label">Completados</div>
+    </div>
+    <div class="summary-card pending">
+      <div class="number">4</div>
+      <div class="label">Pendientes</div>
+    </div>
+    <div class="summary-card holiday">
+      <div class="number">1</div>
+      <div class="label">Feriados</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><span class="dot dot-green"></span> Completo (todos registrados)</span>
+    <span><span class="dot dot-yellow"></span> Pendiente (faltan registros)</span>
+    <span><span class="dot dot-red"></span> Feriado (sin clase)</span>
+    <span><span class="dot dot-gray"></span> Sin alumnos</span>
+  </div>
+
+  <div class="section-title">Horarios del día</div>
+  <div class="schedule-grid">
+    <!-- Card 1: Completo -->
+    <div class="schedule-card">
+      <div class="card-header">
+        <span class="taller-name">Guitarra Eléctrica</span>
+        <span class="time">10:00 - 11:00</span>
+      </div>
+      <div class="card-body">
+        <div class="profesor">Prof. Carlos Méndez</div>
+        <div class="progress-section">
+          <div class="progress-bar"><div class="progress-fill complete" style="width: 100%"></div></div>
+          <div class="progress-text">10/10 asistencias registradas</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="status status-completo">Completo</span>
+        <span class="action">Ver detalle →</span>
+      </div>
+    </div>
+
+    <!-- Card 2: Pendiente -->
+    <div class="schedule-card">
+      <div class="card-header">
+        <span class="taller-name">Guitarra Acústica</span>
+        <span class="time">11:00 - 12:00</span>
+      </div>
+      <div class="card-body">
+        <div class="profesor">Prof. Ana López</div>
+        <div class="progress-section">
+          <div class="progress-bar"><div class="progress-fill partial" style="width: 45%"></div></div>
+          <div class="progress-text">5/11 asistencias registradas</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="status status-pendiente">Pendiente</span>
+        <span class="action">Registrar →</span>
+      </div>
+    </div>
+
+    <!-- Card 3: Con suplente -->
+    <div class="schedule-card">
+      <div class="card-header">
+        <span class="taller-name">Organo</span>
+        <span class="time">14:00 - 15:00</span>
+      </div>
+      <div class="card-body">
+        <div class="profesor">Prof. <span class="suplente">María García (suplente)</span></div>
+        <div class="progress-section">
+          <div class="progress-bar"><div class="progress-fill partial" style="width: 70%"></div></div>
+          <div class="progress-text">7/10 asistencias registradas</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="status status-pendiente">Pendiente</span>
+        <span class="action">Registrar →</span>
+      </div>
+    </div>
+
+    <!-- Card 4: Feriado -->
+    <div class="schedule-card feriado">
+      <div class="card-header">
+        <span class="taller-name">Dibujo y Pintura</span>
+        <span class="time">16:00 - 17:00</span>
+      </div>
+      <div class="card-body">
+        <div class="profesor">Feriado: Fiestas Patrias</div>
+        <div class="progress-section">
+          <div class="progress-bar"><div class="progress-fill empty" style="width: 0%"></div></div>
+          <div class="progress-text">0/8 — auto-marcar como falta</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="status status-feriado">Feriado</span>
+        <span class="action">Ver detalle →</span>
+      </div>
+    </div>
+
+    <!-- Card 5: Pendiente -->
+    <div class="schedule-card">
+      <div class="card-header">
+        <span class="taller-name">Violín</span>
+        <span class="time">17:00 - 18:00</span>
+      </div>
+      <div class="card-body">
+        <div class="profesor">Prof. Roberto Sánchez</div>
+        <div class="progress-section">
+          <div class="progress-bar"><div class="progress-fill partial" style="width: 30%"></div></div>
+          <div class="progress-text">3/12 asistencias registradas</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="status status-pendiente">Pendiente</span>
+        <span class="action">Registrar →</span>
+      </div>
+    </div>
+
+    <!-- Card 6: Completo -->
+    <div class="schedule-card">
+      <div class="card-header">
+        <span class="taller-name">Canto</span>
+        <span class="time">18:00 - 19:00</span>
+      </div>
+      <div class="card-body">
+        <div class="profesor">Prof. Laura Torres</div>
+        <div class="progress-section">
+          <div class="progress-bar"><div class="progress-fill complete" style="width: 100%"></div></div>
+          <div class="progress-text">6/6 asistencias registradas</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="status status-completo">Completo</span>
+        <span class="action">Ver detalle →</span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

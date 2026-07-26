@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, memo } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../contexts/ToastContext';
 import ConfirmModal from '../../components/ui/ConfirmModal';
+import { ASISTENCIA_ESTADOS } from '../../theme/colors';
 import type { Matricula } from '../../api/endpoints';
 
 interface AsistenciaDetalle {
@@ -183,16 +184,14 @@ function MatriculaDetailModal({ isOpen, onClose, matriculaId, cicloId, modo = 'a
                   </thead>
                   <tbody>
                     {asistencias.map((a) => {
-                      const ei = a.estado === 'asistio' ? { label: 'Asistió', color: '#059669', bg: '#ecfdf5' }
-                        : a.estado === 'falta_grave' ? { label: 'Falta Grave', color: '#dc2626', bg: '#fef2f2' }
-                        : { label: 'Falta', color: '#d97706', bg: '#fef3c7' };
+                      const ei = ASISTENCIA_ESTADOS[a.estado] || ASISTENCIA_ESTADOS.sin_registrar;
                       return (
                         <tr key={a.id} style={{ borderBottom: '1px solid #f8fafc' }}>
                           <td style={td}>{a.fecha}</td>
                           <td style={{ ...td, color: '#64748b' }}>{a.horario_hora_inicio?.substring(0, 5)} – {a.horario_hora_fin?.substring(0, 5)}</td>
                           <td style={td}>
-                            <span style={{ padding: '0.15rem 0.45rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600, background: ei.bg, color: ei.color }}>
-                              {ei.label}{a.es_recuperacion && <span style={{ marginLeft: 4, fontSize: '0.65rem', color: '#7c3aed' }}>Recup.</span>}
+                            <span title={ei.description} style={{ padding: '0.15rem 0.45rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600, background: ei.bg, color: ei.color }}>
+                              {ei.label}{a.es_recuperacion && <span style={{ marginLeft: 4, fontSize: '0.65rem', color: '#8b6914' }}>Recup.</span>}
                             </span>
                           </td>
                           <td style={td}>{a.profesor_nombre}</td>

@@ -221,7 +221,7 @@ function RecibosPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
-        <div style={{ width: '40px', height: '40px', border: '3px solid #e5e7eb', borderTop: '3px solid #14b8a6', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <div style={{ width: '40px', height: '40px', border: '3px solid #e5e7eb', borderTop: '3px solid #d4af37', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -275,7 +275,7 @@ function RecibosPage() {
             {
               key: 'numero',
               label: 'Número',
-              render: (r) => <span style={{ fontFamily: 'monospace', fontWeight: '600', color: '#14b8a6' }}>{r.numero}</span>,
+              render: (r) => <span style={{ fontFamily: 'monospace', fontWeight: '600', color: '#8b6914' }}>{r.numero}</span>,
             },
             {
               key: 'alumno',
@@ -349,7 +349,7 @@ function RecibosPage() {
           actions={(r) => (
             <>
               <button onClick={() => handleViewRecibo(r)} className="touch-target" style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontWeight: '500' }}>Ver</button>
-              <button onClick={() => handleEdit(r)} className="touch-target" style={{ background: 'none', border: 'none', color: '#14b8a6', cursor: 'pointer', fontWeight: '500' }}>Editar</button>
+              <button onClick={() => handleEdit(r)} className="touch-target" style={{ background: 'none', border: 'none', color: '#d4af37', cursor: 'pointer', fontWeight: '500' }}>Editar</button>
             </>
           )}
           emptyMessage="No hay recibos"

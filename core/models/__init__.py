@@ -18,6 +18,7 @@ from .hora_trabajada import HoraTrabajada
 from .nota_clase import NotaClase
 from .nota_dia import NotaDia
 from .nota_alumno import NotaAlumno
+from .feriado import Feriado
 
 __all__ = [
     'Ciclo',
@@ -40,4 +41,5 @@ __all__ = [
     'NotaClase',
     'NotaDia',
     'NotaAlumno',
+    'Feriado',
 ]

@@ -29,8 +29,8 @@ function Tooltip({ horario, children }: { horario: Horario; children: React.Reac
   const [visible, setVisible] = useState(false); const [pos, setPos] = useState({ x: 0, y: 0 }); const ref = useRef<HTMLDivElement>(null);
   const show = useCallback(() => { if (!ref.current || !horario.alumnos?.length) return; const r = ref.current.getBoundingClientRect(); setPos({ x: r.left + r.width / 2, y: r.top }); setVisible(true); }, [horario.alumnos]);
   return (<><div ref={ref} onMouseEnter={show} onMouseLeave={() => setVisible(false)} style={{ height:'100%' }}>{children}</div>
-    {visible && <div style={{ position:'fixed',left:pos.x,top:pos.y-8,transform:'translate(-50%,-100%)',zIndex:100,background:'#1e1b4b',color:'white',borderRadius:'10px',padding:'0.625rem 0.75rem',fontSize:'0.75rem',boxShadow:'0 8px 24px rgba(0,0,0,0.25)',maxWidth:260,maxHeight:280,overflowY:'auto',pointerEvents:'none' }}>
-      <div style={{ fontSize:'0.65rem',fontWeight:700,color:'#a5b4fc',marginBottom:'0.375rem',textTransform:'uppercase',letterSpacing:'0.04em' }}>Alumnos ({horario.alumnos.length})</div>
+    {visible && <div style={{ position:'fixed',left:pos.x,top:pos.y-8,transform:'translate(-50%,-100%)',zIndex:100,background:'#0f172a',color:'white',borderRadius:'10px',padding:'0.625rem 0.75rem',fontSize:'0.75rem',boxShadow:'0 8px 24px rgba(0,0,0,0.25)',maxWidth:260,maxHeight:280,overflowY:'auto',pointerEvents:'none' }}>
+      <div style={{ fontSize:'0.65rem',fontWeight:700,color:'#d4af37',marginBottom:'0.375rem',textTransform:'uppercase',letterSpacing:'0.04em' }}>Alumnos ({horario.alumnos.length})</div>
       {horario.alumnos.map(a => <div key={a.id} style={{ padding:'0.2rem 0',borderBottom:'1px solid rgba(255,255,255,0.08)' }}>{a.apellido}, {a.nombre} {a.edad!==null?`(${a.edad} años)`:''}</div>)}
     </div>}</>);
 }
@@ -63,7 +63,7 @@ function PanelLateral({ horario, estaLleno, onClose, onActualizar }: { horario: 
       </div>
     </div>
     <div><span style={{ fontSize:'0.65rem',fontWeight:600,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.04em',display:'block',marginBottom:'0.5rem' }}>Alumnos ({horario.alumnos.length})</span>
-      {horario.alumnos.length>0?<div style={{ maxHeight:280,overflowY:'auto',border:'1px solid #f1f5f9',borderRadius:'10px' }}>{horario.alumnos.map((a,i)=><div key={a.id} style={{ padding:'0.4rem 0.65rem',fontSize:'0.8125rem',color:'#475569',borderBottom:i<horario.alumnos.length-1?'1px solid #f8fafc':'none',display:'flex',alignItems:'center',gap:'0.5rem' }}><span style={{ width:20,height:20,borderRadius:'50%',background:'#f5f3ff',color:'#7c3aed',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.65rem',fontWeight:700,flexShrink:0 }}>{i+1}</span><span style={{ fontWeight:500 }}>{a.apellido}, {a.nombre}</span></div>)}</div>:<div style={{ padding:'1.5rem',textAlign:'center',background:'#f8fafc',borderRadius:'10px',color:'#cbd5e1',fontSize:'0.8125rem' }}>Sin alumnos</div>}
+      {horario.alumnos.length>0?<div style={{ maxHeight:280,overflowY:'auto',border:'1px solid #f1f5f9',borderRadius:'10px' }}>{horario.alumnos.map((a,i)=>                  <div key={a.id} style={{ padding:'0.4rem 0.65rem',fontSize:'0.8125rem',color:'#475569',borderBottom:i<horario.alumnos.length-1?'1px solid #f8fafc':'none',display:'flex',alignItems:'center',gap:'0.5rem' }}><span style={{ width:20,height:20,borderRadius:'50%',background:'#fef9e7',color:'#8b6914',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.65rem',fontWeight:700,flexShrink:0 }}>{i+1}</span><span style={{ fontWeight:500 }}>{a.apellido}, {a.nombre}</span></div>)}</div>:<div style={{ padding:'1.5rem',textAlign:'center',background:'#f8fafc',borderRadius:'10px',color:'#cbd5e1',fontSize:'0.8125rem' }}>Sin alumnos</div>}
     </div>
   </div>);
 }

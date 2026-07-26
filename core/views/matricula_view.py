@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from ..models import Matricula, MatriculaHorario, Asistencia, HistorialTraspaso, Taller, PrecioPaquete, ReciboMatricula
 from ..serializers import MatriculaSerializer, MatriculaListSerializer, TraspasoSerializer
+from ..shared.serializer_helpers import get_estado_matricula, get_recibo_estado
 from .pagination import StandardResultsSetPagination
 
 
@@ -272,4 +273,128 @@ class MatriculaViewSet(viewsets.ModelViewSet):
             'cantidad_clases': sesiones,
             'origen': 'no_configurado',
             'detail': 'No hay precio configurado para este tipo de taller y cantidad de clases.'
+        })
+
+    @action(detail=False, methods=['get'], url_path='agrupadas')
+    def agrupadas(self, request, ciclo_id=None):
+        if not ciclo_id:
+            return Response({'error': 'Se requiere ciclo_id'}, status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = self.filter_queryset(self.get_queryset())
+        alumno_ids = queryset.order_by().values_list('alumno_id', flat=True).distinct()
+
+        page = self.paginate_queryset(alumno_ids)
+        if page is not None:
+            alumno_ids = page
+
+        matriculas = queryset.filter(alumno_id__in=alumno_ids).select_related('alumno', 'taller').prefetch_related('horarios')
+
+        matriculas_por_alumno = {}
+        for m in matriculas:
+            matriculas_por_alumno.setdefault(m.alumno_id, []).append(m)
+
+        resultado = []
+        for alumno_id in alumno_ids:
+            matriculas_list = matriculas_por_alumno.get(alumno_id, [])
+            if not matriculas_list:
+                continue
+            alumno = matriculas_list[0].alumno
+
+            matriculas_data = []
+            activas = 0
+            concluidas = 0
+            sin_procesar = 0
+            inactivas = 0
+
+            for m in matriculas_list:
+                estado = get_estado_matricula(m)
+                recibo_estado = get_recibo_estado(m)
+
+                if estado == 'activa':
+                    activas += 1
+                elif estado == 'concluida':
+                    concluidas += 1
+                elif estado == 'no_procesado':
+                    sin_procesar += 1
+                else:
+                    inactivas += 1
+
+                matriculas_data.append({
+                    'id': m.id,
+                    'taller': m.taller.nombre,
+                    'taller_id': m.taller.id,
+                    'taller_tipo': m.taller.tipo,
+                    'sesiones_consumidas': m.sesiones_consumidas,
+                    'sesiones_contratadas': m.sesiones_contratadas,
+                    'precio_total': str(m.precio_total),
+                    'estado': estado,
+                    'recibo_estado': recibo_estado,
+                    'fecha_matricula': m.fecha_matricula.isoformat() if m.fecha_matricula else None,
+                })
+
+            resultado.append({
+                'alumno_id': alumno.id,
+                'alumno_nombre': f"{alumno.apellido}, {alumno.nombre}",
+                'alumno_dni': alumno.dni,
+                'matriculas': matriculas_data,
+                'activas': activas,
+                'concluidas': concluidas,
+                'sin_procesar': sin_procesar,
+                'inactivas': inactivas,
+            })
+
+        return self.get_paginated_response(resultado)
+
+    @action(detail=True, methods=['get'], url_path='detalle')
+    def detalle(self, request, pk=None, ciclo_id=None):
+        if not ciclo_id:
+            return Response({'error': 'Se requiere ciclo_id'}, status=status.HTTP_400_BAD_REQUEST)
+
+        matricula = self.get_object()
+        recibo_matricula = matricula.recibos.select_related('recibo').first()
+        recibo = recibo_matricula.recibo if recibo_matricula else None
+
+        horarios = matricula.horarios.select_related('horario').all()
+        horarios_data = [{
+            'id': mh.horario.id,
+            'dia': mh.horario.get_dia_semana_display(),
+            'dia_numero': mh.horario.dia_semana,
+            'hora_inicio': str(mh.horario.hora_inicio),
+            'hora_fin': str(mh.horario.hora_fin),
+        } for mh in horarios]
+
+        asistencias = matricula.asistencias.select_related('horario').all()
+        asistencias_data = [{
+            'id': a.id,
+            'fecha': str(a.fecha),
+            'estado': a.estado,
+            'es_recuperacion': a.es_recuperacion,
+            'horario': str(a.horario),
+        } for a in asistencias]
+
+        return Response({
+            'matricula': {
+                'id': matricula.id,
+                'alumno_id': matricula.alumno.id,
+                'alumno_nombre': f"{matricula.alumno.apellido}, {matricula.alumno.nombre}",
+                'taller': matricula.taller.nombre,
+                'taller_id': matricula.taller.id,
+                'sesiones_contratadas': matricula.sesiones_contratadas,
+                'sesiones_consumidas': matricula.sesiones_consumidas,
+                'sesiones_disponibles': matricula.sesiones_disponibles,
+                'precio_total': str(matricula.precio_total),
+                'precio_por_sesion': str(matricula.precio_por_sesion),
+                'estado': get_estado_matricula(matricula),
+                'recibo_estado': get_recibo_estado(matricula),
+                'recibo': {
+                    'id': recibo.id,
+                    'numero': recibo.numero,
+                    'estado': recibo.estado,
+                    'monto_total': str(recibo.monto_total),
+                    'monto_pagado': str(recibo.monto_pagado),
+                } if recibo else None,
+                'horarios': horarios_data,
+                'asistencias': asistencias_data,
+                'fecha_matricula': matricula.fecha_matricula.isoformat() if matricula.fecha_matricula else None,
+            }
         })

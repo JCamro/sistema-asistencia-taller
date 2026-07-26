@@ -8,7 +8,7 @@ from .views import (
     AsistenciaViewSet, ReciboViewSet, PagoProfesorViewSet,
     calcular_pago_profesor, detalle_clase_pago, resumen_ciclo, resumen_mensual_ciclo, ConfiguracionView,
     dashboard_kpis, dashboard_ingresos, PrecioPaqueteViewSet,
-    EgresoViewSet, HoraTrabajadaViewSet
+    EgresoViewSet, HoraTrabajadaViewSet, FeriadoViewSet
 )
 from .views.usuario_view import CambiarPasswordView
 
@@ -65,10 +65,16 @@ urlpatterns = [
     path('ciclos/<int:ciclo_id>/horarios/', HorarioViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-horarios'),
     path('ciclos/<int:ciclo_id>/horarios/<int:pk>/', HorarioViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='ciclo-horarios-detail'),
     path('ciclos/<int:ciclo_id>/matriculas/', MatriculaViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-matriculas'),
+    path('ciclos/<int:ciclo_id>/matriculas/agrupadas/', MatriculaViewSet.as_view({'get': 'agrupadas'}), name='ciclo-matriculas-agrupadas'),
+    path('ciclos/<int:ciclo_id>/matriculas/<int:pk>/detalle/', MatriculaViewSet.as_view({'get': 'detalle'}), name='ciclo-matricula-detalle'),
+    path('ciclos/<int:ciclo_id>/alumnos/<int:pk>/detalle/', AlumnoViewSet.as_view({'get': 'detalle'}), name='ciclo-alumno-detalle'),
     path('ciclos/<int:ciclo_id>/asistencias/', AsistenciaViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-asistencias'),
     path('ciclos/<int:ciclo_id>/asistencias/por-horario/', AsistenciaViewSet.as_view({'get': 'por_horario'}), name='ciclo-asistencias-por-horario'),
     path('ciclos/<int:ciclo_id>/asistencias/recuperables/', AsistenciaViewSet.as_view({'get': 'recuperables'}), name='ciclo-asistencias-recuperables'),
     path('ciclos/<int:ciclo_id>/recibos/', ReciboViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-recibos'),
+    path('ciclos/<int:ciclo_id>/feriados/', FeriadoViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-feriados'),
+    path('ciclos/<int:ciclo_id>/feriados/<int:pk>/', FeriadoViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'}), name='ciclo-feriados-detail'),
+    path('ciclos/<int:ciclo_id>/feriados/<int:pk>/aplicar/', FeriadoViewSet.as_view({'post': 'aplicar'}), name='ciclo-feriados-aplicar'),
     path('ciclos/<int:ciclo_id>/precios/', PrecioPaqueteViewSet.as_view({'get': 'list'}), name='ciclo-precios'),
     path('ciclos/<int:ciclo_id>/egresos/', EgresoViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-egresos'),
     path('ciclos/<int:ciclo_id>/egresos/resumen/', EgresoViewSet.as_view({'get': 'resumen'}), name='ciclo-egresos-resumen'),

@@ -11,14 +11,17 @@ export function useDebouncedSearch(delay = 300) {
   const [searchText, setSearchText] = useState('');
   const [debouncedValue, setDebouncedValue] = useState('');
 
-  // Debounce: reinicia el timer cada vez que searchText cambia.
-  // Solo cuando el usuario deja de escribir por `delay` ms se actualiza debouncedValue.
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedValue(searchText), delay);
     return () => clearTimeout(timer);
   }, [searchText, delay]);
 
-  return { searchText, setSearchText, debouncedValue };
+  const resetSearch = () => {
+    setSearchText('');
+    setDebouncedValue('');
+  };
+
+  return { searchText, setSearchText, debouncedValue, resetSearch };
 }
 
 export default useDebouncedSearch;

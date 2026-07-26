@@ -1,4 +1,5 @@
 import { useState, useEffect, memo, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useCiclo } from '../../contexts/CicloContext';
 import { useToast } from '../../contexts/ToastContext';
 import PageHeader from '../../components/ui/PageHeader';
@@ -7,6 +8,7 @@ import AsistenciasFilterBar from './AsistenciasFilterBar';
 import AsistenciaContenido, { type AsistenciaEdit } from './AsistenciaContenido';
 import AsistenciaRecuperacionModal from './AsistenciaRecuperacionModal';
 import AsistenciaEditModal from './AsistenciaEditModal';
+import type { PorHorarioResponse } from '../../api/endpoints';
 
 interface Horario {
   id: number;
@@ -62,13 +64,14 @@ function AsistenciasPage() {
   const { cicloActual } = useCiclo();
   const { showToast, showApiError } = useToast();
   const apiBase = getApiBaseUrl();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [horarios, setHorarios] = useState<Horario[]>([]);
   const [asistencias, setAsistencias] = useState<Asistencia[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingAlumnos, setLoadingAlumnos] = useState(false);
-  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
-  const [tallerSeleccionado, setTallerSeleccionado] = useState<number | null>(null);
-  const [horarioSeleccionado, setHorarioSeleccionado] = useState<number | null>(null);
+  const fecha = searchParams.get('fecha') || new Date().toISOString().split('T')[0];
+  const tallerSeleccionado = searchParams.get('taller') ? Number(searchParams.get('taller')) : null;
+  const horarioSeleccionado = searchParams.get('horario') ? Number(searchParams.get('horario')) : null;
   const [alumnosHorario, setAlumnosHorario] = useState<AlumnoHorario[]>([]);
   const [alumnosPorHorario, setAlumnosPorHorario] = useState<Map<number, AlumnoHorario[]>>(new Map());
   const [loadingTodosAlumnos, setLoadingTodosAlumnos] = useState(false);
@@ -77,8 +80,40 @@ function AsistenciasPage() {
   const [resultadosBusqueda, setResultadosBusqueda] = useState<any[]>([]);
   const [profesores, setProfesores] = useState<any[]>([]);
   const [profesorSeleccionado, setProfesorSeleccionado] = useState<number | null>(null);
+  const [profesorBloqueado, setProfesorBloqueado] = useState(true);
   const [editandoAsistencia, setEditandoAsistencia] = useState<Asistencia | null>(null);
   const [saving, setSaving] = useState(false);
+  const [esFeriado, setEsFeriado] = useState(false);
+  const [motivoFeriado, setMotivoFeriado] = useState<string | null>(null);
+
+  const setFecha = (value: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('fecha', value);
+      return next;
+    });
+  };
+  const setTallerSeleccionado = (value: number | null) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value) next.set('taller', String(value));
+      else next.delete('taller');
+      next.delete('horario');
+      return next;
+    });
+  };
+  const setHorarioSeleccionado = (value: number | null) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value) next.set('horario', String(value));
+      else next.delete('horario');
+      return next;
+    });
+  };
+  const clearFilters = () => {
+    setSearchParams(new URLSearchParams());
+    setProfesorSeleccionado(null);
+  };
 
   // fetchData: carga horarios activos y profesores del ciclo una sola vez
   const fetchData = useCallback(async () => {
@@ -143,8 +178,8 @@ function AsistenciasPage() {
         const url = `${apiBase}/api/ciclos/${cicloActual.id}/asistencias/por-horario/?horario_id=${h.id}&fecha=${fecha}`;
         const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         if (!response.ok) return { horarioId: h.id, alumnos: [] };
-        const jsonData = await response.json();
-        return { horarioId: h.id, alumnos: Array.isArray(jsonData) ? jsonData : (jsonData.results || []) };
+        const jsonData: PorHorarioResponse = await response.json();
+        return { horarioId: h.id, alumnos: jsonData.resultados || [] };
       });
       const results = await Promise.all(promises);
       const mapa = new Map<number, AlumnoHorario[]>();
@@ -171,12 +206,15 @@ function AsistenciasPage() {
   useEffect(() => {
     if (horarioSeleccionado) {
       const horario = horarios.find((h) => h.id === horarioSeleccionado);
-      if (horario) setProfesorSeleccionado(horario.profesor);
+      if (horario) {
+        setProfesorSeleccionado(horario.profesor);
+        setProfesorBloqueado(true);
+      }
     }
   }, [horarioSeleccionado, horarios]);
 
   const fetchAlumnosHorario = useCallback(async () => {
-    if (!cicloActual || !horarioSeleccionado || !fecha) return;
+    if (!cicloActual || !horarioSeleccionado || !fecha) return [];
     setLoadingAlumnos(true);
     const token = localStorage.getItem('access_token');
     try {
@@ -186,15 +224,22 @@ function AsistenciasPage() {
         const errorData = await response.json();
         console.error('Error API:', errorData);
         setAlumnosHorario([]);
-        return;
+        setEsFeriado(false);
+        setMotivoFeriado(null);
+        return [];
       }
-      const jsonData = await response.json();
-      if (Array.isArray(jsonData)) setAlumnosHorario(jsonData);
-      else if (jsonData.results) setAlumnosHorario(jsonData.results);
-      else setAlumnosHorario([]);
+      const jsonData: PorHorarioResponse = await response.json();
+      setEsFeriado(!!jsonData.es_feriado);
+      setMotivoFeriado(jsonData.motivo || null);
+      const resultados = jsonData.resultados || [];
+      setAlumnosHorario(resultados);
+      return resultados;
     } catch (err) {
       console.error('Error:', err);
       setAlumnosHorario([]);
+      setEsFeriado(false);
+      setMotivoFeriado(null);
+      return [];
     } finally {
       setLoadingAlumnos(false);
     }
@@ -216,6 +261,7 @@ function AsistenciasPage() {
     setSaving(true);
     const token = localStorage.getItem('access_token');
     const horaActual = new Date().toTimeString().slice(0, 5);
+    const sesionesPrevias = alumno.sesiones_disponibles;
     try {
       let response;
       if (alumno.asistencia_id) {
@@ -245,11 +291,15 @@ function AsistenciasPage() {
         setSaving(false);
         return;
       }
-      await fetchAlumnosHorario();
+      const nuevosAlumnos = await fetchAlumnosHorario();
       await fetchTodosAlumnos();
       const responseList = await fetch(`${apiBase}/api/ciclos/${cicloActual.id}/asistencias/`, { headers: { Authorization: `Bearer ${token}` } });
       const jsonData = await responseList.json();
       setAsistencias((jsonData.results || jsonData).filter((a: Asistencia) => a.activo !== false));
+      const alumnoActualizado = nuevosAlumnos.find((a) => a.alumno_id === alumno.alumno_id);
+      if (sesionesPrevias > 0 && alumnoActualizado && alumnoActualizado.sesiones_disponibles === 0) {
+        showToast(`La matrícula de ${alumno.alumno_nombre} ha concluido`, 'success');
+      }
     } catch (err) {
       console.error('Error:', err);
       showApiError(err);
@@ -372,7 +422,7 @@ function AsistenciasPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
-        <div style={{ width: '40px', height: '40px', border: '3px solid #e5e7eb', borderTop: '3px solid #8b5cf6', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <div style={{ width: '40px', height: '40px', border: '3px solid #e5e7eb', borderTop: '3px solid #d4af37', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -391,6 +441,9 @@ function AsistenciasPage() {
         onHorarioChange={setHorarioSeleccionado}
         profesorSeleccionado={profesorSeleccionado}
         onProfesorChange={setProfesorSeleccionado}
+        profesorBloqueado={profesorBloqueado}
+        onToggleProfesorBloqueado={() => setProfesorBloqueado((prev) => !prev)}
+        onClear={clearFilters}
         talleres={talleres}
         horariosFiltrados={horariosFiltrados}
         profesores={profesores}
@@ -409,6 +462,8 @@ function AsistenciasPage() {
         asistencias={asistencias}
         alumnosPorHorario={alumnosPorHorario}
         loadingTodosAlumnos={loadingTodosAlumnos}
+        esFeriado={esFeriado}
+        motivoFeriado={motivoFeriado}
         onEstadoChange={handleCambiarEstado}
         onEditAsistenciaFromAlumno={handleEditAsistenciaFromAlumno}
         onEditAsistencia={handleEditAsistencia}

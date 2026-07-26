@@ -435,9 +435,9 @@ function HorasProfesoresPage() {
           {/* Summary */}
           {resultados.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div style={{ background: '#f5f3ff', padding: '1rem 1.125rem', borderRadius: '14px', border: '1px solid #ede9fe' }}>
-                <p style={{ color: '#7c3aed', fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.125rem' }}>Clases Dictadas</p>
-                <p style={{ fontSize: '1.75rem', fontWeight: 700, color: '#5b21b6', lineHeight: 1.2 }}>{totalClases}</p>
+              <div style={{ background: '#fef9e7', padding: '1rem 1.125rem', borderRadius: '14px', border: '1px solid #fdf3d0' }}>
+                <p style={{ color: '#8b6914', fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.125rem' }}>Clases Dictadas</p>
+                <p style={{ fontSize: '1.75rem', fontWeight: 700, color: '#8b6914', lineHeight: 1.2 }}>{totalClases}</p>
               </div>
               <div style={{ background: '#ecfdf5', padding: '1rem 1.125rem', borderRadius: '14px', border: '1px solid rgba(16,185,129,0.15)' }}>
                 <p style={{ color: '#059669', fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.125rem' }}>Total a Pagar</p>
@@ -455,7 +455,7 @@ function HorasProfesoresPage() {
             <ResponsiveTable<ResultadoPago>
               columns={[
                 { key: 'profesor', label: 'Profesor', render: r => <span style={{ fontWeight: 600, color: '#111827' }}>{r.profesor}</span> },
-                { key: 'clases_dictadas', label: 'Clases', align: 'center', render: r => <span style={{ background: '#eef2ff', color: '#4338ca', padding: '0.2rem 0.6rem', borderRadius: '9999px', fontSize: '0.8rem', fontWeight: 600 }}>{r.clases_dictadas}</span> },
+                { key: 'clases_dictadas', label: 'Clases', align: 'center', render: r => <span style={{ background: '#fef9e7', color: '#8b6914', padding: '0.2rem 0.6rem', borderRadius: '9999px', fontSize: '0.8rem', fontWeight: 600 }}>{r.clases_dictadas}</span> },
                 { key: 'monto_profesor', label: 'Monto', align: 'right', render: r => <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>S/. {fmt(r.monto_profesor)}</span> },
                 { key: 'ganancia_taller', label: 'Ganancia', align: 'right', render: r => <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#d97706' }}>S/. {fmt(r.ganancia_taller)}</span> },
               ]}
@@ -473,16 +473,16 @@ function HorasProfesoresPage() {
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
               <div style={{ background: 'white', borderRadius: '12px', margin: '0 auto', maxWidth: '950px', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 {/* Header */}
-                <div style={{ padding: '1.25rem 1.5rem', background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ padding: '1.25rem 1.5rem', background: '#0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white', margin: 0 }}>{selectedPago.profesor}</h2>
-                    <p style={{ fontSize: '0.8125rem', color: '#a5b4fc', margin: '0.125rem 0 0' }}>Clases del período</p>
+                    <p style={{ fontSize: '0.8125rem', color: '#d4af37', margin: '0.125rem 0 0' }}>Clases del período</p>
                   </div>
                   <button onClick={() => { setSelectedPago(null); setExpandedRows(new Set()); setDetallesCompletos({}); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', width: '32px', height: '32px', borderRadius: '50%', color: 'white', fontSize: '1.25rem', cursor: 'pointer' }}>×</button>
                 </div>
                 {/* Summary */}
                 <div style={{ padding: '0.75rem 1.5rem', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: '0.75rem' }}>
-                  {[{l:'Clases',v:selectedPago.clases_dictadas,c:'#4338ca'},{l:'Asistencias',v:selectedPago.total_alumnos_asistencias,c:'#a855f7'},{l:'Total Profesor',v:`S/. ${fmt(selectedPago.monto_profesor)}`,c:'#059669'},{l:'Ganancia Taller',v:`S/. ${fmt(selectedPago.ganancia_taller)}`,c:'#d97706'}].map(s => (
+                  {[{l:'Clases',v:selectedPago.clases_dictadas,c:'#8b6914'},{l:'Asistencias',v:selectedPago.total_alumnos_asistencias,c:'#8b6914'},{l:'Total Profesor',v:`S/. ${fmt(selectedPago.monto_profesor)}`,c:'#059669'},{l:'Ganancia Taller',v:`S/. ${fmt(selectedPago.ganancia_taller)}`,c:'#d97706'}].map(s => (
                     <div key={s.l} style={{ textAlign: 'center', padding: '0.5rem', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
                       <div style={{ fontSize: '1.25rem', fontWeight: 800, color: s.c }}>{s.v}</div>
                       <div style={{ fontSize: '0.6875rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.l}</div>
@@ -501,18 +501,18 @@ function HorasProfesoresPage() {
                       const dayAlumnos = clases.reduce((s, c) => s + c.num_alumnos, 0);
                       const dayClases = clases.length;
                       return (
-                        <div key={fecha} style={{ border: isDateExpanded ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
+                        <div key={fecha} style={{ border: isDateExpanded ? '2px solid #d4af37' : '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
                           {/* Date header */}
                           <div onClick={() => {
                             const newSet = new Set(expandedRows);
                             newSet.has(dateKey) ? newSet.delete(dateKey) : newSet.add(dateKey);
                             setExpandedRows(newSet);
-                          }} style={{ padding: '0.625rem 1rem', cursor: 'pointer', display: 'grid', gridTemplateColumns: '100px 1fr 60px 90px 30px', gap: '0.5rem', alignItems: 'center', background: isDateExpanded ? '#f5f3ff' : '#f8fafc', fontSize: '0.8125rem' }}>
+                          }} style={{ padding: '0.625rem 1rem', cursor: 'pointer', display: 'grid', gridTemplateColumns: '100px 1fr 60px 90px 30px', gap: '0.5rem', alignItems: 'center', background: isDateExpanded ? '#fef9e7' : '#f8fafc', fontSize: '0.8125rem' }}>
                             <span style={{ fontWeight: 700, color: '#111827' }}>{formatDateElegant(fecha)}</span>
                             <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>{dayClases} clase{dayClases !== 1 ? 's' : ''}</span>
-                            <span style={{ textAlign: 'center' }}><span style={{ background: '#fdf4ff', color: '#a855f7', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600 }}>{dayAlumnos} alum.</span></span>
+                            <span style={{ textAlign: 'center' }}><span style={{ background: '#fef9e7', color: '#8b6914', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600 }}>{dayAlumnos} alum.</span></span>
                             <span style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#059669', fontSize: '0.85rem' }}>S/. {fmt(dayTotal)}</span>
-                            <span style={{ textAlign: 'center', color: '#6366f1' }}>{isDateExpanded ? '▲' : '▼'}</span>
+                            <span style={{ textAlign: 'center', color: '#d4af37' }}>{isDateExpanded ? '▲' : '▼'}</span>
                           </div>
                           {/* Expanded: individual classes within date */}
                           {isDateExpanded && (
@@ -523,13 +523,13 @@ function HorasProfesoresPage() {
                                 const dc = detallesCompletos[key];
                                 return (
                                   <div key={d.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                    <div onClick={() => toggleRowExpansion(d)} style={{ padding: '0.5rem 1rem 0.5rem 2rem', cursor: 'pointer', display: 'grid', gridTemplateColumns: '1fr 60px 80px 80px 80px 30px', gap: '0.5rem', alignItems: 'center', background: isExpanded ? '#f5f3ff' : 'white', fontSize: '0.8125rem' }}>
+                                    <div onClick={() => toggleRowExpansion(d)} style={{ padding: '0.5rem 1rem 0.5rem 2rem', cursor: 'pointer', display: 'grid', gridTemplateColumns: '1fr 60px 80px 80px 80px 30px', gap: '0.5rem', alignItems: 'center', background: isExpanded ? '#fef9e7' : 'white', fontSize: '0.8125rem' }}>
                                       <span style={{ color: '#6b7280' }}>{d.horario_info}</span>
-                                      <span style={{ textAlign: 'center' }}><span style={{ background: '#eef2ff', color: '#4338ca', padding: '0.15rem 0.4rem', borderRadius: '9999px', fontSize: '0.75rem' }}>{d.num_alumnos}</span></span>
+                                      <span style={{ textAlign: 'center' }}><span style={{ background: '#fef9e7', color: '#8b6914', padding: '0.15rem 0.4rem', borderRadius: '9999px', fontSize: '0.75rem' }}>{d.num_alumnos}</span></span>
                                       <span style={{ textAlign: 'right', fontFamily: 'monospace', color: '#6b7280' }}>S/. {fmt(Number(d.monto_base))}</span>
                                       <span style={{ textAlign: 'right', fontFamily: 'monospace', color: '#6b7280' }}>+S/. {fmt(Number(d.monto_adicional))}</span>
                                       <span style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>S/. {fmt(Number(d.monto_profesor))}</span>
-                                      <span style={{ textAlign: 'center', color: '#6366f1' }}>{isExpanded ? '▲' : '▼'}</span>
+                                      <span style={{ textAlign: 'center', color: '#d4af37' }}>{isExpanded ? '▲' : '▼'}</span>
                                     </div>
                                     {isExpanded && (
                                       <div style={{ padding: '0.75rem 1rem 0.75rem 2rem', background: '#fafafa' }}>
@@ -546,7 +546,7 @@ function HorasProfesoresPage() {
                                               {(dc.alumnos ?? []).map((a: any, i: number) => (
                                                 <div key={a.alumno_id ?? i} style={{ background: 'white', borderRadius: '8px', padding: '0.625rem', border: '2px solid', borderColor: a.es_adicional ? '#fcd34d' : '#86efac' }}>
                                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.375rem' }}>
-                                                    <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#e0e7ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
+                                                    <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#fef9e7', color: '#8b6914', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
                                                     <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{a.alumno_nombre}</span>
                                                     {a.es_adicional && <span style={{ fontSize: '0.6rem', background: '#fef3c7', color: '#b45309', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 600 }}>+50%</span>}
                                                   </div>

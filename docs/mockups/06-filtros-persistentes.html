@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup: Filtros Persistentes</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+  .page { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  .header { margin-bottom: 24px; }
+  .header h1 { font-size: 24px; font-weight: 600; }
+  .section-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #1a1a2e; }
+  .mockup-label { background: #1a1a2e; color: white; padding: 8px 16px; border-radius: 8px 8px 0 0; font-size: 13px; font-weight: 500; display: inline-block; }
+  .mockup-box { background: white; border-radius: 0 12px 12px 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 32px; }
+  .url-bar { background: #f0f0f0; padding: 8px 16px; border-radius: 8px; font-family: monospace; font-size: 13px; margin-bottom: 16px; color: #666; }
+  .url-bar .highlight { background: #fef3c7; padding: 2px 4px; border-radius: 3px; color: #92400e; }
+  .filter-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 16px; background: #fafafa; border-radius: 12px; margin-bottom: 16px; }
+  .filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .filter-group label { font-size: 11px; text-transform: uppercase; color: #666; font-weight: 500; }
+  .filter-group select, .filter-group input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: white; }
+  .active-filter { border-color: #3b82f6 !important; background: #eff6ff !important; }
+  .clear-btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; border: 1px solid #dc2626; background: #fee2e2; color: #991b1b; }
+  .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .comparison .before, .comparison .after { padding: 16px; border-radius: 12px; }
+  .comparison .before { background: #fef2f2; border: 1px solid #fecaca; }
+  .comparison .after { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .comparison h3 { font-size: 14px; margin-bottom: 12px; }
+  .comparison .before h3 { color: #991b1b; }
+  .comparison .after h3 { color: #065f46; }
+  .comparison ul { font-size: 13px; line-height: 1.8; color: #333; }
+  .comparison .before ul { color: #991b1b; }
+  .comparison .after ul { color: #065f46; }
+  .note { font-size: 13px; color: #666; padding: 12px; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>Filtros Persistentes</h1>
+  </div>
+
+  <div class="section-title">Cómo funciona</div>
+  <div class="mockup-label">URL con filtros</div>
+  <div class="mockup-box">
+    <div class="url-bar">
+      https://taller.com/matriculas<span class="highlight">?taller=3&estado=activa&dia=2&hora=14</span>
+    </div>
+    <p style="font-size:14px;color:#333;margin-bottom:16px;">Los filtros se guardan en la URL. Cuando navegás entre páginas y volvés, los filtros siguen ahí.</p>
+    
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label>Buscar</label>
+        <input type="text" placeholder="Buscar por alumno..." style="min-width:200px;">
+      </div>
+      <div class="filter-group">
+        <label>Taller</label>
+        <select class="active-filter"><option>Guitarra Eléctrica</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Estado</label>
+        <select class="active-filter"><option>Activas</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Día</label>
+        <select class="active-filter"><option>Miércoles</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Hora</label>
+        <select class="active-filter"><option>14:00</option></select>
+      </div>
+      <button class="clear-btn">✕ Limpiar filtros</button>
+    </div>
+    <div class="note">
+      Los filtros activos se resaltan en azul. El botón "Limpiar filtros" resetea todo a los valores por defecto. Al copiar y pegar la URL, otro usuario ve los mismos resultados.
+    </div>
+  </div>
+
+  <div class="section-title">Antes vs Después</div>
+  <div class="comparison">
+    <div class="before">
+      <h3>❌ Antes</h3>
+      <ul>
+        <li>Filtros se pierden al navegar</li>
+        <li>No podés compartir una vista filtrada</li>
+        <li>El botón "atrás" del navegador resetea todo</li>
+        <li>Cada vez que volvés a la página, tenés que re-filtrar</li>
+        <li>No hay forma de guardar una "vista favorita"</li>
+      </ul>
+    </div>
+    <div class="after">
+      <h3>✅ Después</h3>
+      <ul>
+        <li>Filtros en la URL siempre</li>
+        <li>Podés compartir links con filtros aplicados</li>
+        <li>El botón "atrás" funciona correctamente</li>
+        <li>Al volver a la página, los filtros persisten</li>
+        <li>Podés bookmarkar vistas filtradas</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>

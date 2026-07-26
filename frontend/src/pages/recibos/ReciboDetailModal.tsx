@@ -127,7 +127,7 @@ function ReciboDetailModal({ recibo, loading, onClose }: ReciboDetailModalProps)
               {recibo.matriculas_detalle && recibo.matriculas_detalle.length > 0 && (
                 <div style={{ marginBottom: '1.25rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.5rem' }}>
-                    <div style={{ width: 4, height: 14, borderRadius: 2, background: '#7c3aed' }} />
+                    <div style={{ width: 4, height: 14, borderRadius: 2, background: '#d4af37' }} />
                     <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Matrículas</span>
                   </div>
                   <div style={{ background: '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9', overflow: 'hidden' }}>

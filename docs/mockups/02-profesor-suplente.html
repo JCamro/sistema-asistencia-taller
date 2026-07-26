@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup: Reemplazo de Profesor</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+  .page { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  .header { margin-bottom: 24px; }
+  .header h1 { font-size: 24px; font-weight: 600; }
+  .header .cycle-badge { background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 13px; margin-left: 8px; }
+  .section-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #1a1a2e; }
+  .mockup-label { background: #1a1a2e; color: white; padding: 8px 16px; border-radius: 8px 8px 0 0; font-size: 13px; font-weight: 500; display: inline-block; }
+  .mockup-box { background: white; border-radius: 0 12px 12px 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 32px; }
+  .filter-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 24px; padding: 16px; background: #fafafa; border-radius: 12px; }
+  .filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .filter-group label { font-size: 11px; text-transform: uppercase; color: #666; font-weight: 500; }
+  .filter-group select, .filter-group input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: white; }
+  .filter-group select:disabled { background: #f0f0f0; color: #999; }
+  .toggle-btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: 2px solid; display: flex; align-items: center; gap: 6px; }
+  .toggle-btn.locked { background: #f0f0f0; border-color: #ddd; color: #666; }
+  .toggle-btn.unlocked { background: #fef3c7; border-color: #d97706; color: #92400e; }
+  .toggle-btn .icon { font-size: 16px; }
+  .student-table { width: 100%; border-collapse: collapse; }
+  .student-table th { text-align: left; padding: 12px; font-size: 12px; text-transform: uppercase; color: #666; border-bottom: 2px solid #e5e7eb; }
+  .student-table td { padding: 12px; border-bottom: 1px solid #f0f0f0; }
+  .student-table tr:hover { background: #fafafa; }
+  .student-name { font-weight: 500; }
+  .sessions-badge { font-size: 13px; color: #666; }
+  .attendance-btns { display: flex; gap: 6px; }
+  .attendance-btns button { padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid; }
+  .btn-asistio { background: #d1fae5; border-color: #059669; color: #065f46; }
+  .btn-falta { background: #fee2e2; border-color: #dc2626; color: #991b1b; }
+  .btn-falta-grave { background: #fef3c7; border-color: #d97706; color: #92400e; }
+  .profesor-info { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #f0fdf4; border-radius: 8px; margin-bottom: 16px; border: 1px solid #bbf7d0; }
+  .profesor-info.suplente { background: #fef3c7; border-color: #fde68a; }
+  .profesor-info .label { font-size: 12px; color: #666; }
+  .profesor-info .name { font-weight: 600; }
+  .profesor-info .badge { font-size: 11px; padding: 2px 8px; border-radius: 4px; background: #d97706; color: white; }
+  .note { font-size: 13px; color: #666; margin-top: 16px; padding: 12px; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>Asistencias <span class="cycle-badge">Ciclo Anual 2026</span></h1>
+  </div>
+
+  <!-- STEP 1: Normal flow -->
+  <div class="section-title">Paso 1: Seleccionás horario y fecha — profesor se bloquea automáticamente</div>
+  <div class="mockup-label">Vista actual (mejorada)</div>
+  <div class="mockup-box">
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label>Fecha</label>
+        <input type="date" value="2026-07-25">
+      </div>
+      <div class="filter-group">
+        <label>Taller</label>
+        <select><option>Guitarra Eléctrica</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Horario</label>
+        <select><option>10:00 - 11:00 (Viernes)</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Profesor</label>
+        <select disabled><option>Carlos Méndez (bloqueado)</option></select>
+      </div>
+      <button class="toggle-btn locked" onclick="this.className='toggle-btn unlocked';this.innerHTML='<span class=icon>🔓</span> Cambiar a suplente'">
+        <span class="icon">🔒</span> Carlos Méndez
+      </button>
+    </div>
+
+    <div class="profesor-info">
+      <div>
+        <div class="label">Profesor del horario</div>
+        <div class="name">Carlos Méndez</div>
+      </div>
+    </div>
+
+    <table class="student-table">
+      <thead>
+        <tr><th>Alumno</th><th>Sesiones</th><th>Estado</th><th>Acciones</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="student-name">García, Juan</td>
+          <td class="sessions-badge">8/12</td>
+          <td><span style="color:#666">Sin registrar</span></td>
+          <td class="attendance-btns">
+            <button class="btn-asistio">✓ Asistió</button>
+            <button class="btn-falta">✗ Falta</button>
+            <button class="btn-falta-grave">⚠ Falta Grave</button>
+          </td>
+        </tr>
+        <tr>
+          <td class="student-name">López, María</td>
+          <td class="sessions-badge">10/12</td>
+          <td><span style="color:#059669">Asistió</span></td>
+          <td class="attendance-btns">
+            <button class="btn-asistio" style="opacity:0.5">✓ Asistió</button>
+            <button class="btn-falta" style="opacity:0.5">✗ Falta</button>
+            <button class="btn-falta-grave" style="opacity:0.5">⚠ Falta Grave</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- STEP 2: Toggle unlocked -->
+  <div class="section-title">Paso 2: Hacés clic en "Cambiar a suplente" — se desbloquea el filtro</div>
+  <div class="mockup-label">Modo suplente activado</div>
+  <div class="mockup-box">
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label>Fecha</label>
+        <input type="date" value="2026-07-25">
+      </div>
+      <div class="filter-group">
+        <label>Taller</label>
+        <select><option>Guitarra Eléctrica</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Horario</label>
+        <select><option>10:00 - 11:00 (Viernes)</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Profesor (suplente)</label>
+        <select style="border-color: #d97706; background: #fffbeb;">
+          <option>María García</option>
+          <option>Roberto Sánchez</option>
+          <option>Laura Torres</option>
+        </select>
+      </div>
+      <button class="toggle-btn unlocked">
+        <span class="icon">🔓</span> Modo suplente activo
+      </button>
+    </div>
+
+    <div class="profesor-info suplente">
+      <div>
+        <div class="label">Profesor suplente para esta fecha</div>
+        <div class="name">María García <span class="badge">Suplente</span></div>
+      </div>
+      <div style="margin-left: auto; font-size: 13px; color: #92400e;">
+        Original: Carlos Méndez
+      </div>
+    </div>
+
+    <table class="student-table">
+      <thead>
+        <tr><th>Alumno</th><th>Sesiones</th><th>Estado</th><th>Acciones</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="student-name">García, Juan</td>
+          <td class="sessions-badge">8/12</td>
+          <td><span style="color:#666">Sin registrar</span></td>
+          <td class="attendance-btns">
+            <button class="btn-asistio">✓ Asistió</button>
+            <button class="btn-falta">✗ Falta</button>
+            <button class="btn-falta-grave">⚠ Falta Grave</button>
+          </td>
+        </tr>
+        <tr>
+          <td class="student-name">López, María</td>
+          <td class="sessions-badge">10/12</td>
+          <td><span style="color:#666">Sin registrar</span></td>
+          <td class="attendance-btns">
+            <button class="btn-asistio">✓ Asistió</button>
+            <button class="btn-falta">✗ Falta</button>
+            <button class="btn-falta-grave">⚠ Falta Grave</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <strong>Nota:</strong> Las asistencias se registran con el profesor suplente (María García). El profesor original (Carlos Méndez) no se ve afectado en sus horarios regulares. El cambio es solo para esta fecha.
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { BTN_PRIMARY } from '../../theme/colors';
 
 interface RecuperacionResultado {
   matricula_id: number;
@@ -47,7 +48,7 @@ function AsistenciaRecuperacionModal({
           onKeyDown={(e) => e.key === 'Enter' && onSearch()}
           style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', marginBottom: '1rem' }}
         />
-        <button onClick={onSearch} style={{ width: '100%', padding: '0.75rem', minHeight: '44px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', marginBottom: '1rem', cursor: 'pointer' }}>Buscar</button>
+        <button onClick={onSearch} style={{ width: '100%', padding: '0.75rem', minHeight: '44px', background: BTN_PRIMARY.background, color: BTN_PRIMARY.color, border: BTN_PRIMARY.border, borderRadius: '8px', fontWeight: BTN_PRIMARY.fontWeight, marginBottom: '1rem', cursor: 'pointer' }}>Buscar</button>
         <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
           {resultados.length === 0 && busqueda && (
             <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>

@@ -26,6 +26,7 @@ interface MatriculasFilterBarProps {
   sortOrder: 'recent' | 'oldest' | 'alpha';
   onSortChange: (value: 'recent' | 'oldest' | 'alpha') => void;
   talleres: Taller[];
+  onClear: () => void;
 }
 
 const filterSelect: React.CSSProperties = {
@@ -62,6 +63,7 @@ function MatriculasFilterBar({
   sortOrder,
   onSortChange,
   talleres,
+  onClear,
 }: MatriculasFilterBarProps) {
   return (
     <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -103,6 +105,14 @@ function MatriculasFilterBar({
         <option value="oldest">Más antiguos</option>
         <option value="alpha">Orden alfabético</option>
       </select>
+      <button
+        onClick={onClear}
+        style={{ ...filterSelect, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#6b7280' }}
+        type="button"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 12l6-6m-6 6l6 6"/></svg>
+        Limpiar filtros
+      </button>
     </div>
   );
 }

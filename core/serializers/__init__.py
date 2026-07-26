@@ -13,6 +13,7 @@ from .traspaso import TraspasoSerializer, HistorialTraspasoSerializer
 from .precio_paquete import PrecioPaqueteSerializer
 from .egreso import EgresoSerializer, EgresoListSerializer
 from .hora_trabajada import HoraTrabajadaListSerializer, HoraTrabajadaDetailSerializer, HoraTrabajadaCreateUpdateSerializer
+from .feriado import FeriadoSerializer, FeriadoListSerializer
 
 # Shared helpers (import from core.serializer_helpers directly for type hints)
 from ..shared.serializer_helpers import get_nombre_completo, get_alumnos_nombres, get_profesor_nombre

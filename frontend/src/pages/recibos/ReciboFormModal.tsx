@@ -2,6 +2,7 @@ import { useState, useEffect, memo } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../contexts/ToastContext';
 import { useWindowWidth } from '../../hooks/useWindowWidth';
+import { BTN_PRIMARY } from '../../theme/colors';
 import type { Alumno, Matricula } from '../../api/endpoints';
 
 interface PrecioCalculado {
@@ -302,7 +303,7 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
                       <div style={{ padding: '0.5rem 1rem', background: '#f8fafc', borderBottom: '1px solid #f1f5f9', fontWeight: 600, fontSize: '0.8125rem', color: '#334155' }}>{getAlumnoNombre(parseInt(alumnoId))}</div>
                       {mats.map((m) => (
                         <label key={m.id} style={{ display: 'flex', alignItems: 'center', padding: '0.625rem 1rem', borderBottom: '1px solid #f8fafc', cursor: 'pointer', background: formData.matricula_ids.includes(m.id) ? '#f0fdf4' : 'transparent', transition: 'background 0.1s' }}>
-                          <input type="checkbox" checked={formData.matricula_ids.includes(m.id)} onChange={() => handleMatriculaToggle(m.id)} style={{ marginRight: '0.75rem', accentColor: '#14b8a6', width: 16, height: 16 }} />
+                          <input type="checkbox" checked={formData.matricula_ids.includes(m.id)} onChange={() => handleMatriculaToggle(m.id)} style={{ marginRight: '0.75rem', accentColor: '#d4af37', width: 16, height: 16 }} />
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 500, color: '#0f172a', fontSize: '0.875rem' }}>{m.taller_nombre}</div>
                             <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{m.taller_tipo === 'instrumento' ? 'Instrumento' : 'Taller'} · {m.sesiones_contratadas} sesiones</div>
@@ -413,7 +414,7 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
             {editingId && formData.estado !== 'anulado' && (
               <button type="button" onClick={() => setFormData((prev) => ({ ...prev, estado: 'anulado' }))} style={{ padding: '0.75rem 1.5rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', fontWeight: 500, cursor: 'pointer', color: '#dc2626', fontSize: '0.875rem' }}>Anular</button>
             )}
-            <button type="submit" disabled={saving || (!editingId && formData.matricula_ids.length === 0)} style={{ marginLeft: 'auto', padding: '0.75rem 2rem', border: 'none', borderRadius: '10px', fontWeight: 600, fontSize: '0.875rem', color: 'white', cursor: (saving || (!editingId && formData.matricula_ids.length === 0)) ? 'not-allowed' : 'pointer', background: (saving || (!editingId && formData.matricula_ids.length === 0)) ? '#94a3b8' : 'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow: (saving || (!editingId && formData.matricula_ids.length === 0)) ? 'none' : '0 2px 8px rgba(20,184,166,0.3)' }}>
+            <button type="submit" disabled={saving || (!editingId && formData.matricula_ids.length === 0)} style={{ marginLeft: 'auto', padding: '0.75rem 2rem', border: BTN_PRIMARY.border, borderRadius: '10px', fontWeight: BTN_PRIMARY.fontWeight, fontSize: '0.875rem', color: BTN_PRIMARY.color, cursor: (saving || (!editingId && formData.matricula_ids.length === 0)) ? 'not-allowed' : 'pointer', background: (saving || (!editingId && formData.matricula_ids.length === 0)) ? '#94a3b8' : BTN_PRIMARY.background, boxShadow: (saving || (!editingId && formData.matricula_ids.length === 0)) ? 'none' : '0 2px 8px rgba(212,175,55,0.3)' }}>
               {saving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Crear recibo'}
             </button>
           </div>

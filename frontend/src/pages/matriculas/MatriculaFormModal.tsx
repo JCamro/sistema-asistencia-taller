@@ -350,7 +350,7 @@ function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: 
 
           <div style={{ marginBottom: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-              <div style={{ width: 4, height: 16, borderRadius: 2, background: '#7c3aed' }} />
+              <div style={{ width: 4, height: 16, borderRadius: 2, background: '#d4af37' }} />
               <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#475569', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Taller y Horarios</h3>
             </div>
             <div style={{ marginBottom: '1rem' }}>

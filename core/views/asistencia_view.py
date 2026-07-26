@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
-from ..models import Asistencia, Matricula, MatriculaHorario, Horario
+from ..models import Asistencia, Matricula, MatriculaHorario, Horario, Feriado
 from ..serializers import AsistenciaSerializer, AsistenciaListSerializer
 from .pagination import StandardResultsSetPagination
 
@@ -61,7 +61,15 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
         
         if str(horario.ciclo_id) != str(ciclo_id):
             return Response({'error': 'El horario no pertenece a este ciclo'}, status=400)
-        
+
+        feriado = Feriado.objects.filter(
+            Q(ciclo_id=ciclo_id, fecha=fecha_obj, taller__isnull=True, horario__isnull=True) |
+            Q(ciclo_id=ciclo_id, fecha=fecha_obj, taller=horario.taller, horario__isnull=True) |
+            Q(ciclo_id=ciclo_id, fecha=fecha_obj, taller=horario.taller, horario=horario)
+        ).first()
+        es_feriado = feriado is not None
+        motivo_feriado = feriado.motivo if feriado else None
+
         matriculas_horario = MatriculaHorario.objects.filter(
             horario_id=horario_id,
             matricula__activo=True,
@@ -110,10 +118,14 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
                     'estado': asist.estado,
                     'observacion': asist.observacion,
                     'es_recuperacion': True,
-                    'hora': asist.hora.strftime('%H:%M'),
-                })
-        
-        return Response(resultados)
+                'hora': asist.hora.strftime('%H:%M'),
+            })
+
+        return Response({
+            'es_feriado': es_feriado,
+            'motivo': motivo_feriado,
+            'resultados': resultados,
+        })
 
     @action(detail=False, methods=['get'], url_path='recuperables')
     def recuperables(self, request, ciclo_id=None):

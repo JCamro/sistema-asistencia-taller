@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup: Rediseño Matrículas</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+  .page { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .header h1 { font-size: 24px; font-weight: 600; }
+  .header .cycle-badge { background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 13px; margin-left: 8px; }
+  .header .btn-new { background: #1a1a2e; color: white; padding: 10px 20px; border-radius: 8px; border: none; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .filter-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 24px; padding: 16px; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .filter-group label { font-size: 11px; text-transform: uppercase; color: #666; font-weight: 500; }
+  .filter-group select, .filter-group input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: white; }
+  .search-input { min-width: 250px; }
+  .stats-bar { display: flex; gap: 16px; margin-bottom: 24px; }
+  .stat { font-size: 13px; color: #666; }
+  .stat strong { color: #1a1a2e; }
+  .student-card { background: white; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden; }
+  .student-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
+  .student-header:hover { background: #fafafa; }
+  .student-info { display: flex; align-items: center; gap: 12px; }
+  .student-avatar { width: 40px; height: 40px; border-radius: 50%; background: #e0e7ff; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #3730a3; }
+  .student-name { font-weight: 600; font-size: 15px; }
+  .student-dni { font-size: 13px; color: #666; }
+  .student-badges { display: flex; gap: 8px; }
+  .badge { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+  .badge-active { background: #d1fae5; color: #065f46; }
+  .badge-pending { background: #fef3c7; color: #92400e; }
+  .badge-completed { background: #e0e7ff; color: #3730a3; }
+  .badge-count { background: #f3f4f6; color: #374151; }
+  .expand-icon { font-size: 18px; color: #999; transition: transform 0.2s; }
+  .student-body { padding: 0; }
+  .matricula-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 100px; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
+  .matricula-row:last-child { border-bottom: none; }
+  .matricula-row:hover { background: #fafafa; }
+  .matricula-header { background: #f9fafb; font-size: 11px; text-transform: uppercase; color: #666; font-weight: 500; }
+  .taller-name { font-weight: 500; }
+  .sessions-bar { display: flex; align-items: center; gap: 8px; }
+  .sessions-bar .bar { flex: 1; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; }
+  .sessions-bar .bar-fill { height: 100%; border-radius: 3px; }
+  .bar-fill.healthy { background: #059669; }
+  .bar-fill.warning { background: #d97706; }
+  .bar-fill.critical { background: #dc2626; }
+  .bar-fill.done { background: #6b7280; }
+  .sessions-text { font-size: 12px; color: #666; white-space: nowrap; }
+  .price { font-weight: 500; }
+  .receipt-badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+  .receipt-ok { background: #d1fae5; color: #065f46; }
+  .receipt-pending { background: #fee2e2; color: #991b1b; }
+  .receipt-none { background: #f3f4f6; color: #6b7280; }
+  .row-actions { display: flex; gap: 6px; }
+  .row-actions button { padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; border: 1px solid #ddd; background: white; }
+  .row-actions button:hover { background: #f0f0f0; }
+  .section-label { font-size: 11px; text-transform: uppercase; color: #999; padding: 8px 20px; background: #f9fafb; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>Matrículas <span class="cycle-badge">Ciclo Anual 2026</span></h1>
+    <button class="btn-new">+ Nueva Matrícula</button>
+  </div>
+
+  <div class="filter-bar">
+    <div class="filter-group search-input">
+      <label>Buscar</label>
+      <input type="text" placeholder="Buscar por alumno, DNI, taller...">
+    </div>
+    <div class="filter-group">
+      <label>Taller</label>
+      <select><option>Todos los talleres</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Estado</label>
+      <select>
+        <option>Todos</option>
+        <option>Activas</option>
+        <option>No procesadas</option>
+        <option>Por concluir</option>
+        <option>Concluidas</option>
+        <option>Inactivas</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Día</label>
+      <select><option>Todos los días</option></select>
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat"><strong>330</strong> matrículas</div>
+    <div class="stat"><strong>180</strong> activas</div>
+    <div class="stat"><strong>45</strong> sin procesar</div>
+    <div class="stat"><strong>12</strong> por concluir</div>
+    <div class="stat"><strong>93</strong> concluidas</div>
+  </div>
+
+  <!-- Student Card 1: Multiple matrículas -->
+  <div class="student-card">
+    <div class="student-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+      <div class="student-info">
+        <div class="student-avatar">TA</div>
+        <div>
+          <div class="student-name">Trelles Anampa, Izan</div>
+          <div class="student-dni">DNI: 12345678</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="student-badges">
+          <span class="badge badge-active">2 activas</span>
+          <span class="badge badge-completed">3 concluidas</span>
+        </div>
+        <span class="expand-icon">▼</span>
+      </div>
+    </div>
+    <div class="student-body">
+      <div class="matricula-row matricula-header">
+        <div>Taller</div>
+        <div>Sesiones</div>
+        <div>Precio</div>
+        <div>Recibo</div>
+        <div>Estado</div>
+        <div>Acciones</div>
+      </div>
+      <div class="matricula-row">
+        <div class="taller-name">🎸 Guitarra Eléctrica</div>
+        <div>
+          <div class="sessions-bar">
+            <div class="bar"><div class="bar-fill warning" style="width:62%"></div></div>
+            <span class="sessions-text">5/8</span>
+          </div>
+        </div>
+        <div class="price">S/. 160.00</div>
+        <div><span class="receipt-badge receipt-ok">Pagado</span></div>
+        <div><span class="badge badge-active">Activa</span></div>
+        <div class="row-actions">
+          <button>Ver</button>
+          <button>Editar</button>
+        </div>
+      </div>
+      <div class="matricula-row">
+        <div class="taller-name">🎹 Organo</div>
+        <div>
+          <div class="sessions-bar">
+            <div class="bar"><div class="bar-fill healthy" style="width:62%"></div></div>
+            <span class="sessions-text">5/8</span>
+          </div>
+        </div>
+        <div class="price">S/. 160.00</div>
+        <div><span class="receipt-badge receipt-ok">Pagado</span></div>
+        <div><span class="badge badge-active">Activa</span></div>
+        <div class="row-actions">
+          <button>Ver</button>
+          <button>Editar</button>
+        </div>
+      </div>
+      <div class="section-label">Concluidas</div>
+      <div class="matricula-row" style="opacity:0.7">
+        <div class="taller-name">🎨 Dibujo y Pintura</div>
+        <div>
+          <div class="sessions-bar">
+            <div class="bar"><div class="bar-fill done" style="width:100%"></div></div>
+            <span class="sessions-text">5/5</span>
+          </div>
+        </div>
+        <div class="price">S/. 65.00</div>
+        <div><span class="receipt-badge receipt-ok">Pagado</span></div>
+        <div><span class="badge badge-completed">Concluida</span></div>
+        <div class="row-actions">
+          <button>Ver</button>
+        </div>
+      </div>
+      <div class="matricula-row" style="opacity:0.7">
+        <div class="taller-name">🎨 Dibujo y Pintura</div>
+        <div>
+          <div class="sessions-bar">
+            <div class="bar"><div class="bar-fill done" style="width:100%"></div></div>
+            <span class="sessions-text">4/4</span>
+          </div>
+        </div>
+        <div class="price">S/. 65.00</div>
+        <div><span class="receipt-badge receipt-ok">Pagado</span></div>
+        <div><span class="badge badge-completed">Concluida</span></div>
+        <div class="row-actions">
+          <button>Ver</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Student Card 2: Single matrícula -->
+  <div class="student-card">
+    <div class="student-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+      <div class="student-info">
+        <div class="student-avatar">CE</div>
+        <div>
+          <div class="student-name">Colmenares, Juan Diego</div>
+          <div class="student-dni">DNI: 87654321</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="student-badges">
+          <span class="badge badge-pending">1 sin procesar</span>
+        </div>
+        <span class="expand-icon">▼</span>
+      </div>
+    </div>
+    <div class="student-body">
+      <div class="matricula-row matricula-header">
+        <div>Taller</div>
+        <div>Sesiones</div>
+        <div>Precio</div>
+        <div>Recibo</div>
+        <div>Estado</div>
+        <div>Acciones</div>
+      </div>
+      <div class="matricula-row">
+        <div class="taller-name">🎹 Organo</div>
+        <div>
+          <div class="sessions-bar">
+            <div class="bar"><div class="bar-fill critical" style="width:0%"></div></div>
+            <span class="sessions-text">0/8</span>
+          </div>
+        </div>
+        <div class="price">S/. 160.00</div>
+        <div><span class="receipt-badge receipt-none">Sin recibo</span></div>
+        <div><span class="badge badge-pending">No procesado</span></div>
+        <div class="row-actions">
+          <button>Ver</button>
+          <button>Editar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

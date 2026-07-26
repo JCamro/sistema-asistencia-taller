@@ -14,8 +14,11 @@ import TalleresPage from './pages/talleres/Talleres';
 import TallerDetalle from './pages/talleres/TallerDetalle';
 import HorariosPage from './pages/horarios/Horarios';
 import MatriculasPage from './pages/matriculas/Matriculas';
+import MatriculaDetallePage from './pages/matriculas/MatriculaDetalle';
 import AsistenciasPage from './pages/asistencias/Asistencias';
 import RecibosPage from './pages/recibos/Recibos';
+import FeriadosPage from './pages/feriados/Feriados';
+import AlumnoDetallePage from './pages/alumnos/AlumnoDetalle';
 import PagosProfesoresPage from './pages/profesores/HorasProfesores';
 import EgresosPage from './pages/egresos/Egresos';
 import FinanzasPage from './pages/finanzas/Finanzas';
@@ -64,7 +67,10 @@ export default function App() {
                 <Route path="/talleres/:tallerId" element={<ProtectedRoute><DashboardLayout><TallerDetalle /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/horarios" element={<ProtectedRoute><DashboardLayout><HorariosPage /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/matriculas" element={<ProtectedRoute><DashboardLayout><MatriculasPage /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/matriculas/:matriculaId" element={<ProtectedRoute><DashboardLayout><MatriculaDetallePage /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/alumnos/:alumnoId" element={<ProtectedRoute><DashboardLayout><AlumnoDetallePage /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/asistencias" element={<ProtectedRoute><DashboardLayout><AsistenciasPage /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/feriados" element={<ProtectedRoute><DashboardLayout><FeriadosPage /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/recibos" element={<ProtectedRoute><DashboardLayout><RecibosPage /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/egresos" element={<ProtectedRoute><DashboardLayout><EgresosPage /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/finanzas" element={<ProtectedRoute><DashboardLayout><FinanzasPage /></DashboardLayout></ProtectedRoute>} />

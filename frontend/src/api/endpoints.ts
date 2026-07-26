@@ -246,6 +246,146 @@ export interface ResumenMensual {
   recibos: number;
 }
 
+// --- Feriados ---
+export interface Feriado {
+  id: number;
+  ciclo: number;
+  fecha: string;
+  motivo: string;
+  taller: number | null;
+  taller_nombre: string | null;
+  horario: number | null;
+  horario_nombre: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type FeriadoPayload = Omit<Feriado, 'id' | 'ciclo' | 'taller_nombre' | 'horario_nombre' | 'created_at' | 'updated_at'>;
+
+export interface FeriadoAplicarResponse {
+  creadas: number;
+  fecha: string;
+  motivo: string;
+}
+
+// --- Matrículas agrupadas / detalle ---
+export interface MatriculaAgrupadaItem {
+  id: number;
+  taller: string;
+  taller_id: number;
+  taller_tipo: string;
+  sesiones_consumidas: number;
+  sesiones_contratadas: number;
+  precio_total: string;
+  estado: string;
+  recibo_estado: string;
+  fecha_matricula: string | null;
+}
+
+export interface MatriculaAgrupada {
+  alumno_id: number;
+  alumno_nombre: string;
+  alumno_dni: string;
+  matriculas: MatriculaAgrupadaItem[];
+  activas: number;
+  concluidas: number;
+  sin_procesar: number;
+  inactivas: number;
+}
+
+export interface MatriculaDetalleHorario {
+  id: number;
+  dia: string;
+  dia_numero: number;
+  hora_inicio: string;
+  hora_fin: string;
+  profesor_nombre: string;
+}
+
+export interface MatriculaDetalleAsistencia {
+  id: number;
+  fecha: string;
+  estado: string;
+  es_recuperacion: boolean;
+  horario: string;
+}
+
+export interface MatriculaDetalleRecibo {
+  id: number;
+  numero: string;
+  estado: string;
+  monto_total: string;
+  monto_pagado: string;
+}
+
+export interface MatriculaDetalleData {
+  id: number;
+  alumno_id: number;
+  alumno_nombre: string;
+  taller: string;
+  taller_id: number;
+  sesiones_contratadas: number;
+  sesiones_consumidas: number;
+  sesiones_disponibles: number;
+  precio_total: string;
+  precio_por_sesion: string;
+  estado: string;
+  recibo_estado: string;
+  recibo: MatriculaDetalleRecibo | null;
+  horarios: MatriculaDetalleHorario[];
+  asistencias: MatriculaDetalleAsistencia[];
+  fecha_matricula: string | null;
+}
+
+export interface MatriculaDetalleResponse {
+  matricula: MatriculaDetalleData;
+}
+
+export interface AlumnoDetalleMatricula {
+  id: number;
+  taller: string;
+  taller_id: number;
+  sesiones_contratadas: number;
+  sesiones_consumidas: number;
+  sesiones_disponibles: number;
+  precio_total: string;
+  estado: string;
+  recibo_estado: string;
+  fecha_matricula: string | null;
+  asistencias: { id: number; fecha: string; estado: string; es_recuperacion: boolean }[];
+}
+
+export interface AlumnoDetalleResponse {
+  alumno: {
+    id: number;
+    nombre: string;
+    apellido: string;
+    nombre_completo: string;
+    dni: string;
+    telefono: string;
+    email: string;
+    edad: number | null;
+    activo: boolean;
+  };
+  matriculas: AlumnoDetalleMatricula[];
+}
+
+export interface PorHorarioResponse {
+  es_feriado: boolean;
+  motivo: string | null;
+  resultados: {
+    matricula_id: number;
+    alumno_id: number;
+    alumno_nombre: string;
+    sesiones_disponibles: number;
+    asistencia_id: number | null;
+    estado: string | null;
+    observacion: string;
+    es_recuperacion: boolean;
+    hora: string | null;
+  }[];
+}
+
 // =============================================================================
 // Funciones de API agrupadas por dominio
 // =============================================================================
@@ -525,3 +665,33 @@ export const getResumenEgresos = (cicloId: number) => api.get<ResumenEgresos>(`/
 /** Historial de pagos realizados a un profesor específico */
 export const getHistorialPagosProfesor = (profesorId: number) => 
   api.get<Egreso[]>(`/profesores/${profesorId}/historial-pagos/`);
+
+// --- Feriados ---
+/** Lista feriados de un ciclo (paginado) */
+export const getFeriados = (cicloId: number, page?: number) => {
+  const params = page ? `?page=${page}` : '';
+  return api.get<PaginatedResponse<Feriado>>(`/ciclos/${cicloId}/feriados/${params}`);
+};
+/** Crea un feriado en un ciclo */
+export const createFeriado = (cicloId: number, data: Partial<FeriadoPayload>) =>
+  api.post<Feriado>(`/ciclos/${cicloId}/feriados/`, data);
+/** Actualiza un feriado existente */
+export const updateFeriado = (cicloId: number, feriadoId: number, data: Partial<FeriadoPayload>) =>
+  api.patch<Feriado>(`/ciclos/${cicloId}/feriados/${feriadoId}/`, data);
+/** Elimina un feriado */
+export const deleteFeriado = (cicloId: number, feriadoId: number) =>
+  api.delete(`/ciclos/${cicloId}/feriados/${feriadoId}/`);
+/** Aplica un feriado: marca falta a alumnos pendientes del día */
+export const aplicarFeriado = (cicloId: number, feriadoId: number) =>
+  api.post<FeriadoAplicarResponse>(`/ciclos/${cicloId}/feriados/${feriadoId}/aplicar/`);
+
+// --- Matrículas agrupadas y detalle ---
+/** Lista matrículas agrupadas por alumno para un ciclo */
+export const getMatriculasAgrupadas = (cicloId: number, params?: string) =>
+  api.get<PaginatedResponse<MatriculaAgrupada>>(`/ciclos/${cicloId}/matriculas/agrupadas/${params ? `?${params}` : ''}`);
+/** Detalle completo de un alumno dentro de un ciclo */
+export const getAlumnoDetalle = (cicloId: number, alumnoId: number) =>
+  api.get<AlumnoDetalleResponse>(`/ciclos/${cicloId}/alumnos/${alumnoId}/detalle/`);
+/** Detalle completo de una matrícula dentro de un ciclo */
+export const getMatriculaDetalle = (cicloId: number, matriculaId: number) =>
+  api.get<MatriculaDetalleResponse>(`/ciclos/${cicloId}/matriculas/${matriculaId}/detalle/`);

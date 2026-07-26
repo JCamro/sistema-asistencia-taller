@@ -1,10 +1,11 @@
 import { useState, useEffect, memo } from 'react';
 import ConfirmModal from '../../components/ui/ConfirmModal';
+import { BTN_PRIMARY, ASISTENCIA_ESTADOS } from '../../theme/colors';
 
 const ESTADOS = [
-  { value: 'asistio', label: 'Asistió', color: '#059669', bg: '#d1fae5' },
-  { value: 'falta', label: 'Falta', color: '#d97706', bg: '#fef3c7' },
-  { value: 'falta_grave', label: 'Falta Grave', color: '#dc2626', bg: '#fee2e2' },
+  { value: 'asistio', ...ASISTENCIA_ESTADOS.asistio },
+  { value: 'falta', ...ASISTENCIA_ESTADOS.falta },
+  { value: 'falta_grave', ...ASISTENCIA_ESTADOS.falta_grave },
 ];
 
 interface Asistencia {
@@ -131,7 +132,7 @@ function AsistenciaEditModal({ isOpen, asistencia, profesores, saving, onClose, 
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button onClick={onClose} style={{ flex: 1, padding: '0.75rem', minHeight: '48px', background: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
-            <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '0.75rem', minHeight: '48px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer' }}>
+            <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '0.75rem', minHeight: '48px', background: BTN_PRIMARY.background, color: BTN_PRIMARY.color, border: BTN_PRIMARY.border, borderRadius: '8px', fontWeight: BTN_PRIMARY.fontWeight, cursor: saving ? 'not-allowed' : 'pointer' }}>
               {saving ? 'Guardando...' : 'Guardar'}
             </button>
           </div>
