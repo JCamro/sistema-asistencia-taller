@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import Badge from '../../components/ui/Badge';
 
 interface Asistencia {
   id: number;
@@ -25,8 +26,8 @@ const ESTADOS = [
 ];
 
 function getEstadoInfo(estado: string | null) {
-  if (!estado) return { label: 'Sin registrar', color: '#6b7280', bg: '#f3f4f6' };
-  return ESTADOS.find((e) => e.value === estado) || { label: estado, color: '#6b7280', bg: '#f3f4f6' };
+  if (!estado) return { label: 'Sin registrar', color: '#6b7280', bg: '#e5e7eb' };
+  return ESTADOS.find((e) => e.value === estado) || { label: estado, color: '#6b7280', bg: '#e5e7eb' };
 }
 
 interface AsistenciaHistorialDiaProps {
@@ -72,13 +73,11 @@ function AsistenciaHistorialDia({
                 <div
                   key={a.id}
                   onClick={() => onEditAsistencia(a)}
-                  style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
+                  style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontWeight: '500', color: '#111827', fontSize: '0.875rem' }}>{a.alumno_nombre}</span>
-                    <span style={{ padding: '0.125rem 0.5rem', borderRadius: '4px', fontSize: '0.625rem', fontWeight: '600', background: estadoInfo.bg, color: estadoInfo.color }}>
-                      {estadoInfo.label}
-                    </span>
+                    <Badge bg={estadoInfo.bg} color={estadoInfo.color} label={estadoInfo.label} size="sm" />
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
                     {a.hora?.substring(0, 5)} {a.es_recuperacion && '(Recuperación)'}

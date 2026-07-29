@@ -133,11 +133,11 @@ function AsistenciasPage() {
   }, [horarios, setSearchParams]);
 
   // fetchData: carga horarios activos y profesores del ciclo una sola vez
+  // ponytail: fetchData solo necesita fecha para diaSemana, no todo searchParams
   const fetchData = useCallback(async () => {
     if (!cicloActual) return;
     const token = localStorage.getItem('access_token');
-    const fechaParam = searchParams.get('fecha') || new Date().toISOString().split('T')[0];
-    const jsDay = new Date(fechaParam + 'T00:00:00').getDay();
+    const jsDay = new Date(fecha + 'T00:00:00').getDay();
     const diaSemana = (jsDay + 6) % 7;
     try {
       const [horariosResponse, profesoresResponse] = await Promise.all([
@@ -152,7 +152,7 @@ function AsistenciasPage() {
     } finally {
       setLoading(false);
     }
-  }, [cicloActual, apiBase, searchParams]);
+  }, [cicloActual, apiBase, fecha]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -541,6 +541,22 @@ function AsistenciasPage() {
         horariosFiltrados={horariosFiltrados}
         profesores={profesores}
       />
+
+      {/* Leyenda de colores */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem 0', marginBottom: '0.75rem', fontSize: '0.75rem', color: '#6b7280' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
+          <span>Asistió</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
+          <span>Falta</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#9ca3af', flexShrink: 0 }} />
+          <span>Sin registrar</span>
+        </div>
+      </div>
 
       <AsistenciaContenido
         loading={loading}

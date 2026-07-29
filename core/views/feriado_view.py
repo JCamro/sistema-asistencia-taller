@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import transaction
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -96,3 +98,79 @@ class FeriadoViewSet(viewsets.ModelViewSet):
             'fecha': str(feriado.fecha),
             'motivo': feriado.motivo,
         })
+
+    @action(detail=False, methods=['post'], url_path='grupo/(?P<grupo_id>[0-9a-f-]+)/aplicar')
+    def aplicar_grupo(self, request, ciclo_id=None, grupo_id=None):
+        try:
+            grupo_uuid = uuid.UUID(grupo_id)
+        except ValueError:
+            return Response({'error': 'ID de grupo inválido'}, status=status.HTTP_400_BAD_REQUEST)
+
+        feriados = Feriado.objects.filter(ciclo_id=ciclo_id, grupo=grupo_uuid).order_by('fecha')
+        if not feriados.exists():
+            return Response({'error': 'Grupo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+        total_creadas = 0
+        for feriado in feriados:
+            horarios = Horario.objects.filter(ciclo=feriado.ciclo)
+            if feriado.horario:
+                horarios = horarios.filter(id=feriado.horario.id)
+            elif feriado.taller:
+                horarios = horarios.filter(taller=feriado.taller)
+
+            if not horarios.exists():
+                continue
+
+            asistencias_existentes = Asistencia.objects.filter(
+                horario__in=horarios,
+                fecha=feriado.fecha
+            ).values_list('matricula_id', 'horario_id')
+            existentes_set = set(asistencias_existentes)
+
+            matriculas_horario = MatriculaHorario.objects.filter(
+                horario__in=horarios,
+                matricula__ciclo=feriado.ciclo,
+                matricula__activo=True,
+                matricula__concluida=False,
+                matricula__fecha_matricula__isnull=False,
+                matricula__fecha_matricula__date__lte=feriado.fecha,
+            ).select_related('matricula', 'horario', 'horario__profesor')
+
+            nuevas_asistencias = []
+            for mh in matriculas_horario:
+                if (mh.matricula.id, mh.horario.id) in existentes_set:
+                    continue
+                nuevas_asistencias.append(Asistencia(
+                    matricula=mh.matricula,
+                    horario=mh.horario,
+                    profesor=mh.horario.profesor,
+                    fecha=feriado.fecha,
+                    hora=mh.horario.hora_inicio,
+                    estado='falta',
+                    observacion=f'Feriado: {feriado.motivo}',
+                    es_recuperacion=False,
+                ))
+                existentes_set.add((mh.matricula.id, mh.horario.id))
+
+            if nuevas_asistencias:
+                Asistencia.objects.bulk_create(nuevas_asistencias)
+                total_creadas += len(nuevas_asistencias)
+
+        return Response({
+            'aplicados': total_creadas,
+            'fecha_inicio': str(feriados.first().fecha),
+            'fecha_fin': str(feriados.last().fecha),
+            'motivo': feriados.first().motivo,
+        })
+
+    @action(detail=False, methods=['delete'], url_path='grupo/(?P<grupo_id>[0-9a-f-]+)')
+    def delete_grupo(self, request, ciclo_id=None, grupo_id=None):
+        try:
+            grupo_uuid = uuid.UUID(grupo_id)
+        except ValueError:
+            return Response({'error': 'ID de grupo inválido'}, status=status.HTTP_400_BAD_REQUEST)
+
+        deleted, _ = Feriado.objects.filter(ciclo_id=ciclo_id, grupo=grupo_uuid).delete()
+        if deleted == 0:
+            return Response({'error': 'Grupo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'eliminados': deleted})

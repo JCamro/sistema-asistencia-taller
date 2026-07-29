@@ -77,19 +77,25 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
             matricula__fecha_matricula__isnull=False,
             matricula__fecha_matricula__date__lte=fecha_obj,
         ).select_related('matricula__alumno', 'matricula__taller')
-        
+
+        # ponytail: bulk fetch asistencias instead of N individual queries
+        asistencias_dict = {
+            a.matricula_id: a
+            for a in Asistencia.objects.filter(
+                horario_id=horario_id,
+                fecha=fecha,
+                es_recuperacion=False,
+            ).select_related('profesor')
+        }
+
         resultados = []
         alumnos_regulares_ids = set()
-        
+
         for mh in matriculas_horario:
-            asistencia = Asistencia.objects.filter(
-                matricula=mh.matricula,
-                horario_id=horario_id,
-                fecha=fecha
-            ).first()
-            
+            asistencia = asistencias_dict.get(mh.matricula.id)
+
             alumnos_regulares_ids.add(mh.matricula.alumno.id)
-            
+
             resultados.append({
                 'matricula_id': mh.matricula.id,
                 'alumno_id': mh.matricula.alumno.id,

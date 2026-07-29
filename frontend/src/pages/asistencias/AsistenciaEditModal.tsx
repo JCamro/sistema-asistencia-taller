@@ -109,11 +109,11 @@ function AsistenciaEditModal({ isOpen, asistencia, profesores, saving, onClose, 
                     flex: 1,
                     padding: '0.75rem 0.5rem',
                     minHeight: '44px',
-                    border: 'none',
+                    border: draft.estado === estado.value ? `1.5px solid ${estado.color}40` : '1px solid transparent',
                     borderRadius: '6px',
                     fontWeight: 600,
-                    background: draft.estado === estado.value ? estado.color : '#f3f4f6',
-                    color: draft.estado === estado.value ? 'white' : '#374151',
+                    background: draft.estado === estado.value ? estado.bg : '#f3f4f6',
+                    color: draft.estado === estado.value ? estado.color : '#9ca3af',
                   }}
                 >
                   {estado.label}
@@ -131,7 +131,7 @@ function AsistenciaEditModal({ isOpen, asistencia, profesores, saving, onClose, 
             />
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button onClick={onClose} style={{ flex: 1, padding: '0.75rem', minHeight: '48px', background: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
+            <button onClick={onClose} style={{ flex: 1, padding: '0.75rem', minHeight: '48px', background: '#e5e7eb', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
             <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '0.75rem', minHeight: '48px', background: BTN_PRIMARY.background, color: BTN_PRIMARY.color, border: BTN_PRIMARY.border, borderRadius: '8px', fontWeight: BTN_PRIMARY.fontWeight, cursor: saving ? 'not-allowed' : 'pointer' }}>
               {saving ? 'Guardando...' : 'Guardar'}
             </button>

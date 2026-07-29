@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, memo } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../contexts/ToastContext';
 import ConfirmModal from '../../components/ui/ConfirmModal';
+import Badge from '../../components/ui/Badge';
 import { ASISTENCIA_ESTADOS } from '../../theme/colors';
 import type { Matricula } from '../../api/endpoints';
 
@@ -142,7 +143,7 @@ function MatriculaDetailModal({ isOpen, onClose, matriculaId, cicloId, modo = 'a
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
       <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '650px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
-        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
               {modo === 'asistencias' ? 'Asistencias' : 'Horario'} del Alumno
@@ -151,7 +152,7 @@ function MatriculaDetailModal({ isOpen, onClose, matriculaId, cicloId, modo = 'a
               {matricula ? `${matricula.alumno_nombre} · ${matricula.taller_nombre}` : '...'}
             </p>
           </div>
-          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#f3f4f6', color: '#6b7280', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#e5e7eb', color: '#6b7280', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
           {loading ? (
@@ -167,14 +168,12 @@ function MatriculaDetailModal({ isOpen, onClose, matriculaId, cicloId, modo = 'a
                     { label: 'Falta', count: asistencias.filter((a) => a.estado === 'falta').length, bg: '#fef3c7', color: '#d97706' },
                     { label: 'Falta Grave', count: asistencias.filter((a) => a.estado === 'falta_grave').length, bg: '#fef2f2', color: '#dc2626' },
                   ].map((s) => (
-                    <span key={s.label} style={{ padding: '0.2rem 0.55rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, background: s.bg, color: s.color }}>
-                      {s.count} {s.label}
-                    </span>
+                    <Badge key={s.label} bg={s.bg} color={s.color} label={`${s.count} ${s.label}`} size="sm" />
                   ))}
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #f1f5f9' }}>
+                    <tr style={{ background: '#fafbfc', borderBottom: '1.5px solid #e2e8f0' }}>
                       <th style={th}>Fecha</th>
                       <th style={th}>Horario</th>
                       <th style={th}>Estado</th>
@@ -190,7 +189,7 @@ function MatriculaDetailModal({ isOpen, onClose, matriculaId, cicloId, modo = 'a
                           <td style={td}>{a.fecha}</td>
                           <td style={{ ...td, color: '#64748b' }}>{a.horario_hora_inicio?.substring(0, 5)} – {a.horario_hora_fin?.substring(0, 5)}</td>
                           <td style={td}>
-                            <span title={ei.description} style={{ padding: '0.15rem 0.45rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600, background: ei.bg, color: ei.color }}>
+                            <span title={ei.description} style={{ padding: '0.15rem 0.45rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600, background: ei.bg, color: ei.color, border: `1.5px solid ${ei.color}40` }}>
                               {ei.label}{a.es_recuperacion && <span style={{ marginLeft: 4, fontSize: '0.65rem', color: '#8b6914' }}>Recup.</span>}
                             </span>
                           </td>
@@ -210,7 +209,7 @@ function MatriculaDetailModal({ isOpen, onClose, matriculaId, cicloId, modo = 'a
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {horarios.map((h) => (
-                <div key={h.id} style={{ padding: '0.875rem 1rem', borderRadius: '10px', background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                <div key={h.id} style={{ padding: '0.875rem 1rem', borderRadius: '10px', background: '#fafbfc', border: '1.5px solid #c8ccd4' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#d4af37', flexShrink: 0 }} />
                     <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.875rem' }}>{h.horario_detalle.taller}</span>
@@ -224,7 +223,7 @@ function MatriculaDetailModal({ isOpen, onClose, matriculaId, cicloId, modo = 'a
             </div>
           )}
         </div>
-        <div style={{ padding: '0.75rem 1.5rem', borderTop: '1px solid #f3f4f6' }}>
+        <div style={{ padding: '0.75rem 1.5rem', borderTop: '1px solid #e5e7eb' }}>
           <button onClick={onClose} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e5e7eb', borderRadius: '10px', background: 'white', color: '#374151', fontWeight: 500, cursor: 'pointer', fontSize: '0.875rem' }}>Cerrar</button>
         </div>
       </div>

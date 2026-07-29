@@ -61,6 +61,7 @@ function Sidebar({ cicloNombre, abierto, onToggle }: SidebarProps) {
     { titulo: 'Caja', items: NAV_ITEMS.slice(8, 10) },         // Recibos, Egresos
     { titulo: 'Nómina', items: NAV_ITEMS.slice(10, 11) },     // Horas Profesores
     { titulo: 'Resumen', items: NAV_ITEMS.slice(11, 12) },    // Finanzas
+    { titulo: 'Configuración', items: NAV_ITEMS.slice(12) },  // Configuración
   ];
 
   return (

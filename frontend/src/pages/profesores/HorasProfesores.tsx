@@ -358,7 +358,7 @@ function HorasProfesoresPage() {
       {activeTab === 'horas' && (
         <>
           {/* Filters */}
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #f1f5f9', padding: '0.75rem 1rem', marginBottom: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ background: 'white', borderRadius: '12px', border: '1.5px solid #c8ccd4', padding: '0.75rem 1rem', marginBottom: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <select value={hTallerId} onChange={e => setHTallerId(e.target.value)} style={{ padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem', minWidth: '140px', background: 'white' }}>
               <option value="">Todos los talleres</option>
               {hTalleres.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
@@ -372,7 +372,7 @@ function HorasProfesoresPage() {
           </div>
 
           {/* Table */}
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #f1f5f9', overflow: 'hidden' }}>
+          <div style={{ background: 'white', borderRadius: '12px', border: '1.5px solid #c8ccd4', overflow: 'hidden' }}>
             <ResponsiveTable
               columns={[
                 { key: 'profesor_nombre', label: 'Profesor', render: (h: any) => <span style={{ fontWeight: 600, color:'#0f172a' }}>{h.profesor_nombre ?? '-'}</span> },
@@ -411,7 +411,7 @@ function HorasProfesoresPage() {
       {activeTab === 'calcular' && (
         <>
           {/* Filter card */}
-          <div style={{ background: '#f8fafc', borderRadius: '14px', border: '1px solid #f1f5f9', padding: '1.125rem', marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
+          <div style={{ background: '#fafbfc', borderRadius: '14px', border: '1.5px solid #c8ccd4', padding: '1.125rem', marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
             <div>
               <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '0.2rem' }}>Fecha Inicio</span>
               <input type="date" value={cFechaInicio} onChange={e => setCFechaInicio(e.target.value)} style={{ padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '0.875rem', background: 'white' }} />
@@ -481,7 +481,7 @@ function HorasProfesoresPage() {
                   <button onClick={() => { setSelectedPago(null); setExpandedRows(new Set()); setDetallesCompletos({}); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', width: '32px', height: '32px', borderRadius: '50%', color: 'white', fontSize: '1.25rem', cursor: 'pointer' }}>×</button>
                 </div>
                 {/* Summary */}
-                <div style={{ padding: '0.75rem 1.5rem', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: '0.75rem' }}>
+                <div style={{ padding: '0.75rem 1.5rem', background: '#fafbfc', borderBottom: '1px solid #e5e7eb', display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: '0.75rem' }}>
                   {[{l:'Clases',v:selectedPago.clases_dictadas,c:'#8b6914'},{l:'Asistencias',v:selectedPago.total_alumnos_asistencias,c:'#8b6914'},{l:'Total Profesor',v:`S/. ${fmt(selectedPago.monto_profesor)}`,c:'#059669'},{l:'Ganancia Taller',v:`S/. ${fmt(selectedPago.ganancia_taller)}`,c:'#d97706'}].map(s => (
                     <div key={s.l} style={{ textAlign: 'center', padding: '0.5rem', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
                       <div style={{ fontSize: '1.25rem', fontWeight: 800, color: s.c }}>{s.v}</div>
@@ -507,7 +507,7 @@ function HorasProfesoresPage() {
                             const newSet = new Set(expandedRows);
                             newSet.has(dateKey) ? newSet.delete(dateKey) : newSet.add(dateKey);
                             setExpandedRows(newSet);
-                          }} style={{ padding: '0.625rem 1rem', cursor: 'pointer', display: 'grid', gridTemplateColumns: '100px 1fr 60px 90px 30px', gap: '0.5rem', alignItems: 'center', background: isDateExpanded ? '#fef9e7' : '#f8fafc', fontSize: '0.8125rem' }}>
+                          }} style={{ padding: '0.625rem 1rem', cursor: 'pointer', display: 'grid', gridTemplateColumns: '100px 1fr 60px 90px 30px', gap: '0.5rem', alignItems: 'center', background: isDateExpanded ? '#fef9e7' : '#fafbfc', fontSize: '0.8125rem' }}>
                             <span style={{ fontWeight: 700, color: '#111827' }}>{formatDateElegant(fecha)}</span>
                             <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>{dayClases} clase{dayClases !== 1 ? 's' : ''}</span>
                             <span style={{ textAlign: 'center' }}><span style={{ background: '#fef9e7', color: '#8b6914', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600 }}>{dayAlumnos} alum.</span></span>
@@ -522,7 +522,7 @@ function HorasProfesoresPage() {
                                 const isExpanded = expandedRows.has(key);
                                 const dc = detallesCompletos[key];
                                 return (
-                                  <div key={d.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                  <div key={d.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                                     <div onClick={() => toggleRowExpansion(d)} style={{ padding: '0.5rem 1rem 0.5rem 2rem', cursor: 'pointer', display: 'grid', gridTemplateColumns: '1fr 60px 80px 80px 80px 30px', gap: '0.5rem', alignItems: 'center', background: isExpanded ? '#fef9e7' : 'white', fontSize: '0.8125rem' }}>
                                       <span style={{ color: '#6b7280' }}>{d.horario_info}</span>
                                       <span style={{ textAlign: 'center' }}><span style={{ background: '#fef9e7', color: '#8b6914', padding: '0.15rem 0.4rem', borderRadius: '9999px', fontSize: '0.75rem' }}>{d.num_alumnos}</span></span>

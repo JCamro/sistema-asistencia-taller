@@ -7,7 +7,7 @@ import PageHeader from '../../components/ui/PageHeader';
 import { Pagination } from '../../components/ui/Pagination';
 import TraspasoModal from '../../components/ui/TraspasoModal';
 import MatriculasFilterBar from './MatriculasFilterBar';
-import MatriculaFormModal from './MatriculaFormModal';
+import MatriculaFormModal, { type MatriculaInitialData } from './MatriculaFormModal';
 import MatriculaStudentCard from './MatriculaStudentCard';
 import api from '../../api/axios';
 import { useDebouncedSearch } from '../../hooks/useDebouncedSearch';
@@ -50,6 +50,7 @@ function MatriculasPage() {
   const [traspasandoNombre, setTraspasandoNombre] = useState<string>('');
   const [traspasandoTaller, setTraspasandoTaller] = useState<string>('');
   const [traspasandoLoading, setTraspasandoLoading] = useState(false);
+  const [recrearData, setRecrearData] = useState<MatriculaInitialData | null>(null);
 
   const updateParam = useCallback((key: string, value: string) => {
     setSearchParams((prev) => {
@@ -174,9 +175,45 @@ function MatriculasPage() {
     setShowModal(true);
   };
 
+  const handleRecrear = async (id: number) => {
+    if (!cicloActual) return;
+    const token = localStorage.getItem('access_token');
+    try {
+      const [res, horariosRes] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_URL || ''}/api/ciclos/${cicloActual.id}/matriculas/${id}/detalle/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        api.get(`/matriculas-horarios/?matricula=${id}`),
+      ]);
+      if (!res.ok) {
+        showToast('No se pudo cargar la matrícula', 'error');
+        return;
+      }
+      const data = await res.json();
+      const matricula = data.matricula || data;
+      const horariosJson = horariosRes.data.results || horariosRes.data;
+      const horariosIds = Array.isArray(horariosJson) ? horariosJson.map((mh: any) => mh.horario) : [];
+      setRecrearData({
+        alumno_id: matricula.alumno_id ?? matricula.alumno,
+        alumno_nombre: matricula.alumno_nombre ?? '',
+        taller_id: matricula.taller_id ?? matricula.taller,
+        taller_nombre: matricula.taller_nombre ?? matricula.taller ?? '',
+        horarios_ids: horariosIds,
+        sesiones_contratadas: matricula.sesiones_contratadas,
+        metodo_pago: matricula.metodo_pago ?? 'efectivo',
+      });
+      setEditingId(null);
+      setShowModal(true);
+    } catch (err) {
+      console.error('Error al cargar matrícula para re-crear:', err);
+      showToast('Error al cargar la matrícula', 'error');
+    }
+  };
+
   const closeModal = () => {
     setShowModal(false);
     setEditingId(null);
+    setRecrearData(null);
   };
 
   const handleSuccess = () => {
@@ -269,7 +306,7 @@ function MatriculasPage() {
 
       <div>
         {grupos.length === 0 ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280', background: 'white', borderRadius: '12px', border: '1px solid #f1f5f9' }}>No hay matrículas</div>
+          <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280', background: 'white', borderRadius: '12px', border: '1.5px solid #c8ccd4' }}>No hay matrículas</div>
         ) : (
           <>
             {grupos.map((g) => (
@@ -283,6 +320,7 @@ function MatriculasPage() {
                   setTraspasandoNombre(name);
                   setTraspasandoTaller(taller);
                 }}
+                onRecrear={handleRecrear}
               />
             ))}
           </>
@@ -297,7 +335,9 @@ function MatriculasPage() {
         onClose={closeModal}
         onSuccess={handleSuccess}
         matricula={editingId ? matriculasFlat.find((m) => m.id === editingId) || null : null}
+        editingId={editingId}
         cicloId={cicloActual?.id}
+        initialData={recrearData}
       />
 
       <ConfirmModal

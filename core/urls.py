@@ -44,6 +44,7 @@ urlpatterns = [
     
     # Configuracion (singleton - no usa router para evitar 405)
     path('config/', ConfiguracionView.as_view(), name='config'),
+    path('ciclos/<int:ciclo_id>/config/', ConfiguracionView.as_view(), name='ciclo-config'),
     
     # Pagos profesores
     path('pagos-profesores/calcular-periodo/', calcular_pago_profesor, name='calcular_pago'),
@@ -74,7 +75,10 @@ urlpatterns = [
     path('ciclos/<int:ciclo_id>/asistencias/por-dia/', AsistenciaViewSet.as_view({'get': 'por_dia'}), name='ciclo-asistencias-por-dia'),
     path('ciclos/<int:ciclo_id>/asistencias/recuperables/', AsistenciaViewSet.as_view({'get': 'recuperables'}), name='ciclo-asistencias-recuperables'),
     path('ciclos/<int:ciclo_id>/recibos/', ReciboViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-recibos'),
+    path('ciclos/<int:ciclo_id>/recibos/totals/', ReciboViewSet.as_view({'get': 'totals'}), name='ciclo-recibos-totals'),
     path('ciclos/<int:ciclo_id>/feriados/', FeriadoViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-feriados'),
+    path('ciclos/<int:ciclo_id>/feriados/grupo/<str:grupo_id>/aplicar/', FeriadoViewSet.as_view({'post': 'aplicar_grupo'}), name='ciclo-feriados-grupo-aplicar'),
+    path('ciclos/<int:ciclo_id>/feriados/grupo/<str:grupo_id>/', FeriadoViewSet.as_view({'delete': 'delete_grupo'}), name='ciclo-feriados-grupo-delete'),
     path('ciclos/<int:ciclo_id>/feriados/<int:pk>/', FeriadoViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'}), name='ciclo-feriados-detail'),
     path('ciclos/<int:ciclo_id>/feriados/<int:pk>/aplicar/', FeriadoViewSet.as_view({'post': 'aplicar'}), name='ciclo-feriados-aplicar'),
     path('ciclos/<int:ciclo_id>/precios/', PrecioPaqueteViewSet.as_view({'get': 'list'}), name='ciclo-precios'),

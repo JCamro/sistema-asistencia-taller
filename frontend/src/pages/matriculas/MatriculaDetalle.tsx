@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCiclo } from '../../contexts/CicloContext';
 import { useToast } from '../../contexts/ToastContext';
 import PageHeader from '../../components/ui/PageHeader';
+import Badge from '../../components/ui/Badge';
 import { getMatriculaDetalle } from '../../api/endpoints';
 import { MATRICULA_ESTADOS, RECIBO_ESTADOS, ASISTENCIA_ESTADOS, BTN_PRIMARY } from '../../theme/colors';
 import ReciboDetailModal from '../recibos/ReciboDetailModal';
@@ -88,7 +89,7 @@ function MatriculaDetallePage() {
 
   if (!data) {
     return (
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem', background: 'white', borderRadius: '12px', border: '1px solid #f1f5f9', textAlign: 'center', color: '#4b5563' }}>
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem', background: 'white', borderRadius: '12px', border: '1.5px solid #c8ccd4', textAlign: 'center', color: '#4b5563' }}>
         No se encontró la matrícula.
       </div>
     );
@@ -98,17 +99,16 @@ function MatriculaDetallePage() {
     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
       <PageHeader title="Detalle de Matrícula" cicloNombre={cicloActual?.nombre} />
 
-      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #f1f5f9', overflow: 'hidden', marginBottom: '1rem' }}>
+      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #d1d5db', overflow: 'hidden', marginBottom: '1rem' }}>
         {/* Header */}
-        <div style={{ padding: '1.25rem 1.5rem', background: '#fef9e7', borderBottom: '1px solid #fdf3d0' }}>
+        <div style={{ padding: '1.25rem 1.5rem', background: '#fef3cd', borderBottom: '1px solid #f0d78c' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
             <div>
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#111827' }}>{data.alumno_nombre}</h2>
               <p style={{ margin: '0.25rem 0 0', color: '#4b5563', fontSize: '0.875rem' }}>{data.taller}</p>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <span title={estado.description} style={{ padding: '0.35rem 1rem', borderRadius: '9999px', fontSize: '0.8125rem', fontWeight: 600, background: estado.bg, color: estado.color, border: `1px solid ${estado.color}22` }}>{estado.label}</span>
-              <span title={recibo.description} style={{ padding: '0.35rem 1rem', borderRadius: '9999px', fontSize: '0.8125rem', fontWeight: 600, background: recibo.bg, color: recibo.color, border: `1px solid ${recibo.color}22` }}>{recibo.label}</span>
+              <Badge bg={estado.bg} color={estado.color} label={estado.label} description={estado.description} />
             </div>
           </div>
         </div>
@@ -116,10 +116,10 @@ function MatriculaDetallePage() {
         <div style={{ padding: '1.5rem' }}>
           {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '10px' }}>
+            <div style={{ padding: '1rem', background: '#fafbfc', borderRadius: '10px', border: '1.5px solid #c8ccd4' }}>
               <div style={{ fontSize: '0.75rem', color: '#4b5563', marginBottom: '0.25rem' }}>Sesiones</div>
               <div style={{ fontSize: '1.125rem', fontWeight: 700, color: '#111827', fontFamily: 'monospace' }}>{data.sesiones_consumidas} / {data.sesiones_contratadas}</div>
-              <div style={{ marginTop: '0.5rem', height: 6, background: '#e5e7eb', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ marginTop: '0.5rem', height: 6, background: '#d6d9de', borderRadius: 3, overflow: 'hidden' }}>
                 <div style={{
                   width: `${progress}%`,
                   height: '100%',
@@ -129,11 +129,11 @@ function MatriculaDetallePage() {
                 }} />
               </div>
             </div>
-            <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '10px' }}>
+            <div style={{ padding: '1rem', background: '#fafbfc', borderRadius: '10px', border: '1.5px solid #c8ccd4' }}>
               <div style={{ fontSize: '0.75rem', color: '#4b5563', marginBottom: '0.25rem' }}>Precio total</div>
               <div style={{ fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>S/. {data.precio_total}</div>
             </div>
-            <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '10px' }}>
+            <div style={{ padding: '1rem', background: '#fafbfc', borderRadius: '10px', border: '1.5px solid #c8ccd4' }}>
               <div style={{ fontSize: '0.75rem', color: '#4b5563', marginBottom: '0.25rem' }}>Fecha matrícula</div>
               <div style={{ fontSize: '1rem', fontWeight: 600, color: '#111827' }}>{data.fecha_matricula ? data.fecha_matricula.split('T')[0] : '—'}</div>
             </div>
@@ -167,7 +167,7 @@ function MatriculaDetallePage() {
                   Ver Recibo
                 </button>
               </div>
-              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '10px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
+              <div style={{ padding: '1rem', background: '#fafbfc', borderRadius: '10px', border: '1.5px solid #c8ccd4', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
                 <div><div style={{ fontSize: '0.75rem', color: '#4b5563' }}>Número</div><div style={{ fontWeight: 600, color: '#111827' }}>{data.recibo.numero}</div></div>
                 <div><div style={{ fontSize: '0.75rem', color: '#4b5563' }}>Monto total</div><div style={{ fontWeight: 600, color: '#111827' }}>S/. {data.recibo.monto_total}</div></div>
                 <div><div style={{ fontSize: '0.75rem', color: '#4b5563' }}>Pagado</div><div style={{ fontWeight: 600, color: '#111827' }}>S/. {data.recibo.monto_pagado}</div></div>
@@ -184,9 +184,9 @@ function MatriculaDetallePage() {
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.5rem' }}>
                 {data.horarios.map((h) => (
-                  <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.75rem 1rem', background: '#fef9e7', border: '1px solid #fdf3d0', borderRadius: '10px' }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '8px', background: '#d4af37', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>
-                      {h.dia?.substring(0, 2).toUpperCase()}
+                  <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.75rem 1rem', background: '#fef3cd', border: '1px solid #f0d78c', borderRadius: '10px' }}>
+                    <div style={{ width: 20, height: 20, borderRadius: '20px', background: '#d4af37', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 700, flexShrink: 0 }}>
+                      
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#111827' }}>{h.dia}</div>
@@ -208,66 +208,75 @@ function MatriculaDetallePage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {asistenciasAgrupadas.map(([monthKey, asistenciasMes]) => (
                   <div key={monthKey}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '6px', marginBottom: '0.25rem' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0.5rem 0.75rem', background: '#e8eaed', borderRadius: '6px', marginBottom: '0.25rem' }}>
                       {monthKey}
                     </div>
-                    <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #d1d5db', overflow: 'hidden' }}>
                       {asistenciasMes.map((a, idx) => {
                         const asistencia = ASISTENCIA_ESTADOS[a.estado] || ASISTENCIA_ESTADOS.sin_registrar;
-                        const fecha = new Date(a.fecha + 'T00:00:00');
+                        // Extraer nombre del taller y rango de horas (acepta acentos y ñ)
+                        const horarioParts = a.horario?.match(/^(.+?)\s*[-–]\s*([^\d]+?)\s+(\d{1,2}:\d{2}):\d{2}[-–](\d{1,2}:\d{2}):\d{2}$/);
+                        const tallerNombre = horarioParts ? horarioParts[1].trim() : a.horario;
+                        const horaRange = horarioParts ? `${horarioParts[3]}–${horarioParts[4]}` : a.horario;
                         return (
                           <div key={a.id} style={{
-                            display: 'flex', alignItems: 'center', gap: '0.75rem',
-                            padding: '0.5rem 0.75rem',
-                            borderBottom: idx < asistenciasMes.length - 1 ? '1px solid #f1f5f9' : 'none',
+                            display: 'grid',
+                            gridTemplateColumns: '60px auto auto auto 100px',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.625rem 0.75rem',
+                            borderBottom: idx < asistenciasMes.length - 1 ? '1px solid #e2e8f0' : 'none',
                           }}>
-                            <div style={{ minWidth: '90px' }}>
-                              <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#374151' }}>
-                                {fecha.toLocaleDateString('es-PE', { weekday: 'short' })}
+                            {/* Fecha — solo DD/MM */}
+                            <span style={{ fontSize: '0.8125rem', color: '#6b7280', fontFamily: 'monospace' }}>
+                              {a.fecha.split('-').slice(1).reverse().join('/')}
+                            </span>
+
+                            {/* Taller + Horario */}
+                            <div style={{ minWidth: 0, maxWidth: '280px', overflow: 'hidden' }}>
+                              <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#111827', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {tallerNombre}
                               </span>
-                              <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>
-                                {a.fecha.split('-').slice(1).reverse().join('/')}
+                              <span style={{ fontSize: '0.7rem', color: '#8b6914' }}>
+                                {horaRange}
                               </span>
                             </div>
 
-                            <span style={{ fontSize: '0.75rem', color: '#6b7280', minWidth: '50px' }}>{a.horario}</span>
+                            {/* Badges */}
+                            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                              {a.es_recuperacion && (
+                                <span style={{ padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, background: '#fef9e7', color: '#8b6914' }}>
+                                  Recup.
+                                </span>
+                              )}
+                              <Badge bg={asistencia.bg} color={asistencia.color} label={asistencia.label} description={asistencia.description} size="sm" />
+                            </div>
 
-                            {a.es_recuperacion && (
-                              <span style={{ padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, background: '#fef9e7', color: '#8b6914' }}>
-                                Recup.
-                              </span>
-                            )}
-
-                            <span style={{
-                              padding: '0.2rem 0.55rem', borderRadius: '9999px', fontSize: '0.7rem', fontWeight: 600,
-                              background: asistencia.bg, color: asistencia.color
-                            }}>
-                              {asistencia.label}
-                            </span>
-
-                            <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: 'auto' }}>
+                            {/* Profesor */}
+                            <span style={{ fontSize: '0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
                               {a.profesor_nombre || '—'}
                             </span>
 
-                            <button
-                              onClick={() => navigate(`/asistencias?fecha=${a.fecha}`)}
-                              style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid #e5e7eb', background: 'white', color: '#374151', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer' }}
-                            >
-                              Ver
-                            </button>
-
-                            <button
-                              onClick={() => handleDeleteAsistencia(a.id)}
-                              style={{
-                                padding: '0.25rem 0.5rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer',
-                                border: deleteConfirmId === a.id ? '1px solid #dc2626' : '1px solid transparent',
-                                background: deleteConfirmId === a.id ? '#fee2e2' : 'transparent',
-                                color: deleteConfirmId === a.id ? '#dc2626' : '#ef4444',
-                                marginLeft: '0.25rem',
-                              }}
-                            >
-                              {deleteConfirmId === a.id ? 'Confirmar' : 'Eliminar'}
-                            </button>
+                            {/* Acciones */}
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              <button
+                                onClick={() => navigate(`/asistencias?fecha=${a.fecha}`)}
+                                style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white', color: '#374151', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer' }}
+                              >
+                                Ver
+                              </button>
+                              <button
+                                onClick={() => handleDeleteAsistencia(a.id)}
+                                style={{
+                                  padding: '0.25rem 0.5rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer',
+                                  border: deleteConfirmId === a.id ? '1px solid #dc2626' : '1px solid transparent',
+                                  background: deleteConfirmId === a.id ? '#fee2e2' : 'transparent',
+                                  color: deleteConfirmId === a.id ? '#dc2626' : '#ef4444',
+                                }}
+                              >
+                                {deleteConfirmId === a.id ? 'Confirmar' : 'Eliminar'}
+                              </button>
+                            </div>
                           </div>
                         );
                       })}

@@ -89,6 +89,7 @@ class AlumnoViewSet(viewsets.ModelViewSet):
                 'email': alumno.email,
                 'edad': alumno.edad,
                 'activo': alumno.activo,
+                'created_at': alumno.created_at.isoformat() if alumno.created_at else None,
             },
             'matriculas': matriculas_data,
         })

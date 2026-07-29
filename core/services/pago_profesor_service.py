@@ -17,21 +17,25 @@ class PagoProfesorService:
     """Servicio para manejar la lógica de negocio de Pagos a Profesores."""
 
     @classmethod
-    def _get_configuracion_pago(cls) -> tuple:
+    def _get_configuracion_pago(cls, ciclo_id: int = None) -> tuple:
         """
-        Obtiene la configuración de pago dinámico desde Configuracion.
-        
+        Obtiene la configuración de pago dinámico para un ciclo.
+
+        Args:
+            ciclo_id: ID del ciclo. Si es None, usa la configuración global.
+
         Returns:
-            tuple: (base, tope) desde Configuracion o valores por defecto de constants
+            tuple: (base, tope, porcentaje_adicional) desde Configuracion o valores por defecto
         """
         try:
-            config = Configuracion.get_instance()
+            config = Configuracion.get_for_ciclo(ciclo_id) if ciclo_id else Configuracion.get_instance()
             base = config.pago_dinamico_base or BASE_PAGO
             tope = config.pago_dinamico_tope or TOPE_MAXIMO
-            return (base, tope)
+            porcentaje = config.porcentaje_adicional or PORCENTAJE_ADICIONAL
+            return (base, tope, porcentaje)
         except Exception:
             # Fallback a constants si hay algún error
-            return (BASE_PAGO, TOPE_MAXIMO)
+            return (BASE_PAGO, TOPE_MAXIMO, PORCENTAJE_ADICIONAL)
 
     @classmethod
     @transaction.atomic
@@ -169,31 +173,32 @@ class PagoProfesorService:
         }
 
     @classmethod
-    def _calcular_pago_clase(cls, asistentes, num_alumnos: int, horario=None) -> dict:
+    def _calcular_pago_clase(cls, asistentes, num_alumnos: int, horario=None, ciclo_id: int = None) -> dict:
         """
         Calcula el pago a un profesor para una clase específica.
-        
+
         Fórmula dinámica (configurable via Configuracion):
         - 0 alumnos → S/. 0.00
         - 1 alumno → S/. [base] fijo
-        - 2+ alumnos → S/. [base] + 50% del valor de sesión de cada alumno adicional
+        - 2+ alumnos → S/. [base] + porcentaje del valor de sesión de cada alumno adicional
         - Tope → Máx [tope] por clase (excedente = ganancia del taller)
-        
+
         Fórmula fija:
         - 0 alumnos → S/. 0.00
         - 1+ alumnos → monto_fijo del horario (monto_base=0, monto_adicional=0)
-        
+
         Args:
             asistentes: QuerySet de Asistencia con los alumnos asistentes
             num_alumnos: Número de alumnos que asistieron
             horario: Objeto Horario (opcional) para determinar tipo de pago
-            
+            ciclo_id: ID del ciclo para la configuración de pago
+
         Returns:
             dict: Diccionario con monto_profesor y monto_adicional
         """
         # Verificar si es pago fijo
         es_pago_fijo = horario and getattr(horario, 'tipo_pago', 'dinamico') == 'fijo'
-        
+
         if num_alumnos == 0:
             if es_pago_fijo:
                 return {
@@ -201,12 +206,12 @@ class PagoProfesorService:
                     'monto_adicional': Decimal('0.00')
                 }
             # Pago dinámico: incluso sin alumnos, el profesor cobra al menos la base
-            base_pago, _ = cls._get_configuracion_pago()
+            base_pago, _, _ = cls._get_configuracion_pago(ciclo_id)
             return {
                 'monto_profesor': base_pago,
                 'monto_adicional': Decimal('0.00')
             }
-        
+
         if es_pago_fijo:
             # Pago fijo: el profesor recibe exactamente el monto_fijo
             # monto_base = 0 y monto_adicional = 0 (no hay fórmula, es flat)
@@ -220,10 +225,10 @@ class PagoProfesorService:
                 'monto_profesor': monto_profesor,
                 'monto_adicional': Decimal('0.00')  # Siempre 0 para fijo
             }
-        
-        # Pago dinámico: obtener base y tope de Configuracion
-        base_pago, tope_maximo = cls._get_configuracion_pago()
-        
+
+        # Pago dinámico: obtener base, tope y porcentaje de Configuracion
+        base_pago, tope_maximo, porcentaje_adicional = cls._get_configuracion_pago(ciclo_id)
+
         if num_alumnos == 1:
             return {
                 'monto_profesor': base_pago,
@@ -234,7 +239,7 @@ class PagoProfesorService:
             for asistente in asistentes[1:]:
                 valor_sesion = asistente.matricula.precio_por_sesion
                 if valor_sesion:
-                    monto_adicional_bruto += valor_sesion * PORCENTAJE_ADICIONAL
+                    monto_adicional_bruto += valor_sesion * porcentaje_adicional
             monto_total_sin_tope = base_pago + monto_adicional_bruto
             monto_profesor = min(monto_total_sin_tope, tope_maximo)
             # monto_adicional real = lo que efectivamente se suma al base (respeta tope)
@@ -268,23 +273,24 @@ class PagoProfesorService:
         filtros = {
             'horario_id': horario_id,
             'fecha': fecha,
-            'estado': 'asistio'
         }
         if profesor_id:
             filtros['profesor_id'] = profesor_id
 
-        asistentes = Asistencia.objects.filter(
-            **filtros
+        asistencias = Asistencia.objects.filter(
+            **filtros,
+            estado__in=['asistio', 'falta_grave']
         ).select_related('matricula__alumno', 'horario').order_by('id')
 
+        asistentes = asistencias.filter(estado='asistio')
         num_alumnos = asistentes.count()
         
         # Verificar si es pago fijo
         es_pago_fijo = getattr(horario, 'tipo_pago', 'dinamico') == 'fijo'
-        
-        # Obtener configuración de pago dinámico
-        base_pago, tope_maximo = cls._get_configuracion_pago()
-        
+
+        # Obtener configuración de pago dinámico para el ciclo del horario
+        base_pago, tope_maximo, porcentaje_adicional = cls._get_configuracion_pago(horario.ciclo_id)
+
         # Calcular usando la fórmula según tipo de pago
         if num_alumnos == 0:
             if es_pago_fijo:
@@ -333,7 +339,7 @@ class PagoProfesorService:
                 valor_sesion = Decimal(str(asistencia.matricula.precio_por_sesion or 0))
                 valor_generado += valor_sesion
                 if i > 0:
-                    aportes_brutos.append(valor_sesion * PORCENTAJE_ADICIONAL)
+                    aportes_brutos.append(valor_sesion * porcentaje_adicional)
 
             adicional_bruto = sum(aportes_brutos)
             monto_total_sin_tope = base_pago + adicional_bruto
@@ -352,13 +358,23 @@ class PagoProfesorService:
 
         ganancia_taller = valor_generado - monto_profesor
 
+        # Mapear aporte y posición por asistencia para incluir falta_grave en la lista
+        aporte_por_asistencia_id = {}
+        posicion_por_asistencia_id = {}
+        for i, asistencia in enumerate(asistentes):
+            aporte_por_asistencia_id[asistencia.id] = (
+                aportes_por_alumno[i] if i < len(aportes_por_alumno) else Decimal('0.00')
+            )
+            posicion_por_asistencia_id[asistencia.id] = i
+
         # Construir lista de alumnos
         alumnos_data = []
-        for i, asistencia in enumerate(asistentes):
+        for asistencia in asistencias:
             matricula = asistencia.matricula
             precio_sesion = matricula.precio_por_sesion or 0
-            es_adicional = i > 0
-            aporte = aportes_por_alumno[i] if i < len(aportes_por_alumno) else Decimal('0.00')
+            posicion = posicion_por_asistencia_id.get(asistencia.id)
+            es_adicional = posicion is not None and posicion > 0
+            aporte = aporte_por_asistencia_id.get(asistencia.id, Decimal('0.00'))
 
             alumnos_data.append({
                 'alumno_id': matricula.alumno.id,
@@ -366,7 +382,8 @@ class PagoProfesorService:
                 'precio_sesion': float(precio_sesion),
                 'es_adicional': es_adicional,
                 'aporte_profesor': float(aporte),
-                'aporte_generado': float(precio_sesion)
+                'aporte_generado': float(precio_sesion),
+                'estado': asistencia.estado,
             })
 
         return {

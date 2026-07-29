@@ -113,5 +113,13 @@ class EgresoViewSet(viewsets.ModelViewSet):
             tipo__in=['gasto_personal', 'pago_profesor']
         ).select_related('ciclo')
 
+        ciclo_id = request.query_params.get('ciclo_id')
+        if ciclo_id:
+            egresos = egresos.filter(ciclo_id=ciclo_id)
+
+        fecha_desde = request.query_params.get('fecha_desde')
+        if fecha_desde:
+            egresos = egresos.filter(fecha__gte=fecha_desde)
+
         serializer = EgresoListSerializer(egresos, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

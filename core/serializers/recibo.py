@@ -70,7 +70,6 @@ class ReciboListSerializer(serializers.ModelSerializer):
     alumno_nombre = serializers.SerializerMethodField()
     alumnos_nombres = serializers.SerializerMethodField()
     matricula_ids = serializers.SerializerMethodField()
-    matriculas_detalle = ReciboMatriculaSerializer(source='matriculas', many=True, read_only=True)
     ciclo_nombre = serializers.CharField(source='ciclo.nombre', read_only=True)
     saldo_pendiente = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     paquete_display = serializers.CharField(source='get_paquete_aplicado_display', read_only=True)
@@ -81,7 +80,7 @@ class ReciboListSerializer(serializers.ModelSerializer):
         model = Recibo
         fields = [
             'id', 'numero', 'alumno', 'alumno_nombre', 'alumnos_nombres',
-            'matricula_ids', 'matriculas_detalle', 'ciclo', 'ciclo_nombre', 'fecha_emision', 'monto_bruto', 'monto_total',
+            'matricula_ids', 'ciclo', 'ciclo_nombre', 'fecha_emision', 'monto_bruto', 'monto_total',
             'monto_pagado', 'descuento', 'paquete_aplicado', 'paquete_display',
             'precio_editado', 'saldo_pendiente', 'estado', 'metodo_pago', 'updated_at'
         ]

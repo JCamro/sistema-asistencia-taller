@@ -1,0 +1,110 @@
+/* Grid compartido entre el header de columnas (MatriculaStudentCard)
+   y cada fila (MatriculaRow). Usa grid-template-areas para poder
+   reordenar las columnas en breakpoints angostos sin tocar el JS. */
+
+.matricula-header,
+.matricula-row {
+  display: grid;
+  /* Taller queda topado a 260px (no crece indefinido en pantallas anchas).
+     Avance absorbe el espacio sobrante como 1fr, así el "aire" extra
+     termina siendo barra de progreso visible en vez de vacío en blanco
+     entre Taller y Fecha. */
+  grid-template-columns: minmax(160px, 260px) 84px minmax(200px, 1fr) 100px 100px 70px 36px;
+  grid-template-areas: 'taller fecha avance estado pago precio acciones';
+  align-items: center;
+  column-gap: 1rem;
+}
+
+.matricula-row {
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.matricula-header {
+  padding: 0.65rem 0 0.35rem;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.col-taller { grid-area: taller; min-width: 0; }
+.col-fecha { grid-area: fecha; min-width: 0; }
+.col-avance { grid-area: avance; min-width: 0; }
+.col-estado { grid-area: estado; }
+.col-pago { grid-area: pago; }
+.col-precio { grid-area: precio; text-align: right; }
+.col-acciones { grid-area: acciones; justify-self: end; }
+
+.matricula-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+.matricula-card-header-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* Tablet: columnas más angostas, todo sigue en una línea. Mismo criterio:
+   Taller topado, Avance absorbe el espacio sobrante. */
+@media (max-width: 860px) {
+  .matricula-header,
+  .matricula-row {
+    grid-template-columns: minmax(130px, 200px) 76px minmax(150px, 1fr) 88px 88px 60px 32px;
+    column-gap: 0.6rem;
+  }
+}
+
+/* Mobile: el header de columnas no aplica a un layout apilado, se oculta */
+@media (max-width: 640px) {
+  .matricula-header {
+    display: none;
+  }
+
+  .matricula-row {
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas:
+      'taller precio acciones'
+      'fecha avance avance'
+      'estado pago pago';
+    row-gap: 0.5rem;
+    column-gap: 0.6rem;
+    padding: 0.85rem 0;
+  }
+
+  .col-precio {
+    text-align: right;
+    font-size: 0.8125rem;
+  }
+
+  .col-estado,
+  .col-pago {
+    justify-self: start;
+  }
+}
+
+/* Mobile chico: precio baja a su propia línea junto a estado/pago */
+@media (max-width: 420px) {
+  .matricula-row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'taller acciones'
+      'fecha fecha'
+      'avance avance'
+      'estado pago'
+      'precio precio';
+  }
+
+  .col-precio {
+    text-align: left;
+    justify-self: start;
+  }
+}

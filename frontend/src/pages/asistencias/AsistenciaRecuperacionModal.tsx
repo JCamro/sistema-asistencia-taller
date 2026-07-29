@@ -56,13 +56,13 @@ function AsistenciaRecuperacionModal({
             </div>
           )}
           {resultados.map((alumno) => (
-            <div key={alumno.matricula_id} onClick={() => onSeleccionar(alumno)} style={{ padding: '0.75rem', borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}>
+            <div key={alumno.matricula_id} onClick={() => onSeleccionar(alumno)} style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}>
               <div style={{ fontWeight: '500' }}>{alumno.alumno_nombre}</div>
               <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Taller: {alumno.taller_nombre} · {alumno.sesiones_disponibles} sesiones disponibles</div>
             </div>
           ))}
         </div>
-        <button onClick={onClose} style={{ width: '100%', padding: '0.75rem', minHeight: '44px', background: '#f3f4f6', border: 'none', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer' }}>Cancelar</button>
+        <button onClick={onClose} style={{ width: '100%', padding: '0.75rem', minHeight: '44px', background: '#e5e7eb', border: 'none', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer' }}>Cancelar</button>
       </div>
     </div>
   );

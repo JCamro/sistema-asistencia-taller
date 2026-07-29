@@ -2,7 +2,7 @@
 Signals para el core del sistema de asistencia.
 
 Maneja la creación automática de registros HoraTrabajada cuando
-se guardan asistencias con estado 'asistio'.
+se guardan asistencias con estado 'asistio' o 'falta_grave'.
 """
 from decimal import Decimal
 
@@ -17,12 +17,16 @@ from ..services.hora_trabajada_service import HoraTrabajadaService
 def auto_create_hora_trabajada(sender, instance, created, **kwargs):
     """
     Crea o actualiza automáticamente un registro HoraTrabajada
-    cuando una Asistencia se guarda con estado='asistio'.
+    cuando una Asistencia se guarda con estado='asistio' o 'falta_grave'.
+
+    La falta grave justificada no cuenta como alumno presente, pero sí
+    genera el registro de hora trabajada para que el docente reciba
+    el pago base cuando no haya asistentes.
 
     Si ya existe un registro manual (created_from='admin_manual')
     para el mismo profesor, horario, fecha y tipo, no lo sobreescribe.
     """
-    if instance.estado != 'asistio':
+    if instance.estado not in ('asistio', 'falta_grave'):
         return
 
     horario = instance.horario
@@ -58,7 +62,7 @@ def auto_create_hora_trabajada(sender, instance, created, **kwargs):
     ).select_related('matricula')
 
     # Calcular montos
-    config_snapshot = HoraTrabajadaService._get_config_snapshot()
+    config_snapshot = HoraTrabajadaService._get_config_snapshot(horario.ciclo_id)
     horario_meta = {
         'tipo_pago': horario.tipo_pago,
         'monto_fijo': horario.monto_fijo or Decimal('0.00'),

@@ -27,6 +27,7 @@ class FeriadoListSerializer(serializers.ModelSerializer):
             'id', 'ciclo', 'fecha', 'motivo',
             'taller', 'taller_nombre',
             'horario', 'horario_nombre',
+            'grupo',
             'created_at', 'updated_at'
         ]
 

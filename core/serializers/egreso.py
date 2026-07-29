@@ -47,8 +47,10 @@ class EgresoListSerializer(serializers.ModelSerializer):
         model = Egreso
         fields = [
             'id', 'tipo', 'tipo_display', 'monto', 'descripcion', 'fecha',
-            'categoria', 'beneficiario', 'profesor', 'profesor_nombre',
-            'ciclo', 'ciclo_nombre', 'estado', 'estado_display'
+            'metodo_pago', 'categoria', 'beneficiario',
+            'profesor', 'profesor_nombre',
+            'ciclo', 'ciclo_nombre', 'estado', 'estado_display',
+            'created_at', 'updated_at'
         ]
 
     def get_profesor_nombre(self, obj):

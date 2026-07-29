@@ -10,6 +10,7 @@ interface AlumnoHorario {
   observacion: string;
   profesor_id?: number | null;
   profesor_nombre?: string;
+  es_recuperacion?: boolean;
 }
 
 interface HorarioOption {
@@ -46,8 +47,8 @@ interface AsistenciaTableProps {
 }
 
 function getEstadoInfo(estado: string | null) {
-  if (!estado) return { label: 'Sin registrar', color: '#6b7280', bg: '#f3f4f6' };
-  return ESTADOS.find((e) => e.value === estado) || { label: estado, color: '#6b7280', bg: '#f3f4f6' };
+  if (!estado) return { label: 'Sin registrar', color: '#6b7280', bg: '#e5e7eb' };
+  return ESTADOS.find((e) => e.value === estado) || { label: estado, color: '#6b7280', bg: '#e5e7eb' };
 }
 
 /**
@@ -106,10 +107,15 @@ function AsistenciaTable({
             const estadoInfo = getEstadoInfo(alumno.estado);
             const tieneAsistencia = !!alumno.asistencia_id;
             return (
-              <div key={alumno.matricula_id} style={{ padding: '1rem', borderBottom: '1px solid #f3f4f6' }}>
+              <div key={alumno.matricula_id} style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                   <div>
-                    <div style={{ fontWeight: '600', color: '#111827' }}>{alumno.alumno_nombre}</div>
+                    <div style={{ fontWeight: '600', color: '#111827' }}>
+                      {alumno.alumno_nombre}
+                      {alumno.es_recuperacion && (
+                        <span style={{ marginLeft: '0.35rem', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, background: '#fef9e7', color: '#8b6914' }}>Recuperacion</span>
+                      )}
+                    </div>
                     <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{alumno.sesiones_disponibles} sesiones disponibles</div>
                   </div>
                   <span
@@ -126,8 +132,7 @@ function AsistenciaTable({
                       background: estadoInfo.bg,
                       color: estadoInfo.color,
                       cursor: tieneAsistencia ? 'pointer' : 'default',
-                      border: tieneAsistencia ? '2px solid' : 'none',
-                      borderColor: tieneAsistencia ? estadoInfo.color : 'transparent',
+                      border: tieneAsistencia ? `1.5px solid ${estadoInfo.color}40` : 'none',
                     }}
                   >
                     {estadoInfo.label}
@@ -148,13 +153,13 @@ function AsistenciaTable({
                         flex: 1,
                         padding: isMobile ? '0.75rem 0.5rem' : '0.5rem',
                         minHeight: '44px',
-                        border: 'none',
+                        border: alumno.estado === estado.value ? `1.5px solid ${estado.color}40` : '1px solid transparent',
                         borderRadius: '6px',
                         fontSize: '0.75rem',
                         fontWeight: 600,
                         cursor: saving || tieneAsistencia ? 'not-allowed' : 'pointer',
-                        background: '#f3f4f6',
-                        color: '#374151',
+                        background: alumno.estado === estado.value ? estado.bg : '#f3f4f6',
+                        color: alumno.estado === estado.value ? estado.color : '#9ca3af',
                       }}
                     >
                       {estado.label}
@@ -175,7 +180,7 @@ function AsistenciaTable({
       <div style={{ padding: '1rem', borderTop: '1px solid #e5e7eb' }}>
         <button
           onClick={onOpenRecuperacion}
-          style={{ width: '100%', padding: '0.75rem', minHeight: '48px', background: '#f3f4f6', border: '1px dashed #d1d5db', borderRadius: '8px', color: '#374151', fontWeight: '500', cursor: 'pointer' }}
+          style={{ width: '100%', padding: '0.75rem', minHeight: '48px', background: '#e5e7eb', border: '1px dashed #d1d5db', borderRadius: '8px', color: '#374151', fontWeight: '500', cursor: 'pointer' }}
         >
           + Agregar Recuperación
         </button>

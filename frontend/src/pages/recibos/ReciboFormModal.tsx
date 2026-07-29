@@ -275,11 +275,11 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
       <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '800px', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
-        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>{editingId ? 'Editar Recibo' : 'Nuevo Recibo'}</h2>
           </div>
-          <button type="button" onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#f3f4f6', color: '#6b7280', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+          <button type="button" onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#e5e7eb', color: '#6b7280', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
         </div>
         <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
           <div style={{ marginBottom: '1.25rem' }}>
@@ -288,7 +288,7 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
           </div>
 
           {!editingId && (
-            <div style={{ marginBottom: '1.25rem', background: '#f8fafc', borderRadius: '12px', padding: '1rem', border: '1px solid #f1f5f9' }}>
+            <div style={{ marginBottom: '1.25rem', background: '#fafbfc', borderRadius: '12px', padding: '1rem', border: '1.5px solid #c8ccd4' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Matrículas a incluir</span>
                 <span style={{ fontSize: '0.7rem', color: '#d4af37', background: '#fef9e7', padding: '0.15rem 0.6rem', borderRadius: '9999px', fontWeight: 600 }}>{formData.matricula_ids.length} seleccionadas</span>
@@ -300,7 +300,7 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
                 ) : (
                   Object.entries(matriculasPorAlumno).map(([alumnoId, mats]) => (
                     <div key={alumnoId}>
-                      <div style={{ padding: '0.5rem 1rem', background: '#f8fafc', borderBottom: '1px solid #f1f5f9', fontWeight: 600, fontSize: '0.8125rem', color: '#334155' }}>{getAlumnoNombre(parseInt(alumnoId))}</div>
+                      <div style={{ padding: '0.5rem 1rem', background: '#fafbfc', borderBottom: '1px solid #e2e8f0', fontWeight: 600, fontSize: '0.8125rem', color: '#334155' }}>{getAlumnoNombre(parseInt(alumnoId))}</div>
                       {mats.map((m) => (
                         <label key={m.id} style={{ display: 'flex', alignItems: 'center', padding: '0.625rem 1rem', borderBottom: '1px solid #f8fafc', cursor: 'pointer', background: formData.matricula_ids.includes(m.id) ? '#f0fdf4' : 'transparent', transition: 'background 0.1s' }}>
                           <input type="checkbox" checked={formData.matricula_ids.includes(m.id)} onChange={() => handleMatriculaToggle(m.id)} style={{ marginRight: '0.75rem', accentColor: '#d4af37', width: 16, height: 16 }} />
@@ -349,7 +349,7 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
             </div>
           )}
 
-          <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.125rem', marginBottom: '1.25rem', border: '1px solid #f1f5f9' }}>
+          <div style={{ background: '#fafbfc', borderRadius: '12px', padding: '1.125rem', marginBottom: '1.25rem', border: '1.5px solid #c8ccd4' }}>
             <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '0.75rem' }}>Montos</span>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4,1fr)', gap: '0.75rem' }}>
               <div>
@@ -379,7 +379,7 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
             )}
           </div>
 
-          <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.125rem', marginBottom: '1.5rem', border: '1px solid #f1f5f9' }}>
+          <div style={{ background: '#fafbfc', borderRadius: '12px', padding: '1.125rem', marginBottom: '1.5rem', border: '1.5px solid #c8ccd4' }}>
             <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '0.75rem' }}>Estado del pago</span>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
               <div>

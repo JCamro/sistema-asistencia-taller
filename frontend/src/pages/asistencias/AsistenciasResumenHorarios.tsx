@@ -18,14 +18,34 @@ interface AsistenciasResumenHorariosProps {
   loading: boolean;
 }
 
-function getEstadoInfo(estado: string | null) {
-  if (!estado) return { label: 'Sin registrar', color: '#6b7280', bg: '#f3f4f6' };
-  const found = [
-    { value: 'asistio', label: 'Asistió', color: '#059669', bg: '#d1fae5' },
-    { value: 'falta', label: 'Falta', color: '#d97706', bg: '#fef3c7' },
-    { value: 'falta_grave', label: 'Falta Grave', color: '#dc2626', bg: '#fee2e2' },
-  ].find((e) => e.value === estado);
-  return found || { label: estado, color: '#6b7280', bg: '#f3f4f6' };
+const STATUS_COLORS: Record<string, string> = {
+  asistio: '#059669',
+  falta: '#d97706',
+  falta_grave: '#dc2626',
+};
+
+const PENDIENTE_COLOR = '#9ca3af';
+
+function getEstadoColor(estado: string | null) {
+  if (!estado) return PENDIENTE_COLOR;
+  return STATUS_COLORS[estado] || PENDIENTE_COLOR;
+}
+
+function Dot({ color }: { color: string }) {
+  return (
+    <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">
+      <circle cx="4" cy="4" r="4" fill={color} />
+    </svg>
+  );
+}
+
+function StatusCount({ color, count }: { color: string; count: number }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+      <Dot color={color} />
+      <span style={{ fontSize: '0.75rem', color, fontWeight: 600 }}>{count}</span>
+    </div>
+  );
 }
 
 /**
@@ -33,12 +53,12 @@ function getEstadoInfo(estado: string | null) {
  *
  * Se muestra cuando el usuario selecciona un taller pero NO un horario específico.
  * Para cada horario del taller en ese día, muestra un contador de asistencias
- * (asistieron ✓, faltas ✘, pendientes ○) y la lista de alumnos con su estado.
+ * y la lista de alumnos con su estado, usando puntos de color en lugar de emojis.
  */
 function AsistenciasResumenHorarios({ horarios, alumnosPorHorario, loading }: AsistenciasResumenHorariosProps) {
   if (horarios.length === 0) return null;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       {loading ? (
         <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Cargando...</div>
       ) : (
@@ -50,32 +70,42 @@ function AsistenciasResumenHorarios({ horarios, alumnosPorHorario, loading }: As
             const countFalta = alumnosDelHorario.filter((a) => a.estado === 'falta' || a.estado === 'falta_grave').length;
             const countPendiente = alumnosDelHorario.length - countAsistio - countFalta;
             return (
-              <div key={horario.id} style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
-                <div style={{ padding: '0.625rem 1rem', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div key={horario.id} style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
+                <div style={{ padding: '0.75rem 1rem', background: '#f9f7ef', borderBottom: '1px solid #ede8d8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '0.9rem', fontFamily: 'monospace' }}>
+                    <span style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.9rem', fontFamily: 'monospace' }}>
                       {horario.hora_inicio?.substring(0, 5)}
                     </span>
                     <span style={{ color: '#64748b', fontSize: '0.8rem' }}>{horario.profesor_nombre}</span>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem' }}>
-                    <span style={{ color: '#059669', fontWeight: '600' }}>{countAsistio}✔</span>
-                    <span style={{ color: '#dc2626', fontWeight: '600' }}>{countFalta}✘</span>
-                    {countPendiente > 0 && <span style={{ color: '#d97706', fontWeight: '600' }}>{countPendiente}○</span>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                    {countAsistio > 0 && <StatusCount color={STATUS_COLORS.asistio} count={countAsistio} />}
+                    {countFalta > 0 && <StatusCount color={STATUS_COLORS.falta} count={countFalta} />}
+                    {countPendiente > 0 && <StatusCount color={PENDIENTE_COLOR} count={countPendiente} />}
                   </div>
                 </div>
                 {alumnosDelHorario.length === 0 ? (
                   <div style={{ padding: '0.75rem 1rem', color: '#9ca3af', fontSize: '0.8rem' }}>Sin alumnos</div>
                 ) : (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', padding: '0.625rem 1rem' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', padding: '0.75rem 1rem' }}>
                     {alumnosDelHorario.map((alumno) => {
-                      const estadoInfo = getEstadoInfo(alumno.estado);
+                      const color = getEstadoColor(alumno.estado);
                       return (
-                        <div key={alumno.matricula_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', padding: '0.25rem 0.625rem', background: '#f1f5f9', borderRadius: '4px', fontSize: '0.75rem' }}>
-                          <span style={{ color: '#334155' }}>{alumno.alumno_nombre}</span>
-                          <span style={{ fontWeight: '600', color: estadoInfo.color }}>
-                            {estadoInfo.label === 'Asistió' ? '✓' : estadoInfo.label === 'Falta' ? '✘' : estadoInfo.label === 'Falta Grave' ? '✘✘' : '○'}
-                          </span>
+                        <div
+                          key={alumno.matricula_id}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.375rem',
+                            padding: '0.25rem 0.75rem',
+                            background: 'white',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '999px',
+                            fontSize: '0.75rem',
+                          }}
+                        >
+                          <Dot color={color} />
+                          <span style={{ color: '#334155', fontWeight: 500 }}>{alumno.alumno_nombre}</span>
                         </div>
                       );
                     })}

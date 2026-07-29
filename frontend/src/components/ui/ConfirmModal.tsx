@@ -1,33 +1,53 @@
-import { useEffect, memo } from 'react';
+import { useEffect, memo, type ReactNode } from 'react';
 
-/**
- * Props for the confirmation dialog modal.
- */
+type ConfirmVariant = 'destructive' | 'action';
+
 interface ConfirmModalProps {
-  /** Controls modal visibility — renders nothing when false */
   isOpen: boolean;
-  /** Dialog heading (e.g. "Confirmar eliminación") */
   title: string;
-  /** Main body text explaining what will happen */
   message: string;
-  /** Name of the item being acted upon, highlighted in a red box for emphasis */
   itemName?: string;
-  /** Label for the confirm/accept button, defaults to "Confirmar" */
   confirmLabel?: string;
-  /** Label for the cancel/back button, defaults to "Cancelar" */
   cancelLabel?: string;
-  /** Callback executed when the user confirms the action */
   onConfirm: () => void;
-  /** Callback executed when the user cancels or clicks the backdrop */
   onCancel: () => void;
-  /** Disables both buttons and shows a spinner on the confirm button while processing */
   isLoading?: boolean;
+  variant?: ConfirmVariant;
 }
 
-/**
- * Modal de confirmación con diseño de dos botones, soporte para estado de carga,
- * cierre con tecla Escape, y advertencia visual de acción irreversible.
- */
+const VARIANTS = {
+  destructive: {
+    iconBg: '#fef2f2',
+    iconStroke: '#dc2626',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2">
+        <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+    itemBg: '#fef2f2',
+    itemBorder: '#fecaca',
+    itemColor: '#991b1b',
+    confirmBg: '#dc2626',
+    confirmColor: '#ffffff',
+    warning: 'Esta acción no se puede deshacer',
+  },
+  action: {
+    iconBg: '#eff6ff',
+    iconStroke: '#2563eb',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
+        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+    itemBg: '#f0f9ff',
+    itemBorder: '#bae6fd',
+    itemColor: '#1e40af',
+    confirmBg: '#d4af37',
+    confirmColor: '#111827',
+    warning: null,
+  },
+} as const;
+
 function ConfirmModal({
   isOpen,
   title,
@@ -38,12 +58,13 @@ function ConfirmModal({
   onConfirm,
   onCancel,
   isLoading = false,
+  variant = 'destructive',
 }: ConfirmModalProps) {
+  const v = VARIANTS[variant];
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onCancel();
-      }
+      if (e.key === 'Escape' && isOpen) onCancel();
     };
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
@@ -76,20 +97,20 @@ function ConfirmModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Header */}
         <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div style={{
               width: '40px',
               height: '40px',
               borderRadius: '50%',
-              background: '#fef2f2',
+              background: v.iconBg,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              flexShrink: 0,
             }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2">
-                <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              {v.icon}
             </div>
             <h2 style={{ fontSize: '1.125rem', fontWeight: '700', color: '#111827', margin: 0 }}>
               {title}
@@ -97,43 +118,45 @@ function ConfirmModal({
           </div>
         </div>
 
+        {/* Body */}
         <div style={{ padding: '1.5rem' }}>
-          <p style={{ color: '#374151', fontSize: '0.9375rem', marginBottom: '1rem' }}>
+          <p style={{ color: '#374151', fontSize: '0.9375rem', marginBottom: itemName || v.warning ? '1rem' : 0 }}>
             {message}
           </p>
-          
+
           {itemName && (
             <div style={{
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
+              background: v.itemBg,
+              border: `1px solid ${v.itemBorder}`,
               borderRadius: '8px',
               padding: '0.75rem 1rem',
-              marginBottom: '1rem',
+              marginBottom: v.warning ? '0.75rem' : 0,
             }}>
-              <span style={{ color: '#991b1b', fontWeight: '600' }}>
+              <span style={{ color: v.itemColor, fontWeight: '600', fontSize: '0.875rem' }}>
                 {itemName}
               </span>
             </div>
           )}
 
-          <div style={{
-            background: '#fefce8',
-            border: '1px solid #fef08a',
-            borderRadius: '8px',
-            padding: '0.75rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" strokeWidth="2">
-              <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span style={{ color: '#a16207', fontSize: '0.8125rem' }}>
-              Esta acción no se puede deshacer
-            </span>
-          </div>
+          {v.warning && (
+            <div style={{
+              background: '#fefce8',
+              border: '1px solid #fef08a',
+              borderRadius: '8px',
+              padding: '0.625rem 0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" strokeWidth="2">
+                <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span style={{ color: '#a16207', fontSize: '0.8125rem' }}>{v.warning}</span>
+            </div>
+          )}
         </div>
 
+        {/* Footer */}
         <div style={{
           padding: '1rem 1.5rem',
           borderTop: '1px solid #e5e7eb',
@@ -146,6 +169,7 @@ function ConfirmModal({
           <button
             onClick={onCancel}
             disabled={isLoading}
+            className="touch-target"
             style={{
               padding: '0.625rem 1.25rem',
               background: 'white',
@@ -163,12 +187,13 @@ function ConfirmModal({
           <button
             onClick={onConfirm}
             disabled={isLoading}
+            className="touch-target"
             style={{
               padding: '0.625rem 1.25rem',
-              background: '#40E0D0',
+              background: v.confirmBg,
               border: 'none',
               borderRadius: '8px',
-              color: '#000000',
+              color: v.confirmColor,
               fontWeight: '600',
               fontSize: '0.875rem',
               cursor: isLoading ? 'not-allowed' : 'pointer',

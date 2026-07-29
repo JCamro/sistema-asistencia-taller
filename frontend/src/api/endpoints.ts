@@ -134,21 +134,31 @@ export interface Asistencia {
 export interface Recibo {
   id: number;
   numero: string;
-  alumno: number;
+  alumno: number | null;
   alumno_nombre: string;
+  alumnos_nombres?: string[];
+  matricula_ids?: number[];
   ciclo: number;
-  ciclo_nombre: string;
+  ciclo_nombre?: string;
   fecha_emision: string;
+  monto_bruto?: number;
   monto_total: number;
   monto_pagado: number;
+  descuento?: number;
   saldo_pendiente: number;
   estado: string;
   metodo_pago?: string;
   paquete_aplicado?: string;
   paquete_display?: string;
   precio_editado?: boolean;
-  descuento?: number;
-  monto_bruto?: number;
+  updated_at?: string;
+  observacion?: string;
+  matriculas_detalle?: Array<{
+    alumno_nombre: string;
+    taller_nombre: string;
+    sesiones_contratadas: number;
+    monto: number;
+  }>;
 }
 
 export interface PagoProfesor {
@@ -169,8 +179,11 @@ export interface Configuracion {
   id: number;
   ciclo_activo: number | null;
   ciclo_activo_nombre: string | null;
+  ciclo: number | null;
+  ciclo_nombre: string | null;
   pago_dinamico_base: number;
   pago_dinamico_tope: number;
+  porcentaje_adicional: number;
   updated_at: string;
 }
 
@@ -256,6 +269,7 @@ export interface Feriado {
   taller_nombre: string | null;
   horario: number | null;
   horario_nombre: string | null;
+  grupo: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -265,6 +279,13 @@ export type FeriadoPayload = Omit<Feriado, 'id' | 'ciclo' | 'taller_nombre' | 'h
 export interface FeriadoAplicarResponse {
   creadas: number;
   fecha: string;
+  motivo: string;
+}
+
+export interface FeriadoGrupoAplicarResponse {
+  aplicados: number;
+  fecha_inicio: string;
+  fecha_fin: string;
   motivo: string;
 }
 
@@ -358,7 +379,7 @@ export interface AlumnoDetalleMatricula {
   asistencias: { id: number; fecha: string; estado: string; es_recuperacion: boolean }[];
 }
 
-export interface AlumnoDetalleResponse {
+  export interface AlumnoDetalleResponse {
   alumno: {
     id: number;
     nombre: string;
@@ -369,6 +390,7 @@ export interface AlumnoDetalleResponse {
     email: string;
     edad: number | null;
     activo: boolean;
+    created_at: string | null;
   };
   matriculas: AlumnoDetalleMatricula[];
 }
@@ -437,10 +459,12 @@ export const logout = async () => {
 
 // --- Configuración ---
 
-/** Obtiene la configuración global (ciclo activo, parámetros de pago dinámico) */
-export const getConfig = () => api.get<Configuracion>('/config/');
-/** Actualiza la configuración global */
-export const updateConfig = (data: Partial<Configuracion>) => api.patch('/config/', data);
+/** Obtiene la configuración de pago global o de un ciclo */
+export const getConfig = (cicloId?: number) =>
+  cicloId ? api.get<Configuracion>(`/ciclos/${cicloId}/config/`) : api.get<Configuracion>('/config/');
+/** Actualiza la configuración de pago global o de un ciclo */
+export const updateConfig = (data: Partial<Configuracion>, cicloId?: number) =>
+  cicloId ? api.patch(`/ciclos/${cicloId}/config/`, data) : api.patch('/config/', data);
 
 // --- Ciclos ---
 /** Lista todos los ciclos académicos */
@@ -583,6 +607,9 @@ export const createRecibo = (data: Partial<Recibo>) => api.post('/recibos/', dat
 /** Marca un recibo como pagado, opcionalmente con un monto específico */
 export const marcarReciboPagado = (id: number, monto?: number) => 
   api.patch(`/recibos/${id}/marcar_pagado/`, { monto });
+/** Obtiene totales agregados de recibos para un ciclo */
+export const getRecibosTotals = (cicloId: number) =>
+  api.get<{ total: number; pagado: number; pendiente: number }>(`/ciclos/${cicloId}/recibos/totals/`);
 
 // --- Pagos Profesores ---
 /** Lista todos los pagos a profesores registrados */
@@ -696,8 +723,13 @@ export const deleteEgreso = (id: number) => api.delete(`/egresos/${id}/`);
 /** Resumen de egresos agrupados por tipo (taller, profesor, personal) */
 export const getResumenEgresos = (cicloId: number) => api.get<ResumenEgresos>(`/ciclos/${cicloId}/egresos/resumen/`);
 /** Historial de pagos realizados a un profesor específico */
-export const getHistorialPagosProfesor = (profesorId: number) => 
-  api.get<Egreso[]>(`/profesores/${profesorId}/historial-pagos/`);
+export const getHistorialPagosProfesor = (profesorId: number, cicloId?: number, fechaDesde?: string) => {
+  const params = new URLSearchParams();
+  if (cicloId) params.append('ciclo_id', cicloId.toString());
+  if (fechaDesde) params.append('fecha_desde', fechaDesde);
+  const queryString = params.toString();
+  return api.get<Egreso[]>(`/profesores/${profesorId}/historial-pagos/${queryString ? `?${queryString}` : ''}`);
+};
 
 // --- Feriados ---
 /** Lista feriados de un ciclo (paginado) */
@@ -717,6 +749,12 @@ export const deleteFeriado = (cicloId: number, feriadoId: number) =>
 /** Aplica un feriado: marca falta a alumnos pendientes del día */
 export const aplicarFeriado = (cicloId: number, feriadoId: number) =>
   api.post<FeriadoAplicarResponse>(`/ciclos/${cicloId}/feriados/${feriadoId}/aplicar/`);
+/** Aplica todos los feriados de un grupo */
+export const aplicarGrupo = (cicloId: number, grupoId: string) =>
+  api.post<FeriadoGrupoAplicarResponse>(`/ciclos/${cicloId}/feriados/grupo/${grupoId}/aplicar/`);
+/** Elimina todos los feriados de un grupo */
+export const deleteGrupo = (cicloId: number, grupoId: string) =>
+  api.delete(`/ciclos/${cicloId}/feriados/grupo/${grupoId}/`);
 
 // --- Matrículas agrupadas y detalle ---
 /** Lista matrículas agrupadas por alumno para un ciclo */

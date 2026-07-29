@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Case, When, Value, CharField, Exists, OuterRef, Count
+from django.db.models import Case, When, Value, CharField, Exists, OuterRef, Count, Max
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -281,7 +281,15 @@ class MatriculaViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Se requiere ciclo_id'}, status=status.HTTP_400_BAD_REQUEST)
 
         queryset = self.filter_queryset(self.get_queryset())
-        alumno_ids = queryset.order_by().values_list('alumno_id', flat=True).distinct()
+        ordering = request.query_params.get('ordering', '-fecha_matricula')
+        alumno_ids = (
+            queryset
+            .values('alumno_id')
+            .annotate(ultima_fecha=Max('fecha_matricula'))
+            .order_by('ultima_fecha' if ordering == 'fecha_matricula' else '-ultima_fecha')
+            .values_list('alumno_id', flat=True)
+            .distinct()
+        )
 
         page = self.paginate_queryset(alumno_ids)
         if page is not None:
@@ -388,6 +396,7 @@ class MatriculaViewSet(viewsets.ModelViewSet):
                 'sesiones_disponibles': matricula.sesiones_disponibles,
                 'precio_total': str(matricula.precio_total),
                 'precio_por_sesion': str(matricula.precio_por_sesion),
+                'metodo_pago': matricula.metodo_pago,
                 'estado': get_estado_matricula(matricula),
                 'recibo_estado': get_recibo_estado(matricula),
                 'recibo': {

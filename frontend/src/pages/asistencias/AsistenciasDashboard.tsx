@@ -13,6 +13,7 @@ interface AlumnoHorario {
   matricula_id: number;
   alumno_nombre: string;
   estado: string | null;
+  es_recuperacion?: boolean;
 }
 
 interface AsistenciasDashboardProps {
@@ -43,11 +44,11 @@ const pulseKeyframes = `
 function SkeletonCard() {
   return (
     <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
-      <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f1f5f9' }}>
+      <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #ede8d8', background: '#f9f7ef' }}>
         <div style={{ height: '14px', width: '40%', background: '#e5e7eb', borderRadius: '4px', animation: 'pulse-skeleton 1.5s ease-in-out infinite' }} />
       </div>
       {[1, 2, 3].map((i) => (
-        <div key={i} style={{ padding: '0.5rem 0.75rem', borderBottom: i < 3 ? '1px solid #f1f5f9' : 'none' }}>
+        <div key={i} style={{ padding: '0.5rem 0.75rem', borderBottom: i < 3 ? '1px solid #e2e8f0' : 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div style={{ height: '16px', width: '48px', background: '#e5e7eb', borderRadius: '4px', animation: 'pulse-skeleton 1.5s ease-in-out infinite' }} />
             <div style={{ height: '12px', width: '120px', background: '#e5e7eb', borderRadius: '4px', animation: 'pulse-skeleton 1.5s ease-in-out infinite' }} />
@@ -117,11 +118,11 @@ function AsistenciasDashboard({
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: isMobile ? '0.75rem' : '1rem' }}>
         {Array.from(grupos.entries()).map(([tallerNombre, horarios]) => (
           <div key={tallerNombre} style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderBottom: '1px solid #f1f5f9' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827', borderLeft: '3px solid #d4af37', paddingLeft: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: '#f9f7ef', borderBottom: '1px solid #ede8d8' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827' }}>
                 {tallerNombre}
               </span>
-              <span style={{ fontSize: '0.75rem', color: '#9ca3af', background: '#f8fafc', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                 {formatFecha(fecha)}
               </span>
             </div>
@@ -131,10 +132,9 @@ function AsistenciasDashboard({
                 const error = erroresPorHorario?.get(horario.id);
                 const total = alumnos.length;
                 const asistio = alumnos.filter((a) => a.estado === 'asistio').length;
+                const recuperacion = alumnos.filter((a) => a.estado === 'asistio' && a.es_recuperacion).length;
                 const falta = alumnos.filter((a) => a.estado === 'falta' || a.estado === 'falta_grave').length;
                 const pendiente = total - asistio - falta;
-                const hasPending = pendiente > 0;
-                const allRegistered = pendiente === 0 && total > 0;
                 const noStudents = total === 0;
                 const isDisabled = esFeriado || noStudents;
 
@@ -146,44 +146,47 @@ function AsistenciasDashboard({
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.75rem',
-                      padding: '0.5rem 0.75rem',
+                      padding: '0.625rem 0.75rem',
                       borderRadius: '8px',
                       cursor: isDisabled ? 'default' : 'pointer',
                       background: 'white',
-                      borderBottom: idx < horarios.length - 1 ? '1px solid #f1f5f9' : 'none',
-                      ...(hasPending && !noStudents && !esFeriado ? { borderLeft: '3px solid #d97706', paddingLeft: 'calc(0.75rem - 3px)' } : {}),
+                      borderBottom: idx < horarios.length - 1 ? '1px solid #e2e8f0' : 'none',
+                      transition: 'background 200ms ease',
                     }}
-                    onMouseEnter={(e) => { if (!isDisabled) (e.currentTarget as HTMLDivElement).style.background = '#fef9e7'; }}
+                    onMouseEnter={(e) => { if (!isDisabled) (e.currentTarget as HTMLDivElement).style.background = '#fafafa'; }}
                     onMouseLeave={(e) => { if (!isDisabled) (e.currentTarget as HTMLDivElement).style.background = 'white'; }}
                   >
-                    <span style={{ background: '#fef9e7', color: '#8b6914', padding: '0.2rem 0.5rem', borderRadius: '6px', minWidth: '48px', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700, fontSize: '0.85rem' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: '#374151', minWidth: '52px', whiteSpace: 'nowrap' }}>
                       {horario.hora_inicio.substring(0, 5)}
                     </span>
-                    <span style={{ fontSize: '0.8125rem', color: allRegistered || esFeriado ? '#9ca3af' : '#374151', minWidth: '120px' }}>
+                    <span style={{ fontSize: '0.8125rem', color: '#6b7280', minWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {horario.profesor_nombre}
                     </span>
                     {noStudents ? (
                       error ? (
-                        <span style={{ fontSize: '0.75rem', color: '#dc2626' }}>Error al cargar</span>
+                        <span style={{ fontSize: '0.75rem', color: '#dc2626', marginLeft: 'auto' }}>Error al cargar</span>
                       ) : (
-                        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Sin alumnos</span>
+                        <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginLeft: 'auto' }}>Sin alumnos</span>
                       )
                     ) : (
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         {asistio > 0 && (
-                          <span style={{ width: '28px', height: '22px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, background: '#d1fae5', color: '#059669' }}>
-                            {asistio}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }} title={recuperacion > 0 ? `${recuperacion} por recuperación` : undefined}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
+                            <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 500 }}>{asistio}</span>
+                          </div>
                         )}
                         {falta > 0 && (
-                          <span style={{ width: '28px', height: '22px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, background: '#fee2e2', color: '#dc2626' }}>
-                            {falta}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }} />
+                            <span style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 500 }}>{falta}</span>
+                          </div>
                         )}
                         {pendiente > 0 && (
-                          <span style={{ width: '28px', height: '22px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, background: '#f3f4f6', color: '#6b7280' }}>
-                            {pendiente}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#9ca3af' }} />
+                            <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 500 }}>{pendiente}</span>
+                          </div>
                         )}
                       </div>
                     )}

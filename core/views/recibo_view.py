@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Sum, Q
 from ..models import Recibo, ReciboMatricula
 from ..serializers import ReciboSerializer, ReciboListSerializer, CalcularPrecioSerializer
 from .pagination import StandardResultsSetPagination
@@ -37,6 +37,19 @@ class ReciboViewSet(viewsets.ModelViewSet):
         ciclo_id = self.kwargs.get('ciclo_id')
         if ciclo_id:
             queryset = queryset.filter(ciclo_id=ciclo_id)
+
+        # Date filters for recibos
+        fecha = self.request.query_params.get('fecha')
+        fecha_desde = self.request.query_params.get('fecha_desde')
+        fecha_hasta = self.request.query_params.get('fecha_hasta')
+
+        if fecha:
+            queryset = queryset.filter(fecha_emision=fecha)
+        if fecha_desde:
+            queryset = queryset.filter(fecha_emision__gte=fecha_desde)
+        if fecha_hasta:
+            queryset = queryset.filter(fecha_emision__lte=fecha_hasta)
+
         # When searching through matriculas (multi-student), avoid duplicates
         if self.request.query_params.get('search'):
             queryset = queryset.distinct()
@@ -65,6 +78,22 @@ class ReciboViewSet(viewsets.ModelViewSet):
             resultado = serializer.calcular()
             return Response(resultado, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'], url_path='totals')
+    def totals(self, request, ciclo_id=None):
+        filters = {}
+        if ciclo_id:
+            filters['ciclo_id'] = ciclo_id
+        aggregates = Recibo.objects.filter(**filters).aggregate(
+            total=Sum('monto_total'),
+            pagado=Sum('monto_pagado', filter=Q(estado='pagado')),
+            pendiente=Sum('monto_total', filter=Q(estado='pendiente')),
+        )
+        return Response({
+            'total': aggregates['total'] or 0,
+            'pagado': aggregates['pagado'] or 0,
+            'pendiente': aggregates['pendiente'] or 0,
+        })
 
     @action(detail=True, methods=['patch'])
     def marcar_pagado(self, request, pk=None):

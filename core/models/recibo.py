@@ -47,7 +47,7 @@ class Recibo(models.Model):
         on_delete=models.PROTECT,
         related_name='recibos'
     )
-    fecha_emision = models.DateField()
+    fecha_emision = models.DateField(db_index=True)
     monto_bruto = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -82,17 +82,17 @@ class Recibo(models.Model):
         ordering = ['-id']
 
     def __str__(self):
-        if self.alumno:
-            return f"Recibo {self.numero} - {self.alumno} - S/. {self.monto_total}"
-        # Obtener nombres de alumnos de las matrículas
-        try:
-            alumnos = self.matriculas.values_list('matricula__alumno__nombre', flat=True).distinct()
-            nombres = ", ".join(alumnos[:2])
-            if len(alumnos) > 2:
-                nombres += f" y {len(alumnos) - 2} más"
-            return f"Recibo {self.numero} - {nombres} - S/. {self.monto_total}"
-        except Exception:
-            return f"Recibo {self.numero} - S/. {self.monto_total}"
+        if self.alumno_id:  # use _id to avoid extra query
+            return f"Recibo {self.numero} - {self.alumno.nombre} {self.alumno.apellido} - S/. {self.monto_total}"
+        # Use prefetched relation if already loaded (avoids query in admin)
+        if hasattr(self, '_prefetched_objects_cache') and 'matriculas' in self._prefetched_objects_cache:
+            nombres = []
+            for rm in self.matriculas.all():
+                alias = getattr(rm.matricula.alumno, 'nombre', '')
+                if alias and alias not in nombres:
+                    nombres.append(alias)
+            return f"Recibo {self.numero} - {', '.join(nombres[:2])} - S/. {self.monto_total}"
+        return f"Recibo {self.numero} - S/. {self.monto_total}"
 
     @property
     def saldo_pendiente(self):

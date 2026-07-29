@@ -27,6 +27,16 @@ interface MatriculaFormData {
   fecha_matricula: string;
 }
 
+export interface MatriculaInitialData {
+  alumno_id: number;
+  alumno_nombre: string;
+  taller_id: number;
+  taller_nombre: string;
+  horarios_ids: number[];
+  sesiones_contratadas: number;
+  metodo_pago: string;
+}
+
 const initialFormData: MatriculaFormData = {
   alumno: '',
   taller: '',
@@ -44,7 +54,9 @@ interface MatriculaFormModalProps {
   onClose: () => void;
   onSuccess: () => void;
   matricula?: Matricula | null;
+  editingId?: number | null;
   cicloId?: number | null;
+  initialData?: MatriculaInitialData | null;
 }
 
 /**
@@ -59,8 +71,9 @@ interface MatriculaFormModalProps {
  * En edición permite marcar activa/concluida y gestiona la sincronización de
  * horarios (crear/eliminar registros de MatriculaHorario).
  */
-function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: MatriculaFormModalProps) {
-  const editingId = matricula?.id ?? null;
+function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, editingId: editingIdProp, cicloId, initialData }: MatriculaFormModalProps) {
+  const editingId = matricula?.id ?? editingIdProp ?? null;
+  const recrearMode = !editingId && !!initialData;
   const { showToast, showApiError } = useToast();
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [talleres, setTalleres] = useState<Taller[]>([]);
@@ -106,31 +119,53 @@ function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: 
   useEffect(() => {
     if (!isOpen || !cicloId) return;
     fetchLookups();
+
+    const populateForm = async (m: Matricula) => {
+      let horariosExistentes: number[] = [];
+      try {
+        const response = await api.get(`/matriculas-horarios/?matricula=${m.id}`);
+        const jsonData = response.data.results || response.data;
+        horariosExistentes = Array.isArray(jsonData) ? jsonData.map((mh: any) => mh.horario) : [];
+      } catch (err) {
+        console.error('Error loading horarios:', err);
+      }
+      setFormData({
+        alumno: m.alumno,
+        taller: m.taller,
+        horarios: horariosExistentes,
+        sesiones_contratadas: m.sesiones_contratadas,
+        precio_total: m.precio_total.toString(),
+        metodo_pago: m.metodo_pago || 'efectivo',
+        activo: m.activo,
+        concluida: m.concluida,
+        fecha_matricula: utcToLimaDate(m.fecha_matricula) || new Date().toISOString().split('T')[0],
+      });
+      setAlumnoSearch(m.alumno_nombre);
+      if (m.taller) fetchHorarios(m.taller);
+    };
+
     if (matricula) {
-      const loadHorarios = async () => {
-        let horariosExistentes: number[] = [];
-        try {
-          const response = await api.get(`/matriculas-horarios/?matricula=${matricula.id}`);
-          const jsonData = response.data.results || response.data;
-          horariosExistentes = Array.isArray(jsonData) ? jsonData.map((mh: any) => mh.horario) : [];
-        } catch (err) {
-          console.error('Error loading horarios:', err);
-        }
-        setFormData({
-          alumno: matricula.alumno,
-          taller: matricula.taller,
-          horarios: horariosExistentes,
-          sesiones_contratadas: matricula.sesiones_contratadas,
-          precio_total: matricula.precio_total.toString(),
-          metodo_pago: matricula.metodo_pago || 'efectivo',
-          activo: matricula.activo,
-          concluida: matricula.concluida,
-          fecha_matricula: utcToLimaDate(matricula.fecha_matricula) || new Date().toISOString().split('T')[0],
-        });
-        setAlumnoSearch(matricula.alumno_nombre);
-        if (matricula.taller) fetchHorarios(matricula.taller);
-      };
-      loadHorarios();
+      populateForm(matricula);
+    } else if (editingId) {
+      // ponytail: parent's matriculasFlat capped at 200; fallback fetch by ID
+      api.get(`/matriculas/${editingId}/`)
+        .then(res => populateForm(res.data))
+        .catch(console.error);
+    } else if (recrearMode && initialData) {
+      setFormData({
+        alumno: initialData.alumno_id,
+        taller: initialData.taller_id,
+        horarios: initialData.horarios_ids,
+        sesiones_contratadas: initialData.sesiones_contratadas,
+        precio_total: '',
+        metodo_pago: initialData.metodo_pago || 'efectivo',
+        activo: true,
+        concluida: false,
+        fecha_matricula: new Date().toISOString().split('T')[0],
+      });
+      setAlumnoSearch(initialData.alumno_nombre);
+      setShowAlumnoDropdown(false);
+      if (initialData.taller_id) fetchHorarios(initialData.taller_id);
     } else {
       setFormData(initialFormData);
       setAlumnoSearch('');
@@ -138,7 +173,7 @@ function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: 
       setHorarios([]);
       setPrecioSugerido(null);
     }
-  }, [isOpen, cicloId, matricula, fetchHorarios, fetchLookups]);
+  }, [isOpen, cicloId, matricula, editingId, recrearMode, initialData, fetchHorarios, fetchLookups]);
 
   useEffect(() => {
     if (formData.taller) {
@@ -161,7 +196,7 @@ function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: 
         const jsonData = response.data;
         if (!cancelled) {
           setPrecioSugerido(jsonData.precio_total > 0 ? jsonData.precio_total : null);
-          if (jsonData.precio_total > 0) {
+          if (jsonData.precio_total > 0 && !editingId) {
             setFormData((prev) => ({ ...prev, precio_total: jsonData.precio_total.toString() }));
           }
         }
@@ -300,9 +335,9 @@ function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
       <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '800px', maxHeight: '90vh', overflow: 'auto' }}>
-        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>{editingId ? 'Editar Matrícula' : 'Nueva Matrícula'}</h2>
-          <button type="button" onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#f3f4f6', color: '#6b7280', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+          <button type="button" onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#e5e7eb', color: '#6b7280', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
         </div>
         <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
           <div style={{ marginBottom: '1.5rem' }}>
@@ -310,13 +345,13 @@ function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: 
               <div style={{ width: 4, height: 16, borderRadius: 2, background: '#d4af37' }} />
               <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#475569', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Datos del Alumno</h3>
             </div>
-            {editingId ? (
+            {editingId || recrearMode ? (
               <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2">
                   <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
                 <span style={{ fontWeight: '600', color: '#374151' }}>{alumnoSearch}</span>
-                <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginLeft: 'auto' }}>No editable · Use traspaso para cambiar</span>
+                <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginLeft: 'auto' }}>{editingId ? 'No editable · Use traspaso para cambiar' : 'Alumno de la matrícula original'}</span>
               </div>
             ) : (
               <div style={{ position: 'relative' }}>
@@ -334,7 +369,7 @@ function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, cicloId }: 
                       <div
                         key={alumno.id}
                         onClick={() => selectAlumno(alumno)}
-                        style={{ padding: '0.75rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                        style={{ padding: '0.75rem 1rem', cursor: 'pointer', borderBottom: '1px solid #e5e7eb' }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
                       >

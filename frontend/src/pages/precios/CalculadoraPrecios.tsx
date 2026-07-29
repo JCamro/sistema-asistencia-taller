@@ -657,7 +657,7 @@ function CalculadoraPrecios() {
                 <div style={{ marginBottom: '1rem' }}>
                   <p style={{ fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.5rem' }}>DESGLOSE</p>
                   {resultado.desglose.map((d, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #f3f4f6' }}>
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #e5e7eb' }}>
                       <span style={{ color: '#374151' }}>{d.nombre} ({d.clases} clases)</span>
                       <span style={{ fontFamily: 'monospace', fontWeight: '500' }}>S/. {d.precio.toFixed(2)}</span>
                     </div>
@@ -771,7 +771,7 @@ function CalculadoraPrecios() {
                     </div>
                   )}
                   {Object.keys(promos.combo_musical).length === 0 && Object.keys(promos.mixto).length === 0 && Object.keys(promos.intensivo).length === 0 && (
-                    <div style={{ padding: '0.5rem', background: '#f3f4f6', borderRadius: '6px', color: '#6b7280' }}>
+                    <div style={{ padding: '0.5rem', background: '#e5e7eb', borderRadius: '6px', color: '#6b7280' }}>
                       No hay promociones configuradas. Configuralas en <strong>Precios → Paquetes Promocionales</strong>.
                     </div>
                   )}

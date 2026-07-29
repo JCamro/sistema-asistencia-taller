@@ -36,6 +36,19 @@ interface AsistenciasFilterBarProps {
   profesores: ProfesorOption[];
 }
 
+const inputBase: React.CSSProperties = {
+  width: '100%',
+  padding: '0.5rem 0.75rem',
+  border: '1px solid #e5e7eb',
+  borderRadius: '10px',
+  fontSize: '0.875rem',
+  fontFamily: 'inherit',
+  color: '#1f2937',
+  background: '#fafafa',
+  outline: 'none',
+  transition: 'border-color 0.15s, box-shadow 0.15s',
+};
+
 /**
  * AsistenciasFilterBar — Filtros para el registro de asistencia diaria
  *
@@ -61,36 +74,43 @@ function AsistenciasFilterBar({
 }: AsistenciasFilterBarProps) {
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 768;
+
   return (
-    <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #f1f5f9', padding: '1.25rem', marginBottom: '1.25rem' }}>
+    <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1rem 1.25rem', marginBottom: '1.25rem' }}>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: isMobile ? '0.75rem' : '1rem', alignItems: 'end' }}>
         <div>
-          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Fecha</label>
+          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+            Fecha
+          </label>
           <input
             type="date"
             value={fecha}
             onChange={(e) => onFechaChange(e.target.value)}
-            style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
+            style={inputBase}
           />
         </div>
         <div>
-          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Taller</label>
+          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+            Taller
+          </label>
           <select
             value={tallerSeleccionado || ''}
             onChange={(e) => onTallerChange(e.target.value ? parseInt(e.target.value) : null)}
-            style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' }}
+            style={{ ...inputBase, cursor: 'pointer', background: 'white' }}
           >
             <option value="">Seleccionar taller</option>
             {talleres.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
           </select>
         </div>
         <div>
-          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.25rem' }}>Horario</label>
+          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+            Horario
+          </label>
           <select
             value={horarioSeleccionado || ''}
             onChange={(e) => onHorarioChange(e.target.value ? parseInt(e.target.value) : null)}
             disabled={!tallerSeleccionado}
-            style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', opacity: tallerSeleccionado ? 1 : 0.5 }}
+            style={{ ...inputBase, opacity: tallerSeleccionado ? 1 : 0.4, cursor: tallerSeleccionado ? 'pointer' : 'default', background: tallerSeleccionado ? 'white' : '#f5f5f5' }}
           >
             <option value="">{tallerSeleccionado ? 'Seleccionar horario' : 'Primero seleccione un taller'}</option>
             {horariosFiltrados.map((h) => (
@@ -101,25 +121,26 @@ function AsistenciasFilterBar({
           </select>
         </div>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-              {horarioSeleccionado ? 'Docente (asignado al horario)' : 'Profesor'}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+              Profesor
             </label>
             {horarioSeleccionado && (
               <button
                 type="button"
                 onClick={onToggleProfesorBloqueado}
                 style={{
-                  fontSize: '0.75rem',
+                  fontSize: '0.7rem',
                   color: profesorBloqueado ? '#d97706' : '#059669',
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
                   padding: 0,
                   textDecoration: 'underline',
+                  fontWeight: 500,
                 }}
               >
-                {profesorBloqueado ? 'Cambiar profesor' : 'Bloquear del horario'}
+                {profesorBloqueado ? 'Cambiar' : 'Bloquear'}
               </button>
             )}
           </div>
@@ -128,27 +149,27 @@ function AsistenciasFilterBar({
             onChange={(e) => onProfesorChange(e.target.value ? parseInt(e.target.value) : null)}
             disabled={horarioSeleccionado ? profesorBloqueado : false}
             style={{
-              width: '100%',
-              padding: '0.625rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '0.875rem',
-              opacity: horarioSeleccionado && profesorBloqueado ? 0.7 : 1,
-              background: horarioSeleccionado && profesorBloqueado ? '#f9fafb' : 'white',
+              ...inputBase,
+              opacity: horarioSeleccionado && profesorBloqueado ? 0.6 : 1,
+              background: horarioSeleccionado && profesorBloqueado ? '#f5f5f5' : 'white',
+              cursor: horarioSeleccionado && profesorBloqueado ? 'default' : 'pointer',
             }}
           >
             <option value="">{horarioSeleccionado ? 'Docente del horario' : 'Seleccionar profesor'}</option>
-            {profesores.map((p) => <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>)}
+            {profesores.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nombre} {p.apellido}
+              </option>
+            ))}
           </select>
         </div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
         <button
-          onClick={onClear}
           type="button"
-          style={{ padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: '8px', background: 'white', color: '#6b7280', fontSize: '0.8125rem', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+          onClick={onClear}
+          style={{ fontSize: '0.75rem', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 12l6-6m-6 6l6 6"/></svg>
           Limpiar filtros
         </button>
       </div>

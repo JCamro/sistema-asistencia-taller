@@ -17,19 +17,22 @@ class HoraTrabajadaService:
     """Servicio para manejar la lógica de negocio de Horas Trabajadas."""
 
     @classmethod
-    def _get_config_snapshot(cls) -> dict:
+    def _get_config_snapshot(cls, ciclo_id: int = None) -> dict:
         """
         Captura el snapshot actual de configuración para persistir en el registro.
+
+        Args:
+            ciclo_id: ID del ciclo. Si es None, usa la configuración global.
 
         Returns:
             dict: Configuración actual de pago o valores por defecto
         """
         try:
-            config = Configuracion.get_instance()
+            config = Configuracion.get_for_ciclo(ciclo_id) if ciclo_id else Configuracion.get_instance()
             return {
                 'base_pago': float(config.pago_dinamico_base or BASE_PAGO),
                 'tope_maximo': float(config.pago_dinamico_tope or TOPE_MAXIMO),
-                'porcentaje_adicional': float(PORCENTAJE_ADICIONAL),
+                'porcentaje_adicional': float(config.porcentaje_adicional or PORCENTAJE_ADICIONAL),
                 'ciclo_activo_id': config.ciclo_activo_id,
             }
         except Exception:
@@ -235,7 +238,7 @@ class HoraTrabajadaService:
         Returns:
             dict: Resultados con información de las horas generadas
         """
-        config_snapshot = cls._get_config_snapshot()
+        config_snapshot = cls._get_config_snapshot(ciclo.id)
         creados = 0
         actualizados = 0
         consolidados = 0
@@ -243,7 +246,7 @@ class HoraTrabajadaService:
         # Obtener agrupaciones únicas de (profesor_id, horario_id, fecha)
         asistencias_agrupadas = Asistencia.objects.filter(
             horario__ciclo=ciclo,
-            estado='asistio',
+            estado__in=['asistio', 'falta_grave'],
             fecha__gte=fecha_inicio,
             fecha__lte=fecha_fin,
             horario__isnull=False,
@@ -635,7 +638,7 @@ class HoraTrabajadaService:
         if horas_trabajadas <= 0:
             raise ValueError("Las horas trabajadas deben ser mayores a 0.")
 
-        config_snapshot = cls._get_config_snapshot()
+        config_snapshot = cls._get_config_snapshot(ciclo.id)
 
         # Monto manual: el admin decide el valor
         monto_profesor = data.get('monto_profesor')
