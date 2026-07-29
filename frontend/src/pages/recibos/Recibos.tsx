@@ -53,6 +53,7 @@ function RecibosPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showDashboardAmounts, setShowDashboardAmounts] = useState(false);
   const [detalleRecibo, setDetalleRecibo] = useState<any>(null);
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -297,7 +298,7 @@ function RecibosPage() {
                   boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
                   border: '1px solid #e5e7eb', zIndex: 10, minWidth: 130,
                 }}>
-                  <button onClick={() => { setDetalleRecibo(r); setMenuAbierto(null); }}
+                  <button onClick={() => { setMenuAbierto(null); setLoadingDetalle(true); api.get(`/recibos/${r.id}/`).then(({ data }) => setDetalleRecibo(data)).catch(() => {}).finally(() => setLoadingDetalle(false)); }}
                     style={{ display: 'block', width: '100%', padding: '0.625rem 1rem', background: 'none', border: 'none', textAlign: 'left', fontSize: '0.8125rem', color: '#374151', cursor: 'pointer' }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = '#f9fafb')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
@@ -327,7 +328,7 @@ function RecibosPage() {
       {detalleRecibo && (
         <ReciboDetailModal
           recibo={detalleRecibo}
-          loading={false}
+          loading={loadingDetalle}
           onClose={() => setDetalleRecibo(null)}
         />
       )}

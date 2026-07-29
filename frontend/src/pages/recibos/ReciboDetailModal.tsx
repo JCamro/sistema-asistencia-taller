@@ -76,15 +76,16 @@ function formatReciboDate(dateStr: string | null | undefined): string {
 function ReciboDetailModal({ recibo, loading, onClose }: ReciboDetailModalProps) {
   if (!recibo) return null;
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-      <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, animation: 'fadeIn 0.2s ease-out' }}>
+      <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } } @keyframes scaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)', animation: 'scaleIn 0.2s ease-out' }}>
         {loading ? (
           <div style={{ padding: '3rem', textAlign: 'center' }}>
             <div style={{ width: 40, height: 40, border: '3px solid #f1f5f9', borderTop: '3px solid #d4af37', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} />
           </div>
         ) : (
           <>
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ padding: '1.5rem 1.5rem 1.25rem', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                   <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Recibo {recibo.numero}</h2>
@@ -107,8 +108,8 @@ function ReciboDetailModal({ recibo, loading, onClose }: ReciboDetailModalProps)
               <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#f3f4f6', color: '#6b7280', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
             </div>
             <div style={{ padding: '1.5rem' }}>
-              <div style={{ marginBottom: '1.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.5rem' }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.625rem' }}>
                   <div style={{ width: 4, height: 14, borderRadius: 2, background: '#d4af37' }} />
                   <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Alumno(s)</span>
                 </div>
@@ -125,8 +126,8 @@ function ReciboDetailModal({ recibo, loading, onClose }: ReciboDetailModalProps)
                 )}
               </div>
               {recibo.matriculas_detalle && recibo.matriculas_detalle.length > 0 && (
-                <div style={{ marginBottom: '1.25rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.5rem' }}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.625rem' }}>
                     <div style={{ width: 4, height: 14, borderRadius: 2, background: '#d4af37' }} />
                     <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Matrículas</span>
                   </div>
@@ -154,28 +155,28 @@ function ReciboDetailModal({ recibo, loading, onClose }: ReciboDetailModalProps)
                   </div>
                 </div>
               )}
-              <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1rem 1.125rem', border: '1px solid #f1f5f9' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.8125rem' }}>
+              <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.125rem 1.125rem 1.125rem 1.375rem', border: '1px solid #f1f5f9', borderLeft: '3px solid #d4af37' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
                   <span style={{ color: '#64748b' }}>Monto Bruto</span>
                   <span style={{ fontFamily: 'monospace', fontWeight: 500, color: '#334155' }}>S/. {Number(recibo.monto_bruto || 0).toFixed(2)}</span>
                 </div>
                 {Number(recibo.descuento) > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.8125rem', padding: '0.25rem 0.5rem', background: '#fef2f2', borderRadius: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.8125rem', padding: '0.3rem 0.6rem', background: '#fef2f2', borderRadius: '6px' }}>
                     <span style={{ color: '#dc2626', fontWeight: 500 }}>Descuento</span>
                     <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#dc2626' }}>-S/. {Number(recibo.descuento).toFixed(2)}</span>
                   </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', marginBottom: '0.375rem', borderTop: '1px solid #e5e7eb' }}>
-                  <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.875rem' }}>Total</span>
-                  <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0f172a', fontSize: '1rem' }}>S/. {Number(recibo.monto_total).toFixed(2)}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.625rem', marginTop: '0.25rem', marginBottom: '0.5rem', borderTop: '1px solid #e5e7eb' }}>
+                  <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.9375rem' }}>Total</span>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0f172a', fontSize: '1.0625rem' }}>S/. {Number(recibo.monto_total).toFixed(2)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.8125rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0.6rem', marginBottom: '0.5rem', fontSize: '0.8125rem', borderRadius: '6px', background: Number(recibo.monto_pagado || 0) > 0 ? '#ecfdf5' : 'transparent' }}>
                   <span style={{ color: '#64748b' }}>Pagado</span>
                   <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#059669' }}>S/. {Number(recibo.monto_pagado || 0).toFixed(2)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb' }}>
-                  <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.875rem' }}>Saldo Pendiente</span>
-                  <span style={{ fontFamily: 'monospace', fontWeight: 700, color: Number(recibo.saldo_pendiente) > 0 ? '#dc2626' : '#059669', fontSize: '0.9375rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem', padding: '0.5rem 0.6rem', borderTop: '1px solid #e5e7eb', borderRadius: '6px', background: Number(recibo.saldo_pendiente) > 0 ? '#fef2f2' : 'transparent' }}>
+                  <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.9375rem' }}>Saldo Pendiente</span>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 700, color: Number(recibo.saldo_pendiente) > 0 ? '#dc2626' : '#059669', fontSize: '1rem' }}>
                     S/. {Number(recibo.saldo_pendiente || 0).toFixed(2)}
                   </span>
                 </div>
