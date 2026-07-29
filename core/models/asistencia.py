@@ -35,7 +35,13 @@ class Asistencia(models.Model):
 
     class Meta:
         ordering = ['-fecha', '-hora']
-        unique_together = ['matricula', 'horario', 'fecha']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['matricula', 'horario', 'fecha'],
+                name='unique_asistencia_matricula_horario_fecha',
+                condition=models.Q(matricula__isnull=False),
+            ),
+        ]
         indexes = [
             models.Index(fields=['horario', 'fecha'], name='asistencia_horario_fecha_idx'),
         ]

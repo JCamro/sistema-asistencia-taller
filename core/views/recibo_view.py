@@ -76,7 +76,7 @@ class ReciboViewSet(viewsets.ModelViewSet):
         filters = {}
         if ciclo_id:
             filters['ciclo_id'] = ciclo_id
-        aggregates = Recibo.objects.filter(**filters).aggregate(
+        aggregates = Recibo.objects.filter(**filters).exclude(estado='anulado').aggregate(
             total=Sum('monto_total'),
             pagado=Sum('monto_pagado', filter=Q(estado='pagado')),
             pendiente=Sum('monto_total', filter=Q(estado='pendiente')),

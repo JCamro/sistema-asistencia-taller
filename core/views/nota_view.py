@@ -1,6 +1,7 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.response import Response
 
 from ..models import Nota
@@ -12,8 +13,10 @@ class NotaViewSet(viewsets.ModelViewSet):
     serializer_class = NotaSerializer
     queryset = Nota.objects.all()
     pagination_class = StandardResultsSetPagination
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['es_recordatorio', 'leida']
+    search_fields = ['titulo', 'contenido']
+    ordering_fields = ['fecha', 'created_at']
 
     def get_queryset(self):
         qs = super().get_queryset()

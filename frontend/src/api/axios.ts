@@ -35,8 +35,10 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor: ante un 401, intenta refrescar el token.
+// Singleton de refresh: evita que múltiples 401 concurrentes refresquen en paralelo.
 // Si el refresh falla, limpia tokens y redirige a /login.
+let refreshPromise: Promise<string> | null = null;
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -48,14 +50,19 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem('refresh_token');
         if (refreshToken) {
-          const response = await axios.post(
-            `${api.defaults.baseURL}/auth/refresh/`,
-            { refresh: refreshToken }
-          );
-          
-          const { access } = response.data;
-          localStorage.setItem('access_token', access);
-          
+          if (!refreshPromise) {
+            refreshPromise = axios
+              .post(`${api.defaults.baseURL}/auth/refresh/`, { refresh: refreshToken })
+              .then((res) => {
+                const { access } = res.data;
+                localStorage.setItem('access_token', access);
+                return access;
+              })
+              .finally(() => {
+                refreshPromise = null;
+              });
+          }
+          const access = await refreshPromise;
           originalRequest.headers.Authorization = `Bearer ${access}`;
           return api(originalRequest);
         }

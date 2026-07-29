@@ -35,7 +35,7 @@ const FinanzasPage = memo(function FinanzasPage() {
 
   const fetchIngresos = useCallback(async(page=1)=>{if(!cicloActual)return;setIngresosLoading(true);try{const r=await getRecibos(cicloActual.id,`estado=pagado&page=${page}`);const d:PaginatedResponse<Recibo>=r.data;setIngresos(d.results);setIngresosTotal(d.count);setIngresosPages(Math.ceil(d.count/PAGE_SIZE)||1);setIngresosPage(page)}catch{showToast('Error al cargar ingresos','error')}finally{setIngresosLoading(false)}},[cicloActual,showToast]);
   const fetchEgresos = useCallback(async(page=1)=>{if(!cicloActual)return;setEgresosLoading(true);try{const r=await getEgresos(cicloActual.id,`page=${page}`);const d:PaginatedResponse<Egreso>=r.data;setEgresosTab(d.results);setEgresosTotal(d.count);setEgresosPages(Math.ceil(d.count/PAGE_SIZE)||1);setEgresosPage(page)}catch{showToast('Error al cargar egresos','error')}finally{setEgresosLoading(false)}},[cicloActual,showToast]);
-  useEffect(()=>{if(activeTab==='ingresos'&&ingresos.length===0)fetchIngresos(1);if(activeTab==='egresos'&&egresosTab.length===0)fetchEgresos(1)},[activeTab]);
+  useEffect(()=>{if(activeTab==='ingresos'&&ingresos.length===0)fetchIngresos(1);if(activeTab==='egresos'&&egresosTab.length===0)fetchEgresos(1)},[activeTab,fetchIngresos,fetchEgresos]);
 
   if(!cicloActual)return null;
   if(loading)return <div style={{display:'flex',justifyContent:'center',alignItems:'center',minHeight:'60vh',color:'#6b7280',fontSize:'0.9375rem'}}>Cargando resumen financiero...</div>;

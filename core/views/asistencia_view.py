@@ -83,7 +83,7 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
             a.matricula_id: a
             for a in Asistencia.objects.filter(
                 horario_id=horario_id,
-                fecha=fecha,
+                fecha=fecha_obj,
                 es_recuperacion=False,
             ).select_related('profesor')
         }

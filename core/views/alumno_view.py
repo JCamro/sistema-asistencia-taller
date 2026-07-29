@@ -64,13 +64,15 @@ class AlumnoViewSet(viewsets.ModelViewSet):
                 'es_recuperacion': a.es_recuperacion,
             } for a in asistencias]
 
+            sesiones_consumidas = sum(1 for a in asistencias if a.estado in ('asistio', 'falta_grave'))
+
             matriculas_data.append({
                 'id': m.id,
                 'taller': m.taller.nombre,
                 'taller_id': m.taller.id,
                 'sesiones_contratadas': m.sesiones_contratadas,
-                'sesiones_consumidas': m.sesiones_consumidas,
-                'sesiones_disponibles': m.sesiones_disponibles,
+                'sesiones_consumidas': sesiones_consumidas,
+                'sesiones_disponibles': max(0, m.sesiones_contratadas - sesiones_consumidas),
                 'precio_total': str(m.precio_total),
                 'estado': get_estado_matricula(m),
                 'recibo_estado': get_recibo_estado(m),

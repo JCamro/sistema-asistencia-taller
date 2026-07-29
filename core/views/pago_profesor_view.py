@@ -144,7 +144,7 @@ def resumen_ciclo(request, pk):
     # === EGRESOS (gasto_taller + gasto_personal + pago_profesor legacy) ===
     egresos_por_tipo = Egreso.objects.filter(
         ciclo=ciclo,
-        estado__in=['pendiente', 'cancelado'],
+        estado='cancelado',
         tipo__in=['gasto_taller', 'gasto_personal', 'pago_profesor']
     ).values('tipo').annotate(total=Sum('monto'))
     egreso_map = {e['tipo']: e['total'] for e in egresos_por_tipo}

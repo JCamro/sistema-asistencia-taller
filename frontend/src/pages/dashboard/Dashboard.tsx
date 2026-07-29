@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCiclo } from '../../contexts/CicloContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -34,8 +34,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true); const [error, setError] = useState(false);
   const [showSemana, setShowSemana] = useState(false); const [showMonto, setShowMonto] = useState(false);
 
-  const load = async () => { if(!cicloActual)return; setLoading(true);setError(false); try { const[k,i]=await Promise.all([getDashboardKpis(cicloActual.id),getDashboardIngresos(cicloActual.id)]); setKpis(k.data);setIngresos(i.data); } catch{setError(true);showToast('Error al cargar dashboard','error')} finally{setLoading(false)} };
-  useEffect(()=>{if(cicloActual)load()},[cicloActual]);
+  const load = useCallback(async () => { if(!cicloActual)return; setLoading(true);setError(false); try { const[k,i]=await Promise.all([getDashboardKpis(cicloActual.id),getDashboardIngresos(cicloActual.id)]); setKpis(k.data);setIngresos(i.data); } catch{setError(true);showToast('Error al cargar dashboard','error')} finally{setLoading(false)} }, [cicloActual, showToast]);
+  useEffect(()=>{if(cicloActual)load()},[cicloActual, load]);
 
   if(!cicloActual) return <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'60vh',gap:'0.75rem'}}><div style={{width:56,height:56,borderRadius:'50%',background:'#fef9e7',display:'flex',alignItems:'center',justifyContent:'center'}}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><p style={{color:'#64748b',fontSize:'0.9375rem'}}>Seleccioná un ciclo para ver el dashboard</p></div>;
   if(loading) return <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'60vh',gap:'1rem'}}><div style={{width:44,height:44,border:'3px solid #e2e8f0',borderTop:'3px solid #d4af37',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/><p style={{color:'#94a3b8',fontSize:'0.875rem'}}>Cargando...</p><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;

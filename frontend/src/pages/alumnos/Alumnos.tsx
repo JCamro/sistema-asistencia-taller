@@ -124,7 +124,7 @@ function AlumnosPage() {
       return createAlumno(payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.alumnos(cicloActual?.id ?? 0) });
+      queryClient.invalidateQueries({ queryKey: ['alumnos', cicloActual?.id ?? 0] });
       setShowModal(false);
       setEditingId(null);
       setFormData(initialFormData);
@@ -135,7 +135,7 @@ function AlumnosPage() {
   const deleteMutation = useMutation({
     mutationFn: deleteAlumno,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.alumnos(cicloActual?.id ?? 0) });
+      queryClient.invalidateQueries({ queryKey: ['alumnos', cicloActual?.id ?? 0] });
       setDeletingId(null);
       setDeletingName('');
     },
@@ -162,7 +162,7 @@ function AlumnosPage() {
 
   if (isPending && !alumnosResponse && !showModal) return <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1rem' }}><div style={{ width: 40, height: 40, border: '3px solid #e2e8f0', borderTop: '3px solid var(--color-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /><p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Cargando alumnos...</p><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
 
-  if (error) return <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1rem' }}><p style={{ color: 'var(--color-error)', fontSize: '0.875rem' }}>Error al cargar alumnos.</p><Button onClick={() => queryClient.invalidateQueries({ queryKey: queryKeys.alumnos(cicloActual?.id ?? 0) })}>Reintentar</Button></div>;
+  if (error) return <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1rem' }}><p style={{ color: 'var(--color-error)', fontSize: '0.875rem' }}>Error al cargar alumnos.</p><Button onClick={() => queryClient.invalidateQueries({ queryKey: ['alumnos', cicloActual?.id ?? 0] })}>Reintentar</Button></div>;
 
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto' }}>

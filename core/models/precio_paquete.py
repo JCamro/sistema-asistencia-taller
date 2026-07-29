@@ -58,7 +58,18 @@ class PrecioPaquete(models.Model):
 
     class Meta:
         ordering = ['ciclo', 'tipo_paquete', 'tipo_taller', 'cantidad_clases']
-        unique_together = ['ciclo', 'tipo_taller', 'tipo_paquete', 'cantidad_clases', 'cantidad_clases_secundaria']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['ciclo', 'tipo_taller', 'tipo_paquete', 'cantidad_clases', 'cantidad_clases_secundaria'],
+                name='unique_precio_ciclo',
+                condition=models.Q(ciclo__isnull=False),
+            ),
+            models.UniqueConstraint(
+                fields=['tipo_taller', 'tipo_paquete', 'cantidad_clases', 'cantidad_clases_secundaria'],
+                name='unique_precio_global',
+                condition=models.Q(ciclo__isnull=True),
+            ),
+        ]
         verbose_name = 'Precio de Paquete'
         verbose_name_plural = 'Precios de Paquetes'
 

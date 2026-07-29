@@ -145,9 +145,11 @@ function RecibosPage() {
   const searchRef = useRef(debouncedSearch);
   const filtroEstadoRef = useRef(filtroEstado);
   const filtroPresetRef = useRef(filtroPreset);
+  const currentPageRef = useRef(currentPage);
   useEffect(() => { searchRef.current = debouncedSearch; }, [debouncedSearch]);
   useEffect(() => { filtroEstadoRef.current = filtroEstado; }, [filtroEstado]);
   useEffect(() => { filtroPresetRef.current = filtroPreset; }, [filtroPreset]);
+  useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
 
   // Task 8: fetchTotals — solo KPIs, endpoint dedicado
   const fetchTotals = useCallback(async () => {
@@ -247,7 +249,7 @@ function RecibosPage() {
   };
 
   const handleSuccess = () => {
-    fetchData(currentPage);
+    fetchData(currentPageRef.current);
   };
 
   if (loading) {
@@ -322,7 +324,7 @@ function RecibosPage() {
               },
             },
             { key: 'fecha', label: 'Fecha', render: (r: Recibo) => <span style={{ whiteSpace: 'nowrap' }}>{new Date(r.fecha_emision + 'T00:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}</span> },
-            { key: 'paquete', label: 'Paquete', render: (r: Recibo) => { const raw = r.paquete_aplicado; if (!raw || raw === 'individual') return <span style={{ fontSize:'0.7rem', color:'#94a3b8', background:'#f3f4f6', padding:'0.15rem 0.5rem', borderRadius:'9999px', fontWeight:500 }}>Individual</span>; const promos = raw.split(',').map(p => formatPaquete(p)).filter(Boolean); return promos.length === 0 ? <span style={{ color:'#cbd5e1' }}>—</span> : <div style={{ display:'flex', flexWrap:'wrap', gap:'0.25rem' }}>{promos.map((p, i) => <span key={i} style={{ display:'inline-block', padding:'0.15rem 0.5rem', borderRadius:'9999px', fontSize:'0.7rem', fontWeight:600, background:p!.color.bg, color:p!.color.text, whiteSpace:'nowrap' }}>{p!.label}</span>)}</div>; } },
+            { key: 'paquete', label: 'Paquete', render: (r: Recibo) => { const raw = r.paquete_aplicado; if (!raw || raw === 'individual') return <span style={{ fontSize:'0.7rem', color:'#94a3b8', background:'#f3f4f6', padding:'0.15rem 0.5rem', borderRadius:'9999px', fontWeight:500 }}>Individual</span>; const seen = new Set<string>(); const promos = raw.split(',').map(p => formatPaquete(p)).filter(p => { if (!p || seen.has(p.label)) return false; seen.add(p.label); return true; }); if (promos.length === 0) return <span style={{ color:'#cbd5e1' }}>—</span>; const first = promos[0]; const extra = promos.length - 1; return <div style={{ display:'flex', alignItems:'center', flexWrap:'wrap', gap:'0.25rem' }}><span style={{ display:'inline-block', padding:'0.15rem 0.5rem', borderRadius:'9999px', fontSize:'0.7rem', fontWeight:600, background:first.color.bg, color:first.color.text, whiteSpace:'nowrap' }}>{first.label}</span>{extra > 0 && <span style={{ display:'inline-flex', alignItems:'center', padding:'0.125rem 0.4rem', borderRadius:'9999px', background:'#f3f4f6', fontSize:'0.6875rem', fontWeight:600, color:'#6b7280' }}>+{extra}</span>}</div>; } },
             { key: 'monto', label: 'Monto', align: 'right', render: (r: Recibo) => <span style={{ fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }} title={r.precio_editado ? 'Precio editado' : ''}>{formatMonto(r.monto_total)}{r.precio_editado && ' *'}</span> },
             { key: 'saldo', label: 'Saldo', align: 'right', render: (r: Recibo) => <span style={{ color: '#ef4444', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatMonto(r.saldo_pendiente)}</span> },
             {

@@ -145,7 +145,7 @@ function HorasProfesoresPage() {
     setHLoading(false);
   };
 
-  useEffect(() => { setHPage(1); fetchHoras(1); }, [hTallerId]); // auto-fetch solo al cambiar taller
+  useEffect(() => { setHPage(1); }, [hTallerId]); // reset page on taller change, second effect fetches
   useEffect(() => { if (cicloActual) fetchHoras(hPage); }, [cicloActual, hPage]);
 
   // ── Load horarios when taller changes in form ──

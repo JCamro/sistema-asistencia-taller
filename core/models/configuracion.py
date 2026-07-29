@@ -67,18 +67,14 @@ class Configuracion(models.Model):
     @classmethod
     def get_for_ciclo(cls, ciclo_id):
         """Devuelve la configuración de pago para un ciclo, creándola desde el singleton si no existe."""
-        try:
-            return cls.objects.get(ciclo_id=ciclo_id)
-        except cls.DoesNotExist:
-            singleton = cls.get_instance()
-            defaults = {
-                'pago_dinamico_base': singleton.pago_dinamico_base or BASE_PAGO,
-                'pago_dinamico_tope': singleton.pago_dinamico_tope or TOPE_MAXIMO,
-                'porcentaje_adicional': singleton.porcentaje_adicional or PORCENTAJE_ADICIONAL,
-            }
-            # Evitar colisión con la PK 1 del singleton cuando la secuencia no avanzó
-            max_id = cls.objects.aggregate(max_id=models.Max('id'))['max_id'] or 0
-            return cls.objects.create(id=max_id + 1, ciclo_id=ciclo_id, **defaults)
+        singleton = cls.get_instance()
+        defaults = {
+            'pago_dinamico_base': singleton.pago_dinamico_base or BASE_PAGO,
+            'pago_dinamico_tope': singleton.pago_dinamico_tope or TOPE_MAXIMO,
+            'porcentaje_adicional': singleton.porcentaje_adicional or PORCENTAJE_ADICIONAL,
+        }
+        obj, _created = cls.objects.get_or_create(ciclo_id=ciclo_id, defaults=defaults)
+        return obj
 
     @classmethod
     def get_active_config(cls):

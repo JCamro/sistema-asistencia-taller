@@ -320,10 +320,12 @@ function AsistenciasPage() {
         setSaving(false);
         return;
       }
+      const responseData = await response.json();
+      const newAsistenciaId = responseData.id ?? alumno.asistencia_id;
       // Optimistic local state update
       setAlumnosHorario(prev => prev.map(a => 
         a.matricula_id === alumno.matricula_id
-          ? { ...a, estado: nuevoEstado, asistencia_id: a.asistencia_id || 0 }
+          ? { ...a, estado: nuevoEstado, asistencia_id: newAsistenciaId }
           : a
       ));
 
@@ -333,7 +335,7 @@ function AsistenciasPage() {
           const alumnos = next.get(horarioSeleccionado) || [];
           next.set(horarioSeleccionado, alumnos.map(a =>
             a.matricula_id === alumno.matricula_id
-              ? { ...a, estado: nuevoEstado, asistencia_id: a.asistencia_id || 0 }
+              ? { ...a, estado: nuevoEstado, asistencia_id: newAsistenciaId }
               : a
           ));
           return next;

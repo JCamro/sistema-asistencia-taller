@@ -17,6 +17,7 @@ import HorariosPage from './pages/horarios/Horarios';
 import MatriculasPage from './pages/matriculas/Matriculas';
 import MatriculaDetallePage from './pages/matriculas/MatriculaDetalle';
 import AsistenciasPage from './pages/asistencias/Asistencias';
+import NotificacionesPage from './pages/notificaciones/Notificaciones';
 import RecibosPage from './pages/recibos/Recibos';
 import FeriadosPage from './pages/feriados/Feriados';
 import AlumnoDetallePage from './pages/alumnos/AlumnoDetalle';
@@ -72,6 +73,7 @@ export default function App() {
                 <Route path="/matriculas/:matriculaId" element={<ProtectedRoute><DashboardLayout><MatriculaDetallePage /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/alumnos/:alumnoId" element={<ProtectedRoute><DashboardLayout><AlumnoDetallePage /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/asistencias" element={<ProtectedRoute><DashboardLayout><AsistenciasPage /></DashboardLayout></ProtectedRoute>} />
+                <Route path="/notificaciones" element={<ProtectedRoute><DashboardLayout><NotificacionesPage /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/feriados" element={<ProtectedRoute><DashboardLayout><FeriadosPage /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/recibos" element={<ProtectedRoute><DashboardLayout><RecibosPage /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/egresos" element={<ProtectedRoute><DashboardLayout><EgresosPage /></DashboardLayout></ProtectedRoute>} />

@@ -314,12 +314,8 @@ class ReciboService:
         año = timezone.now().year
         prefix = f'REC-{año}-'
 
-        # Lock matching rows for this year; materialize to trigger the lock.
-        # Even an empty queryset participates in the lock for PostgreSQL
-        # predicate locking; SQLite serializes writers via its own locking.
-        list(Recibo.objects.select_for_update().filter(
-            numero__startswith=prefix
-        ).values_list('id', flat=True)[:1])
+        # Lock ALL matching rows for this year to prevent concurrent number generation.
+        list(Recibo.objects.select_for_update().filter(numero__startswith=prefix))
 
         ultimo = Recibo.objects.filter(numero__startswith=prefix).aggregate(
             max_seq=models.Max('numero')

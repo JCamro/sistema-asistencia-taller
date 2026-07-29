@@ -849,9 +849,30 @@ export interface NotaInput {
   fecha_vencimiento?: string | null;
 }
 
+export interface NotaFilters {
+  search?: string;
+  es_recordatorio?: boolean | string;
+  leida?: boolean | string;
+  ordering?: string;
+  page?: number;
+}
+
 /** Lista notas/recordatorios de un ciclo (paginado) */
-export const getNotas = (cicloId: number, page = 1) =>
-  api.get<{ count: number; results: Nota[] }>(`/notas/?ciclo_id=${cicloId}&page=${page}&page_size=100`);
+export const getNotas = (cicloId: number, filters: NotaFilters = {}) => {
+  const params = new URLSearchParams();
+  params.append('ciclo_id', cicloId.toString());
+  params.append('page', (filters.page ?? 1).toString());
+  params.append('page_size', '20');
+  if (filters.search) params.append('search', filters.search.slice(0, 100));
+  if (filters.es_recordatorio !== undefined && filters.es_recordatorio !== '') {
+    params.append('es_recordatorio', String(filters.es_recordatorio));
+  }
+  if (filters.leida !== undefined && filters.leida !== '') {
+    params.append('leida', String(filters.leida));
+  }
+  if (filters.ordering) params.append('ordering', filters.ordering);
+  return api.get<{ count: number; results: Nota[] }>(`/notas/?${params.toString()}`);
+};
 /** Crea una nota o recordatorio */
 export const createNota = (data: NotaInput) =>
   api.post<Nota>('/notas/', data);

@@ -82,7 +82,7 @@ const EgresosPage = () => {
     try { const d: any = { tipo:formTipo, monto:parseFloat(formMonto), descripcion:formDesc, fecha:formFecha, metodo_pago:formMetodo, categoria:formTipo==='gasto_taller'?formCat:'', beneficiario:formBenef, estado:formEst };
       if(formTipo==='gasto_personal'){ if(formProf)d.profesor=formProf; else d.profesor=null }
       if(egresoEditando){ await updateEgreso(egresoEditando.id,d); toast.showToast('Actualizado','success') } else { await createEgreso(d,cicloActual.id); toast.showToast('Creado','success') }
-      setModalOpen(false); setEgresoEditando(null); resetForm(); setPage(1); loadData();
+      setModalOpen(false); setEgresoEditando(null); resetForm(); setPage(1);
     } catch(err:any){ toast.showToast(err.response?.data?.detail||'Error','error') } finally { setGuardando(false) }
   };
 

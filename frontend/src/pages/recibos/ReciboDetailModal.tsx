@@ -44,19 +44,38 @@ function getEstadoColor(estado: string) {
   }
 }
 
-function getPaqueteLabel(paquete: string) {
-  const labels: Record<string, string> = {
-    'individual': 'Individual',
-    'combo_musical_12': 'Combo Musical 12+12',
-    'combo_musical_8': 'Combo Musical 8+8',
-    'combo_musical_12_8': 'Combo Musical 12+8',
-    'mixto_12': 'Mixto 12+12',
-    'mixto_8': 'Mixto 8+8',
-    'mixto_12_8': 'Mixto 12+8',
-    'intensivo_instrumento': 'Intensivo Instrumento',
-    'intensivo_taller': 'Intensivo Taller',
+function formatPaqueteLabel(raw: string | null | undefined): string {
+  if (!raw || raw === 'individual') return 'Individual';
+  const LABELS: Record<string, string> = {
+    combo_musical: 'Combo Musical',
+    mixto: 'Mixto',
+    intensivo: 'Intensivo',
+    individual: 'Individual',
   };
-  return labels[paquete] || paquete;
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const part of raw.split(',')) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const parts = trimmed.split('_');
+    if (parts.length < 2) { result.push(trimmed); seen.add(trimmed); continue; }
+    const lastIsNum = /^\d+$/.test(parts[parts.length - 1]);
+    const secondLastIsNum = parts.length >= 3 && /^\d+$/.test(parts[parts.length - 2]);
+    let label = trimmed;
+    if (secondLastIsNum && lastIsNum) {
+      const tipo = parts.slice(0, -2).join('_');
+      const p = parts[parts.length - 2];
+      const s = parts[parts.length - 1];
+      label = `${LABELS[tipo] || tipo} ${p}+${s}`;
+    } else if (lastIsNum) {
+      const tipo = parts.slice(0, -1).join('_');
+      label = `${LABELS[tipo] || tipo} ${parts[parts.length - 1]}`;
+    } else {
+      label = LABELS[trimmed] || trimmed;
+    }
+    if (!seen.has(label)) { seen.add(label); result.push(label); }
+  }
+  return result.join(', ');
 }
 
 function formatReciboDate(dateStr: string | null | undefined): string {
@@ -183,7 +202,7 @@ function ReciboDetailModal({ recibo, loading, onClose }: ReciboDetailModalProps)
               </div>
               <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', background: recibo.precio_editado ? '#fef9e7' : '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
                 <span style={{ fontSize: '0.7rem', color: recibo.precio_editado ? '#8b6914' : '#94a3b8' }}>
-                  Paquete: <strong style={{ color: recibo.precio_editado ? '#5c4508' : '#64748b' }}>{getPaqueteLabel(recibo.paquete_aplicado || 'individual')}</strong>
+                  Paquete: <strong style={{ color: recibo.precio_editado ? '#5c4508' : '#64748b' }}>{formatPaqueteLabel(recibo.paquete_aplicado || 'individual')}</strong>
                   {recibo.precio_editado && ' · Precio editado'}
                 </span>
               </div>

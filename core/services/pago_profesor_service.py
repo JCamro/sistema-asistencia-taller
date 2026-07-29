@@ -76,18 +76,22 @@ class PagoProfesorService:
 
         profesores = Profesor.objects.filter(activo=True, es_gerente=False)
 
+        todas_horas = list(HoraTrabajada.objects.filter(
+            ciclo=ciclo,
+            estado='aprobada',
+            tipo='clase_regular',
+            fecha__gte=fecha_inicio,
+            fecha__lte=fecha_fin,
+            horario__isnull=False,
+        ).select_related('horario'))
+
+        horas_por_profesor = {}
+        for ht in todas_horas:
+            horas_por_profesor.setdefault(ht.profesor_id, []).append(ht)
+
         resultados = []
         for profesor in profesores:
-            # Obtener HoraTrabajada aprobadas para este profesor en el período
-            horas_trabajadas = list(HoraTrabajada.objects.filter(
-                ciclo=ciclo,
-                profesor=profesor,
-                estado='aprobada',
-                tipo='clase_regular',
-                fecha__gte=fecha_inicio,
-                fecha__lte=fecha_fin,
-                horario__isnull=False,
-            ))
+            horas_trabajadas = horas_por_profesor.get(profesor.id, [])
             
             # Mapa para acceso O(1) en el inner loop
             ht_map = {(r.horario_id, r.fecha): r for r in horas_trabajadas}

@@ -81,7 +81,7 @@ interface ReciboFormModalProps {
  */
 function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: ReciboFormModalProps) {
   const editingId = recibo?.id ?? null;
-  const { showApiError } = useToast();
+  const { showApiError, showToast } = useToast();
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 768;
   const [formData, setFormData] = useState<ReciboFormData>(initialFormData);
@@ -222,7 +222,7 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
     e.preventDefault();
     if (!cicloId) return;
     if (!editingId && formData.matricula_ids.length === 0) {
-      showApiError('Debe seleccionar al menos una matrícula');
+      showToast('Debe seleccionar al menos una matrícula', 'warning');
       return;
     }
     setSaving(true);
@@ -255,6 +255,37 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
       setSaving(false);
     }
   };
+
+  // ponytail: largest-remainder method distributes rounding across all items
+  const roundTo5Balanced = (items: typeof precioCalculado extends { items: infer I } ? I : never, total: number, bruto: number) => {
+    // Step 1: proportional share, floor to multiple of 5, track fraction
+    const shares = items.map((item) => {
+      const share = bruto > 0 ? (item.precio_original / bruto) * total : 0;
+      const floored = Math.floor(share / 5) * 5;
+      return { floored, fraction: share - floored };
+    });
+    // Step 2: how many 5-unit slots to distribute
+    const sumFloored = shares.reduce((s, sh) => s + sh.floored, 0);
+    let remaining = Math.round((total - sumFloored) / 5);
+    // Step 3: give extra 5s to items with largest fractional remainders
+    const order = items.map((_, i) => i).sort((a, b) => shares[b].fraction - shares[a].fraction);
+    const result = new Array<number>(items.length);
+    for (const idx of order) {
+      result[idx] = shares[idx].floored + (remaining > 0 ? 5 : 0);
+      remaining -= 1;
+    }
+    return items.map((item, i) => ({
+      ...item,
+      precio_final: Math.max(0, result[i]),
+      descuento_aplicado: Math.max(0, item.precio_original - result[i]),
+    }));
+  };
+
+  const effectiveItems = precioCalculado
+    ? precioEditadoManual
+      ? roundTo5Balanced(precioCalculado.items, parseFloat(formData.monto_total) || 0, precioCalculado.items.reduce((sum, item) => sum + item.precio_original, 0))
+      : roundTo5Balanced(precioCalculado.items, precioCalculado.total_general, precioCalculado.items.reduce((sum, item) => sum + item.precio_original, 0))
+    : [];
 
   if (!isOpen) return null;
 
@@ -306,51 +337,62 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
 
           {calculandoPrecio && <div style={{ textAlign: 'center', padding: '1rem', color: '#94a3b8', fontSize: '0.875rem' }}>Calculando precio recomendado...</div>}
           {precioCalculado && !calculandoPrecio && (
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '1rem 1.125rem', marginBottom: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.8125rem' }}>
-                <span style={{ color: '#166534' }}>Precio bruto</span>
-                <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                  S/. {precioCalculado.items.reduce((sum, item) => sum + item.precio_original, 0).toFixed(2)}
+            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '1.125rem', marginBottom: '1.25rem' }}>
+              {/* Header: Bruto */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: effectiveItems.length > 0 ? '0.75rem' : 0 }}>
+                <span style={{ fontWeight: 600, color: '#166534', fontSize: '0.875rem' }}>Precio bruto</span>
+                <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '1rem', color: '#166534' }}>
+                  S/. {effectiveItems.reduce((sum, item) => sum + item.precio_original, 0).toFixed(2)}
                 </span>
               </div>
-              {precioCalculado.descuento_total > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.8125rem' }}>
-                  <span style={{ color: '#166534' }}>{getPaqueteLabel(precioCalculado.paquete_aplicado)}</span>
-                  <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#dc2626' }}>-S/. {precioCalculado.descuento_total.toFixed(2)}</span>
-                </div>
-              )}
-              {precioCalculado.items.length > 0 && (
-                <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid #bbf7d0' }}>
-                  <p style={{ fontSize: '0.7rem', fontWeight: 600, color: '#166534', marginBottom: '0.375rem' }}>Desglose por matrícula:</p>
-                  {precioCalculado.items.map((item) => (
-                    <div key={item.matricula_id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
-                      <span style={{ color: '#166534' }}>
-                        {item.alumno_nombre} — {item.taller_nombre} ({item.sesiones_contratadas} clases)
-                        {item.descuento_aplicado > 0 && (
-                          <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', color: '#059669' }}>
-                            {getPaqueteLabel(item.promo_aplicada)}
-                          </span>
-                        )}
-                      </span>
-                      <span style={{ fontFamily: 'monospace', color: '#166534' }}>
-                        {item.descuento_aplicado > 0 ? (
-                          <>
-                            <span style={{ textDecoration: 'line-through', color: '#9ca3af', marginRight: '0.25rem' }}>
-                              S/. {item.precio_original.toFixed(2)}
+
+              {/* Matrícula items */}
+              {effectiveItems.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  {effectiveItems.map((item) => (
+                    <div key={item.matricula_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.625rem', background: 'rgba(255,255,255,0.5)', borderRadius: '8px', border: '1px solid #d1fae5' }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontWeight: 600, color: '#166534', fontSize: '0.8125rem', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {item.alumno_nombre}
+                        </div>
+                        <div style={{ fontSize: '0.6875rem', color: '#059669', marginTop: '0.125rem' }}>
+                          {item.taller_nombre} · {item.sesiones_contratadas} clases
+                          {item.descuento_aplicado > 0 && (
+                            <span style={{ marginLeft: '0.375rem', padding: '0.0625rem 0.375rem', background: '#d1fae5', borderRadius: '4px', fontWeight: 600, fontSize: '0.625rem', color: '#047857' }}>
+                              {getPaqueteLabel(item.promo_aplicada)}
                             </span>
-                            S/. {item.precio_final.toFixed(2)}
-                          </>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '0.8125rem', color: '#166534', textAlign: 'right', whiteSpace: 'nowrap', marginLeft: '0.75rem' }}>
+                        {item.descuento_aplicado > 0 ? (
+                          <span>
+                            <span style={{ textDecoration: 'line-through', color: '#9ca3af', fontSize: '0.6875rem', fontWeight: 400, marginRight: '0.25rem' }}>
+                              {item.precio_original.toFixed(2)}
+                            </span>
+                            {item.precio_final.toFixed(2)}
+                          </span>
                         ) : (
-                          <>S/. {item.precio_final.toFixed(2)}</>
+                          <span>{item.precio_final.toFixed(2)}</span>
                         )}
-                      </span>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid #bbf7d0', marginTop: '0.375rem' }}>
-                <span style={{ fontWeight: 600, color: '#166534', fontSize: '0.875rem' }}>Precio sugerido</span>
-                <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '1.125rem', color: '#059669' }}>S/. {precioCalculado.total_general.toFixed(2)}</span>
+
+              {/* Discount line */}
+              {precioCalculado.descuento_total > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid #bbf7d0' }}>
+                  <span style={{ color: '#059669', fontWeight: 500 }}>{getPaqueteLabel(precioCalculado.paquete_aplicado)}</span>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#dc2626' }}>-S/. {precioEditadoManual ? (effectiveItems.reduce((sum, item) => sum + item.precio_original, 0) - parseFloat(formData.monto_total)).toFixed(2) : precioCalculado.descuento_total.toFixed(2)}</span>
+                </div>
+              )}
+
+              {/* Footer: Final price */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: '0.625rem', borderTop: '1.5px solid #86efac' }}>
+                <span style={{ fontWeight: 700, color: '#166534', fontSize: '0.9375rem' }}>{precioEditadoManual ? 'Precio final' : 'Precio sugerido'}</span>
+                <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.25rem', color: '#059669' }}>S/. {precioEditadoManual ? parseFloat(formData.monto_total).toFixed(2) : precioCalculado.total_general.toFixed(2)}</span>
               </div>
             </div>
           )}

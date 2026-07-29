@@ -247,12 +247,12 @@ function CalculadoraPrecios() {
                       )}
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      {r.descuento && r.descuento > 0 && (
+                      {(r.descuento ?? 0) > 0 && (
                         <span style={{ fontSize: '0.75rem', color: '#94a3b8', textDecoration: 'line-through', display: 'block' }}>
-                          S/. {(r.precio_total + r.descuento).toFixed(2)}
+                          S/. {(r.precio_total + (r.descuento ?? 0)).toFixed(2)}
                         </span>
                       )}
-                      <span style={{ fontFamily: 'monospace', fontWeight: 600, color: r.descuento && r.descuento > 0 ? '#059669' : '#0f172a' }}>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 600, color: (r.descuento ?? 0) > 0 ? '#059669' : '#0f172a' }}>
                         S/. {r.precio_total.toFixed(2)}
                       </span>
                     </div>
