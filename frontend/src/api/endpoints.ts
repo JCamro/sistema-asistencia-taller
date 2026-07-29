@@ -200,6 +200,66 @@ export interface PrecioPaquete {
   activo: boolean;
 }
 
+export interface PricingItemResponse {
+  matricula_id: number;
+  alumno_nombre: string;
+  taller_nombre: string;
+  taller_tipo: string;
+  sesiones_contratadas: number;
+  precio_original: number;
+  precio_final: number;
+  descuento_aplicado: number;
+  promo_aplicada: string;
+  precio_por_sesion_final: number;
+}
+
+export interface PricingPreviewResponse {
+  items: PricingItemResponse[];
+  total_general: number;
+  descuento_total: number;
+  paquete_aplicado: string;
+}
+
+export interface PricingCalculateItemResponse {
+  matricula_id: number;
+  alumno_nombre: string;
+  taller_nombre: string;
+  precio_original: number;
+  precio_final: number;
+  descuento_aplicado: number;
+  promo_aplicada: string;
+}
+
+export interface PricingCalculateResponse {
+  total_final: number;
+  descuento_total: number;
+  paquete_aplicado: string;
+  items: PricingCalculateItemResponse[];
+}
+
+export interface PricingIndividualResponse {
+  precio_total: number;
+  precio_por_sesion: number;
+}
+
+export interface EstimatePricingItem {
+  index: number;
+  tipo_taller: string;
+  cantidad_clases: number;
+  precio_original: number;
+  precio_final: number;
+  descuento: number;
+  promo_aplicada: string | null;
+  precio_por_sesion: number;
+}
+
+export interface EstimatePricingResponse {
+  items: EstimatePricingItem[];
+  total_general: number;
+  descuento_total: number;
+  paquete_aplicado: string;
+}
+
 export interface Egreso {
   id: number;
   tipo: 'gasto_taller' | 'pago_profesor' | 'gasto_personal';
@@ -649,6 +709,41 @@ export const updatePrecio = (id: number, data: Partial<PrecioPaquete>) => api.pa
 /** Elimina un precio de paquete */
 export const deletePrecio = (id: number) => api.delete(`/precios/${id}/`);
 
+// --- Pricing Engine ---
+
+/** Previsualiza precios y promociones para una lista de matrículas */
+export const previewPricing = async (matriculaIds: number[]): Promise<PricingPreviewResponse> => {
+  const { data } = await api.post('/pricing/preview/', { matricula_ids: matriculaIds });
+  return data;
+};
+
+/** Calcula precios y promociones para una lista de matrículas */
+export const calculatePricing = async (matriculaIds: number[]): Promise<PricingCalculateResponse> => {
+  const { data } = await api.post('/pricing/calculate/', { matricula_ids: matriculaIds });
+  return data;
+};
+
+/** Obtiene el precio individual para un tipo de taller y cantidad de sesiones */
+export const getIndividualPricing = async (
+  tipoTaller: string,
+  sesiones: number,
+  cicloId?: number
+): Promise<PricingIndividualResponse> => {
+  const params: Record<string, string | number> = { tipo_taller: tipoTaller, sesiones };
+  if (cicloId) params.ciclo_id = cicloId;
+  const { data } = await api.get('/pricing/individual/', { params });
+  return data;
+};
+
+/** Calcula precios con detección de promociones para ítems conceptuales */
+export const estimatePricing = async (
+  items: Array<{ tipo_taller: string; cantidad_clases: number }>,
+  cicloId: number
+): Promise<EstimatePricingResponse> => {
+  const { data } = await api.post('/pricing/estimate/', { items, ciclo_id: cicloId });
+  return data;
+};
+
 // --- Horas Trabajadas ---
 export interface HoraTrabajada {
   id: number;
@@ -730,6 +825,51 @@ export const getHistorialPagosProfesor = (profesorId: number, cicloId?: number, 
   const queryString = params.toString();
   return api.get<Egreso[]>(`/profesores/${profesorId}/historial-pagos/${queryString ? `?${queryString}` : ''}`);
 };
+
+// --- Notas y Recordatorios ---
+export interface Nota {
+  id: number;
+  ciclo: number;
+  titulo: string;
+  contenido: string;
+  fecha: string;
+  es_recordatorio: boolean;
+  fecha_vencimiento: string | null;
+  leida: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotaInput {
+  ciclo: number;
+  titulo: string;
+  contenido?: string;
+  fecha?: string;
+  es_recordatorio?: boolean;
+  fecha_vencimiento?: string | null;
+}
+
+/** Lista notas/recordatorios de un ciclo (paginado) */
+export const getNotas = (cicloId: number, page = 1) =>
+  api.get<{ count: number; results: Nota[] }>(`/notas/?ciclo_id=${cicloId}&page=${page}&page_size=100`);
+/** Crea una nota o recordatorio */
+export const createNota = (data: NotaInput) =>
+  api.post<Nota>('/notas/', data);
+/** Actualiza parcialmente una nota */
+export const updateNota = (id: number, data: Partial<NotaInput>) =>
+  api.patch<Nota>(`/notas/${id}/`, data);
+/** Elimina una nota */
+export const deleteNota = (id: number) =>
+  api.delete(`/notas/${id}/`);
+/** Lista notas no leídas de un ciclo */
+export const getNotasNoLeidas = (cicloId: number) =>
+  api.get<{ count: number; results: Nota[] }>(`/notas/no_leidas/?ciclo_id=${cicloId}`);
+/** Marca una nota como leída */
+export const marcarLeida = (id: number) =>
+  api.patch<Nota>(`/notas/${id}/marcar_leida/`);
+/** Marca una nota como no leída */
+export const marcarNoLeida = (id: number) =>
+  api.patch<Nota>(`/notas/${id}/marcar_no_leida/`);
 
 // --- Feriados ---
 /** Lista feriados de un ciclo (paginado) */

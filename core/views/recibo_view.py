@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Prefetch, Sum, Q
 from ..models import Recibo, ReciboMatricula
-from ..serializers import ReciboSerializer, ReciboListSerializer, CalcularPrecioSerializer
+from ..serializers import ReciboSerializer, ReciboListSerializer
 from .pagination import StandardResultsSetPagination
 import logging
 
@@ -70,14 +70,6 @@ class ReciboViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-    @action(detail=False, methods=['post'])
-    def calcular_precio(self, request):
-        serializer = CalcularPrecioSerializer(data=request.data)
-        if serializer.is_valid():
-            resultado = serializer.calcular()
-            return Response(resultado, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'], url_path='totals')
     def totals(self, request, ciclo_id=None):

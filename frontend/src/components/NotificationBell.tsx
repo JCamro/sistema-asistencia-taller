@@ -1,9 +1,18 @@
-import { memo, useState, useRef, useEffect } from 'react';
+import { memo, useState, useRef, useEffect, useCallback } from 'react';
 import NotificationPanel from './NotificationPanel';
 import { useNotifications } from '../hooks/useNotifications';
 
 function NotificationBell() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, removeNotification, clearNotifications } = useNotifications();
+  const {
+    notifications,
+    backendNotes,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    removeNotification,
+    clearNotifications,
+    markBackendRead,
+  } = useNotifications();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -16,6 +25,11 @@ function NotificationBell() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleMarkAllRead = useCallback(() => {
+    markAllAsRead();
+    backendNotes.forEach((n) => markBackendRead(n.id));
+  }, [backendNotes, markAllAsRead, markBackendRead]);
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -64,11 +78,13 @@ function NotificationBell() {
       {open && (
         <NotificationPanel
           notifications={notifications}
+          backendNotes={backendNotes}
           onClose={() => setOpen(false)}
           onMarkRead={markAsRead}
-          onMarkAllRead={markAllAsRead}
+          onMarkAllRead={handleMarkAllRead}
           onRemove={removeNotification}
           onClear={clearNotifications}
+          onMarkBackendRead={markBackendRead}
         />
       )}
     </div>

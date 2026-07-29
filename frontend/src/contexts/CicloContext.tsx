@@ -113,11 +113,24 @@ export function CicloProvider({ children }: { children: ReactNode }) {
   };
 
   // Selecciona un ciclo y redirige al dashboard. Guarda en localStorage y backend.
+  // Si el ciclo no tiene precios base configurados, redirige a configuración de precios.
   const seleccionarCiclo = async (ciclo: Ciclo) => {
     localStorage.setItem('ciclo_activo_id', String(ciclo.id));
     setCicloActualState(ciclo);
 
     await api.patch('/config/', { ciclo_activo: ciclo.id });
+
+    // Verificar si el ciclo tiene precios base configurados
+    try {
+      const { data } = await api.get(`/ciclos/${ciclo.id}/precios/check/`);
+      if (!data.completo) {
+        navigate('/configuracion-precios?nuevo=1', { replace: true });
+        return;
+      }
+    } catch {
+      // Si el endpoint falla, no bloquear — redirigir normalmente
+    }
+
     navigate('/dashboard');
   };
 

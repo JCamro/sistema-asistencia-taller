@@ -12,6 +12,64 @@ import ReciboDetailModal from './ReciboDetailModal';
 import Badge from '../../components/ui/Badge';
 import { formatMonto } from '../../utils/formatters';
 
+const PAQUETE_LABELS: Record<string, string> = {
+  individual: 'Individual',
+  combo_musical: 'Combo Musical',
+  mixto: 'Mixto',
+  intensivo: 'Intensivo',
+};
+
+const PAQUETE_COLORS: Record<string, { bg: string; text: string }> = {
+  individual: { bg: '#f3f4f6', text: '#6b7280' },
+  combo_musical: { bg: '#fef9e7', text: '#8b6914' },
+  mixto: { bg: '#fefce8', text: '#d97706' },
+  intensivo: { bg: '#fef2f2', text: '#dc2626' },
+};
+
+function formatPaquete(raw: string | null | undefined): { label: string; color: { bg: string; text: string } } | null {
+  if (!raw || raw === 'individual') {
+    return raw === 'individual'
+      ? { label: 'Individual', color: PAQUETE_COLORS.individual }
+      : null;
+  }
+
+  // Parse: combo_musical_12_12 → { type: 'combo_musical', primaria: '12', secundaria: '12' }
+  const parts = raw.split('_');
+  if (parts.length < 2) return null;
+
+  // Last two segments are numbers → combo_musical_12_8 → type=combo_musical, p=12, s=8
+  // Single number → intensivo_20 → type=intensivo, p=20
+  const lastIsNum = /^\d+$/.test(parts[parts.length - 1]);
+  const secondLastIsNum = parts.length >= 3 && /^\d+$/.test(parts[parts.length - 2]);
+
+  if (secondLastIsNum && lastIsNum) {
+    const tipo = parts.slice(0, -2).join('_');
+    const primaria = parts[parts.length - 2];
+    const secundaria = parts[parts.length - 1];
+    const label = PAQUETE_LABELS[tipo];
+    if (!label) return null;
+    return {
+      label: `${label} ${primaria}+${secundaria}`,
+      color: PAQUETE_COLORS[tipo] || PAQUETE_COLORS.individual,
+    };
+  }
+
+  if (lastIsNum) {
+    const tipo = parts.slice(0, -1).join('_');
+    const clases = parts[parts.length - 1];
+    const label = PAQUETE_LABELS[tipo];
+    if (!label) return null;
+    return {
+      label: `${label} ${clases}`,
+      color: PAQUETE_COLORS[tipo] || PAQUETE_COLORS.individual,
+    };
+  }
+
+  // Plain type name (e.g., "individual" already handled above, fallback)
+  const label = PAQUETE_LABELS[raw];
+  return label ? { label, color: PAQUETE_COLORS[raw] || PAQUETE_COLORS.individual } : null;
+}
+
 function getLimaToday(): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -64,7 +122,7 @@ function RecibosPage() {
   const [pendiente, setPendiente] = useState(0);
 
   // Task 7: 300ms debounce en search
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => setDebouncedSearch(search), 300);
@@ -264,7 +322,7 @@ function RecibosPage() {
               },
             },
             { key: 'fecha', label: 'Fecha', render: (r: Recibo) => <span style={{ whiteSpace: 'nowrap' }}>{new Date(r.fecha_emision + 'T00:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}</span> },
-            { key: 'paquete', label: 'Paquete', render: (r: Recibo) => <span title={r.paquete_aplicado || ''} style={{ display: 'inline-block', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{r.paquete_aplicado || '—'}</span> },
+            { key: 'paquete', label: 'Paquete', render: (r: Recibo) => { const raw = r.paquete_aplicado; if (!raw || raw === 'individual') return <span style={{ fontSize:'0.7rem', color:'#94a3b8', background:'#f3f4f6', padding:'0.15rem 0.5rem', borderRadius:'9999px', fontWeight:500 }}>Individual</span>; const promos = raw.split(',').map(p => formatPaquete(p)).filter(Boolean); return promos.length === 0 ? <span style={{ color:'#cbd5e1' }}>—</span> : <div style={{ display:'flex', flexWrap:'wrap', gap:'0.25rem' }}>{promos.map((p, i) => <span key={i} style={{ display:'inline-block', padding:'0.15rem 0.5rem', borderRadius:'9999px', fontSize:'0.7rem', fontWeight:600, background:p!.color.bg, color:p!.color.text, whiteSpace:'nowrap' }}>{p!.label}</span>)}</div>; } },
             { key: 'monto', label: 'Monto', align: 'right', render: (r: Recibo) => <span style={{ fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }} title={r.precio_editado ? 'Precio editado' : ''}>{formatMonto(r.monto_total)}{r.precio_editado && ' *'}</span> },
             { key: 'saldo', label: 'Saldo', align: 'right', render: (r: Recibo) => <span style={{ color: '#ef4444', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatMonto(r.saldo_pendiente)}</span> },
             {

@@ -1,786 +1,278 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useCallback, useEffect, memo } from 'react';
 import { useCiclo } from '../../contexts/CicloContext';
-import { getPreciosActivos, type PrecioPaquete } from '../../api/endpoints';
-import { useWindowWidth } from '../../hooks/useWindowWidth';
-import { BTN_PRIMARY } from '../../theme/colors';
+import { getTalleres, estimatePricing } from '../../api/endpoints';
+import type { Taller } from '../../api/endpoints';
 
-interface PrecioEntry {
-  total: number;
-  sesion: number;
-}
+interface ItemSeleccionado { id: number; tipo: 'instrumento' | 'taller'; nombre: string; clases: number; }
+interface ItemCalculado { item: ItemSeleccionado; precio_total: number; precio_por_sesion: number; promo?: string; descuento?: number; }
 
-interface PreciosMap {
-  instrumento: Record<number, PrecioEntry>;
-  taller: Record<number, PrecioEntry>;
-}
-
-interface PromoEntry {
-  total: number;
-  descuento: number;
-}
-
-interface PromosMap {
-  combo_musical: Record<string, PromoEntry>;
-  mixto: Record<string, PromoEntry>;
-  intensivo: Record<string, PromoEntry>;
-}
-
-interface ItemSeleccionado {
-  id: number;
-  tipo: 'instrumento' | 'taller';
-  nombre: string;
-  clases: number;
-}
-
-// Precios por defecto (fallback)
-const PRECIOS_DEFAULT: PreciosMap = {
-  instrumento: {
-    1: { total: 20, sesion: 20 },
-    8: { total: 160, sesion: 20 },
-    12: { total: 200, sesion: 16.67 },
-    20: { total: 300, sesion: 15 },
-  },
-  taller: {
-    1: { total: 17.50, sesion: 17.50 },
-    8: { total: 140, sesion: 17.50 },
-    12: { total: 180, sesion: 15 },
-    20: { total: 250, sesion: 12.50 },
-  },
-};
-
-function construirPreciosDesdeAPI(data: PrecioPaquete[]): PreciosMap {
-  const precios: PreciosMap = { instrumento: {}, taller: {} };
-
-  for (const p of data) {
-    if (p.tipo_paquete === 'individual' && p.activo) {
-      precios[p.tipo_taller][p.cantidad_clases] = {
-        total: Number(p.precio_total),
-        sesion: Number(p.precio_por_sesion),
-      };
-    }
-  }
-
-  // Si no hay precios de algún tipo, usar defaults
-  if (Object.keys(precios.instrumento).length === 0) {
-    precios.instrumento = { ...PRECIOS_DEFAULT.instrumento };
-  }
-  if (Object.keys(precios.taller).length === 0) {
-    precios.taller = { ...PRECIOS_DEFAULT.taller };
-  }
-
-  return precios;
-}
-
-function construirPromosDesdeAPI(data: PrecioPaquete[]): PromosMap {
-  const promos: PromosMap = { combo_musical: {}, mixto: {}, intensivo: {} };
-
-  for (const p of data) {
-    if (!p.activo) continue;
-
-    if (p.tipo_paquete === 'combo_musical') {
-      const key = p.cantidad_clases_secundaria
-        ? `${p.cantidad_clases}+${p.cantidad_clases_secundaria}`
-        : `${p.cantidad_clases}`;
-      promos.combo_musical[key] = {
-        total: Number(p.precio_total),
-        descuento: 0,
-      };
-    } else if (p.tipo_paquete === 'mixto') {
-      const key = p.cantidad_clases_secundaria
-        ? `${p.cantidad_clases}+${p.cantidad_clases_secundaria}`
-        : `${p.cantidad_clases}`;
-      promos.mixto[key] = {
-        total: Number(p.precio_total),
-        descuento: 0,
-      };
-    } else if (p.tipo_paquete === 'intensivo') {
-      // Key: tipo_taller (instrumento/taller)
-      promos.intensivo[p.tipo_taller] = {
-        total: Number(p.precio_total),
-        descuento: 0,
-      };
-    }
-  }
-
-  return promos;
-}
+const SUGERENCIAS = [4, 8, 12, 16, 20, 24];
+const cardStyle: React.CSSProperties = { background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' };
+const inputStyle: React.CSSProperties = { width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem' };
+const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.6875rem', fontWeight: 500, color: '#94a3b8', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.04em' };
+const sectionHeader: React.CSSProperties = { fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: '#0f172a' };
 
 /**
- * CalculadoraPrecios — Herramienta interactiva para cotizar precios de matrícula
- *
- * Permite agregar items (instrumento o taller, con cantidad de clases) y calcula
- * automáticamente el precio total aplicando promociones cuando corresponde:
- *
- * - Combo Musical: 2+ instrumentos con descuento (ej: 12+12, 12+8, 8+8)
- * - Mixto: 1 instrumento + 1 taller con descuento
- * - Intensivo: paquete de 20 clases con precio especial
- *
- * Los precios base y promociones se cargan desde la API. Si no hay datos,
- * se usan valores por defecto como fallback.
+ * CalculadoraPrecios — Cotiza precios con promociones para ítems seleccionados.
+ * Los ítems usan talleres reales del ciclo activo.
  */
 function CalculadoraPrecios() {
   const { cicloActual } = useCiclo();
-  const windowWidth = useWindowWidth();
-  const isMobile = windowWidth < 768;
-  const [precios, setPrecios] = useState<PreciosMap>(PRECIOS_DEFAULT);
-  const [promos, setPromos] = useState<PromosMap>({ combo_musical: {}, mixto: {}, intensivo: {} });
-  const [loadingPrecios, setLoadingPrecios] = useState(true);
   const [items, setItems] = useState<ItemSeleccionado[]>([]);
   const [nuevoTipo, setNuevoTipo] = useState<'instrumento' | 'taller'>('instrumento');
   const [nuevoNombre, setNuevoNombre] = useState('');
-  const [nuevoClases, setNuevoClases] = useState<number>(12);
-  const [cantidadSuelta, setCantidadSuelta] = useState<number>(1);
-
-  const cargarPrecios = useCallback(async () => {
-    if (!cicloActual) {
-      setLoadingPrecios(false);
-      return;
-    }
-    setLoadingPrecios(true);
-    try {
-      const response = await getPreciosActivos(cicloActual.id);
-      if (response.data.length > 0) {
-        setPrecios(construirPreciosDesdeAPI(response.data));
-        setPromos(construirPromosDesdeAPI(response.data));
-      }
-    } catch (error) {
-      console.error('Error cargando precios:', error);
-      // Mantener precios por defecto
-    } finally {
-      setLoadingPrecios(false);
-    }
-  }, [cicloActual]);
+  const [nuevoClases, setNuevoClases] = useState(12);
+  const [resultados, setResultados] = useState<ItemCalculado[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [talleres, setTalleres] = useState<Taller[]>([]);
+  const [loadingTalleres, setLoadingTalleres] = useState(false);
 
   useEffect(() => {
-    cargarPrecios();
-  }, [cargarPrecios]);
-
-  const agregarItem = () => {
-    if (!nuevoNombre.trim()) return;
-
-    if (nuevoClases === 1) {
-      const nuevosItems: ItemSeleccionado[] = [];
-      for (let index = 0; index < cantidadSuelta; index++) {
-        nuevosItems.push({
-          id: Date.now() + index,
-          tipo: nuevoTipo,
-          nombre: nuevoNombre,
-          clases: 1,
-        });
-      }
-      setItems([...items, ...nuevosItems]);
-    } else {
-      const newItem: ItemSeleccionado = {
-        id: Date.now(),
-        tipo: nuevoTipo,
-        nombre: nuevoNombre,
-        clases: nuevoClases,
-      };
-      setItems([...items, newItem]);
-    }
-    setNuevoNombre('');
-    setCantidadSuelta(1);
-  };
-
-  const eliminarItem = (id: number) => {
-    setItems(items.filter(i => i.id !== id));
-  };
-
-  // Forma combos de instrumentos de manera óptima: ordena promos por tamaño
-  // descendente (12+12 → 12+8 → 8+8) y empareja sin repetir instrumentos.
-  // Los instrumentos no emparejados se cobran como individuales.
-  const formarCombosInstrumentos = (
-    instrumentos: ItemSeleccionado[],
-    precioMap: Record<number, PrecioEntry>
-  ): {
-    combos: { inst1: ItemSeleccionado; inst2: ItemSeleccionado; clases1: number; clases2: number; precioCombo: number; ahorro: number }[];
-    individuales: ItemSeleccionado[];
-    descuentoTotal: number;
-  } => {
-    if (instrumentos.length < 2) {
-      return { combos: [], individuales: instrumentos, descuentoTotal: 0 };
-    }
-
-    // Ordenar promos por tamaño total descendente (12+12 > 12+8 > 8+8)
-    const promosOrdenadas = Object.entries(promos.combo_musical)
-      .map(([key, val]) => {
-        const [c1, c2] = key.split('+').map(Number);
-        return { key, ...val, totalClases: c1 + c2 };
+    if (!cicloActual) return;
+    setLoadingTalleres(true);
+    getTalleres(cicloActual.id, 1, '')
+      .then((res) => {
+        const data = res.data.results || res.data;
+        setTalleres(Array.isArray(data) ? data.filter((t: Taller) => t.activo) : []);
       })
-      .sort((a, b) => b.totalClases - a.totalClases);
+      .catch(() => setTalleres([]))
+      .finally(() => setLoadingTalleres(false));
+  }, [cicloActual]);
 
-    const usados = new Set<number>();
-    const combos: { inst1: ItemSeleccionado; inst2: ItemSeleccionado; clases1: number; clases2: number; precioCombo: number; ahorro: number }[] = [];
-    const individuales: ItemSeleccionado[] = [];
-    let descuentoTotal = 0;
+  const talleresFiltrados = talleres.filter(t => t.tipo === nuevoTipo);
 
-    // Para cada promo disponible, formar todos los combos posibles
-    for (const promo of promosOrdenadas) {
-      const [p1, p2] = promo.key.split('+').map(Number);
+  const agregarItem = useCallback(() => {
+    if (!nuevoNombre.trim()) return;
+    const item: ItemSeleccionado = { id: Date.now(), tipo: nuevoTipo, nombre: nuevoNombre.trim(), clases: nuevoClases };
+    setItems((prev) => [...prev, item]);
+    setResultados([]);
+    setNuevoNombre('');
+  }, [nuevoNombre, nuevoTipo, nuevoClases]);
 
-      // Contar cuántos pares podemos formar sin repetir instrumentos
-      // Necesitamos 2 instrumentos: uno de p1 clases y otro de p2 clases
-      let restantes = [...instrumentos.map((i, idx) => ({ ...i, idx }))];
+  const eliminarItem = useCallback((id: number) => {
+    setItems((prev) => prev.filter((i) => i.id !== id));
+    setResultados([]);
+  }, []);
 
-      for (const combo of combos) {
-        // Filtrar los ya usados en combos anteriores
-        restantes = restantes.filter(r => r.idx !== instrumentos.findIndex(i => i.id === combo.inst1.id) &&
-                                                r.idx !== instrumentos.findIndex(i => i.id === combo.inst2.id));
-      }
-
-      // Buscar pares disponibles para esta promo
-      while (true) {
-        const disponibles1 = restantes.filter((r) => {
-          const realIdx = instrumentos.findIndex(i => i.id === r.id);
-          return r.clases === p1 && !usados.has(realIdx);
-        });
-        const disponibles2 = restantes.filter((r) => {
-          const realIdx = instrumentos.findIndex(i => i.id === r.id);
-          return r.clases === p2 && !usados.has(realIdx);
-        });
-
-        if (disponibles1.length === 0 || disponibles2.length === 0) break;
-
-        const inst1 = disponibles1[0];
-        
-        // Buscar en disponibles2 un instrumento DIFERENTE a inst1
-        const inst2Idx = restantes.findIndex((r) => r.id !== inst1.id && r.clases === p2);
-        if (inst2Idx === -1) break;
-        
-        const inst2 = restantes[inst2Idx];
-        const realIdx1 = instrumentos.findIndex(i => i.id === inst1.id);
-        const realIdx2 = instrumentos.findIndex(i => i.id === inst2.id);
-
-        if (realIdx1 === -1 || realIdx2 === -1) break;
-
-        usados.add(realIdx1);
-        usados.add(realIdx2);
-
-        const precioInd1 = precioMap[p1]?.total ?? 0;
-        const precioInd2 = precioMap[p2]?.total ?? 0;
-        const ahorro = (precioInd1 + precioInd2) - promo.total;
-
-        combos.push({
-          inst1: instrumentos[realIdx1],
-          inst2: instrumentos[realIdx2],
-          clases1: p1,
-          clases2: p2,
-          precioCombo: promo.total,
-          ahorro,
-        });
-        descuentoTotal += ahorro;
-
-        // Remover de restantes para evitar reutilizar
-        restantes = restantes.filter(r => r.id !== inst1.id && r.id !== inst2.id);
-      }
+  const calcularPrecios = useCallback(async () => {
+    if (items.length === 0 || !cicloActual) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await estimatePricing(
+        items.map(item => ({ tipo_taller: item.tipo, cantidad_clases: item.clases })),
+        cicloActual.id
+      );
+      const calculados: ItemCalculado[] = result.items.map((ri) => {
+        const item = items[ri.index];
+        return {
+          item,
+          precio_total: ri.precio_final,
+          precio_por_sesion: ri.precio_por_sesion,
+          promo: ri.promo_aplicada && ri.promo_aplicada !== 'individual' ? ri.promo_aplicada : undefined,
+          descuento: ri.descuento,
+        };
+      });
+      setResultados(calculados);
+    } catch (err: any) {
+      const detail = err?.response?.data?.error || err?.response?.data?.detail || 'No se pudieron calcular los precios.';
+      setError(detail);
+    } finally {
+      setLoading(false);
     }
+  }, [items, cicloActual]);
 
-    // Los instrumentos no usados van como individuales
-    instrumentos.forEach((inst, idx) => {
-      if (!usados.has(idx)) {
-        individuales.push(inst);
-      }
-    });
+  const total = resultados.reduce((sum, r) => sum + r.precio_total, 0);
 
-    return { combos, individuales, descuentoTotal };
-  };
+  const tipoBtnStyle = (tipo: 'instrumento' | 'taller'): React.CSSProperties => ({
+    flex: 1, padding: '0.5rem 0.75rem', minHeight: 44, borderRadius: 8,
+    border: nuevoTipo === tipo ? '2px solid #d4af37' : '1.5px solid #e5e7eb',
+    background: nuevoTipo === tipo ? '#fef9e7' : '#fff',
+    color: nuevoTipo === tipo ? '#8b6914' : '#64748b',
+    fontWeight: nuevoTipo === tipo ? 600 : 400,
+    fontSize: '0.8125rem', cursor: 'pointer', transition: 'all 200ms ease'
+  });
 
-  const calcularPrecio = () => {
-    if (items.length === 0) return null;
-
-    const instrumentos = items.filter(i => i.tipo === 'instrumento');
-    const talleres = items.filter(i => i.tipo === 'taller');
-
-    let precioBruto = 0;
-    let descuento = 0;
-    let promoAplicada = '';
-    const desglose: { nombre: string; tipo: string; clases: number; precio: number }[] = [];
-
-    // Calcular precio bruto individual de todos los items
-    for (const item of items) {
-      const precio = precios[item.tipo][item.clases];
-      if (precio) {
-        precioBruto += precio.total;
-      }
-    }
-
-    // --- COMBO MUSICAL (2+ instrumentos) ---
-    if (instrumentos.length >= 2) {
-      const resultadoCombos = formarCombosInstrumentos(instrumentos, precios.instrumento);
-
-      if (resultadoCombos.combos.length > 0) {
-        descuento = resultadoCombos.descuentoTotal;
-
-        // Agregar combos al desglose
-        for (const combo of resultadoCombos.combos) {
-          const precioMitad = combo.precioCombo / 2;
-          desglose.push({
-            nombre: combo.inst1.nombre,
-            tipo: 'instrumento',
-            clases: combo.clases1,
-            precio: precioMitad,
-          });
-          desglose.push({
-            nombre: combo.inst2.nombre,
-            tipo: 'instrumento',
-            clases: combo.clases2,
-            precio: precioMitad,
-          });
-        }
-
-        // Agregar individuales al desglose
-        for (const inst of resultadoCombos.individuales) {
-          const precioInd = precios.instrumento[inst.clases]?.total ?? 0;
-          desglose.push({
-            nombre: inst.nombre,
-            tipo: 'instrumento',
-            clases: inst.clases,
-            precio: precioInd,
-          });
-        }
-
-        if (resultadoCombos.combos.length === 1) {
-          const combo = resultadoCombos.combos[0];
-          promoAplicada = `Combo Musical (${combo.clases1} + ${combo.clases2} clases)`;
-        } else {
-          promoAplicada = `Combo Musical (${resultadoCombos.combos.length} combinaciones)`;
-        }
-      } else {
-        // No hay promo configurada - cobrar todo individual
-        for (const item of items) {
-          const precio = precios[item.tipo][item.clases];
-          if (precio) {
-            desglose.push({
-              nombre: item.nombre,
-              tipo: item.tipo,
-              clases: item.clases,
-              precio: precio.total,
-            });
-          }
-        }
-      }
-    }
-    // --- MIXTO (1 instrumento + 1 taller) ---
-    else if (instrumentos.length === 1 && talleres.length === 1) {
-      const primaria = Math.max(instrumentos[0].clases, talleres[0].clases);
-      const secundaria = Math.min(instrumentos[0].clases, talleres[0].clases);
-      const key = `${primaria}+${secundaria}`;
-
-      if (promos.mixto[key]) {
-        const precioMixto = promos.mixto[key].total;
-        const precioIndividual2 =
-          (precios[instrumentos[0].tipo][instrumentos[0].clases]?.total ?? 0) +
-          (precios[talleres[0].tipo][talleres[0].clases]?.total ?? 0);
-        descuento = precioIndividual2 - precioMixto;
-
-        const precioMitad = precioMixto / 2;
-        desglose.push({
-          nombre: instrumentos[0].nombre,
-          tipo: instrumentos[0].tipo,
-          clases: instrumentos[0].clases,
-          precio: precioMitad,
-        });
-        desglose.push({
-          nombre: talleres[0].nombre,
-          tipo: talleres[0].tipo,
-          clases: talleres[0].clases,
-          precio: precioMitad,
-        });
-
-        promoAplicada = `Mixto (${primaria} + ${secundaria} clases)`;
-      } else {
-        for (const item of items) {
-          const precio = precios[item.tipo][item.clases];
-          if (precio) {
-            desglose.push({
-              nombre: item.nombre,
-              tipo: item.tipo,
-              clases: item.clases,
-              precio: precio.total,
-            });
-          }
-        }
-      }
-    }
-    // --- INTENSIVO (20 clases) ---
-    else if (items.some(i => i.clases === 20)) {
-      const item20 = items.find(i => i.clases === 20);
-      if (item20 && promos.intensivo[item20.tipo]) {
-        const precioIndividual = precios[item20.tipo][20]?.total ?? 0;
-        const precioPromo = promos.intensivo[item20.tipo].total;
-        descuento = precioIndividual - precioPromo;
-
-        for (const item of items) {
-          if (item.clases === 20 && item.tipo === item20.tipo) {
-            desglose.push({
-              nombre: item.nombre,
-              tipo: item.tipo,
-              clases: 20,
-              precio: precioPromo,
-            });
-          } else {
-            const precio = precios[item.tipo][item.clases];
-            if (precio) {
-              desglose.push({
-                nombre: item.nombre,
-                tipo: item.tipo,
-                clases: item.clases,
-                precio: precio.total,
-              });
-            }
-          }
-        }
-        promoAplicada = `Intensivo ${item20.tipo} (20 clases)`;
-      } else {
-        for (const item of items) {
-          const precio = precios[item.tipo][item.clases];
-          if (precio) {
-            desglose.push({
-              nombre: item.nombre,
-              tipo: item.tipo,
-              clases: item.clases,
-              precio: precio.total,
-            });
-          }
-        }
-      }
-    }
-    // --- SIN PROMOCION ---
-    else {
-      for (const item of items) {
-        const precio = precios[item.tipo][item.clases];
-        if (precio) {
-          desglose.push({
-            nombre: item.nombre,
-            tipo: item.tipo,
-            clases: item.clases,
-            precio: precio.total,
-          });
-        }
-      }
-    }
-
-    return {
-      precioBruto,
-      descuento,
-      precioFinal: precioBruto - descuento,
-      promoAplicada,
-      desglose,
-    };
-  };
-
-  const resultado = calcularPrecio();
-  const precioSueltaRef = precios[nuevoTipo][1]?.total ?? 0;
+  const chipStyle = (n: number): React.CSSProperties => ({
+    flex: 1, minWidth: '48px', padding: '0.5rem 0.25rem', minHeight: 44, borderRadius: 8,
+    border: nuevoClases === n ? '2px solid #d4af37' : '1.5px solid #e5e7eb',
+    background: nuevoClases === n ? '#fef9e7' : '#fff',
+    color: nuevoClases === n ? '#8b6914' : '#64748b',
+    fontWeight: nuevoClases === n ? 600 : 400,
+    fontSize: '0.8125rem', cursor: 'pointer', transition: 'all 200ms ease'
+  });
 
   return (
-    <div>
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#111827', marginBottom: '0.25rem' }}>
-          Calculadora de Precios
-        </h1>
-        <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-          {loadingPrecios ? 'Cargando precios...' : `Precios del ciclo: ${cicloActual?.nombre ?? 'No seleccionado'}`}
-        </p>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '1rem' : '1.5rem' }}>
-        {/* Panel izquierdo - Agregar items */}
-        <div>
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem', color: '#111827' }}>
-              Agregar Clase
-            </h3>
-            <div style={{ display: 'grid', gap: '0.75rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>Tipo</label>
-                <select
-                  value={nuevoTipo}
-                  onChange={(e) => setNuevoTipo(e.target.value as 'instrumento' | 'taller')}
-                  style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
-                >
-                  <option value="instrumento">Instrumento</option>
-                  <option value="taller">Taller</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>Nombre</label>
-                <input
-                  type="text"
-                  value={nuevoNombre}
-                  onChange={(e) => setNuevoNombre(e.target.value)}
-                  placeholder="Ej: Guitarra, Piano, Dibujo..."
-                  style={{ width: '100%', padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>Clases</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {[1, 8, 12, 20].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setNuevoClases(n)}
-                      style={{
-                        flex: 1,
-                        padding: '0.75rem 0.5rem',
-                        minHeight: '44px',
-                        border: nuevoClases === n ? '2px solid #d4af37' : '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        background: nuevoClases === n ? '#fef9e7' : 'white',
-                        fontWeight: nuevoClases === n ? '600' : '400',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {n === 1 ? 'Suelta' : n}
-                    </button>
-                  ))}
-                </div>
-                {nuevoClases === 1 && (
-                  <div style={{ marginTop: '0.75rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.25rem' }}>Cantidad de clases sueltas</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <button
-                        type="button"
-                        onClick={() => setCantidadSuelta(Math.max(1, cantidadSuelta - 1))}
-                        style={{
-                          width: '44px', height: '44px',
-                          border: '1px solid #d1d5db', borderRadius: '8px',
-                          background: 'white', cursor: 'pointer',
-                          fontSize: '1.25rem', fontWeight: '600',
-                        }}
-                      >
-                        -
-                      </button>
-                      <input
-                        type="number"
-                        value={cantidadSuelta}
-                        onChange={(e) => setCantidadSuelta(Math.max(1, parseInt(e.target.value) || 1))}
-                        min={1}
-                        style={{
-                          width: '60px', padding: '0.5rem',
-                          border: '1px solid #d1d5db', borderRadius: '8px',
-                          textAlign: 'center', fontWeight: '600',
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setCantidadSuelta(cantidadSuelta + 1)}
-                        style={{
-                          width: '44px', height: '44px',
-                          border: '1px solid #d1d5db', borderRadius: '8px',
-                          background: 'white', cursor: 'pointer',
-                          fontSize: '1.25rem', fontWeight: '600',
-                        }}
-                      >
-                        +
-                      </button>
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                        = S/. {(cantidadSuelta * precioSueltaRef).toFixed(2)} total
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={agregarItem}
-                disabled={!nuevoNombre.trim()}
-                style={{
-                  padding: '0.75rem',
-                  minHeight: '48px',
-                  background: !nuevoNombre.trim() ? '#e5e7eb' : BTN_PRIMARY.background,
-                  color: BTN_PRIMARY.color,
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontWeight: '600',
-                  cursor: !nuevoNombre.trim() ? 'not-allowed' : 'pointer',
-                }}
-              >
-                + Agregar
-              </button>
+    <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+      <div style={{ ...cardStyle, marginBottom: '1rem' }}>
+        <h3 style={sectionHeader}>Agregar Clase</h3>
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          <div>
+            <label style={labelStyle}>Tipo</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="button" onClick={() => setNuevoTipo('instrumento')} className="touch-target" style={tipoBtnStyle('instrumento')}>Instrumento</button>
+              <button type="button" onClick={() => setNuevoTipo('taller')} className="touch-target" style={tipoBtnStyle('taller')}>Taller</button>
             </div>
           </div>
+          <div>
+            <label style={labelStyle}>Nombre</label>
+            <select
+              value={nuevoNombre}
+              onChange={(e) => setNuevoNombre(e.target.value)}
+              style={inputStyle}
+              disabled={loadingTalleres}
+            >
+              <option value="">{loadingTalleres ? 'Cargando...' : 'Seleccionar...'}</option>
+              {talleresFiltrados.map((t) => (
+                <option key={t.id} value={t.nombre}>{t.nombre}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Clases</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {SUGERENCIAS.map((n) => (
+                <button key={n} type="button" onClick={() => setNuevoClases(n)} className="touch-target" style={chipStyle(n)}>{n}</button>
+              ))}
+            </div>
+          </div>
+          <button type="button" onClick={agregarItem} disabled={!nuevoNombre.trim()} className="touch-target" style={{
+            width: '100%', padding: '0.625rem', minHeight: 44, borderRadius: 10,
+            border: nuevoNombre.trim() ? '2px solid #d4af37' : '1px solid #e5e7eb',
+            background: nuevoNombre.trim() ? '#fef9e7' : '#fafbfc',
+            color: nuevoNombre.trim() ? '#8b6914' : '#cbd5e1',
+            fontWeight: 600, fontSize: '0.875rem',
+            cursor: nuevoNombre.trim() ? 'pointer' : 'not-allowed',
+            transition: 'all 200ms', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem'
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Agregar clase
+          </button>
+        </div>
+      </div>
 
-          {/* Items seleccionados */}
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem', color: '#111827' }}>
-              Clases Seleccionadas ({items.length})
-            </h3>
-            {items.length === 0 ? (
-              <p style={{ color: '#9ca3af', textAlign: 'center', padding: '1rem' }}>
-                Agrega clases para calcular el precio
-              </p>
+      <div style={{ ...cardStyle, marginBottom: '1rem' }}>
+        <h3 style={sectionHeader}>Clases Seleccionadas ({items.length})</h3>
+        {items.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5">
+              <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+            </svg>
+            <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              Agregá clases para calcular el precio
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {items.map((item) => (
+              <div key={item.id} style={{
+                display: 'flex', alignItems: 'center', gap: '0.75rem',
+                padding: '0.75rem 1rem', borderRadius: 10,
+                background: item.tipo === 'instrumento' ? '#fef9e7' : '#fefce8',
+                border: `1px solid ${item.tipo === 'instrumento' ? '#f0d878' : '#fde68a'}`,
+                transition: 'all 200ms'
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={item.tipo === 'instrumento' ? '#b59410' : '#ca8a04'} strokeWidth="1.8" style={{ flexShrink: 0 }}>
+                  {item.tipo === 'instrumento' ? (
+                    <><path d="M9 18V5l9-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></>
+                  ) : (
+                    <><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></>
+                  )}
+                </svg>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{item.nombre}</span>
+                  <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                    {item.tipo === 'instrumento' ? 'Instrumento' : 'Taller'} · {item.clases} clases
+                  </span>
+                </div>
+                <button type="button" onClick={() => eliminarItem(item.id)} className="touch-target" style={{ width: 36, height: 36, borderRadius: 8, border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 150ms' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#fef2f2'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {items.length > 0 && (
+        <div style={{ ...cardStyle }}>
+          <h3 style={sectionHeader}>Resumen de Precio</h3>
+          <button type="button" onClick={calcularPrecios} disabled={loading || !cicloActual} className="touch-target" style={{
+            width: '100%', padding: '0.75rem', minHeight: 48, borderRadius: 10, border: 'none',
+            fontWeight: 600, fontSize: '0.9375rem', cursor: loading || !cicloActual ? 'not-allowed' : 'pointer',
+            background: loading || !cicloActual ? '#e5e7eb' : 'linear-gradient(135deg, #d4af37, #c59b2e)',
+            color: loading || !cicloActual ? '#9ca3af' : '#0a0a0a',
+            transition: 'all 200ms', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'
+          }}>
+            {loading ? (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                  <circle cx="12" cy="12" r="10" fill="none" stroke="#9ca3af" strokeWidth="3" strokeLinecap="round" strokeDasharray="40" strokeDashoffset="10">
+                    <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.6s" repeatCount="indefinite"/>
+                  </circle>
+                </svg>
+                Calculando...
+              </>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {items.map((item) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '0.75rem',
-                      background: item.tipo === 'instrumento' ? '#fef9e7' : '#fef3c7',
-                      borderRadius: '8px',
-                    }}
-                  >
+              <>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/>
+                </svg>
+                Calcular precios
+              </>
+            )}
+          </button>
+          {error && <p style={{ color: '#dc2626', fontSize: '0.875rem', marginTop: '0.75rem' }}>{error}</p>}
+          {resultados.length > 0 && (
+            <>
+              <div style={{ marginTop: '1rem', marginBottom: '0.75rem' }}>
+                <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Desglose</p>
+                {resultados.map((r, i) => (
+                  <div key={r.item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.625rem 0.75rem', borderRadius: 8, background: i % 2 === 0 ? '#fafbfc' : 'white' }}>
                     <div>
-                      <span style={{ fontWeight: '600', color: '#111827' }}>{item.nombre}</span>
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                        {item.tipo === 'instrumento' ? 'Instrumento' : 'Taller'} · {item.clases} clases
+                      <span style={{ fontWeight: 500, color: '#0f172a', fontSize: '0.875rem' }}>{r.item.nombre}</span>
+                      <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: '0.5rem' }}>{r.item.clases} clases</span>
+                      {r.promo && (
+                        <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#8b6914', background: '#fef9e7', padding: '0.1rem 0.45rem', borderRadius: '9999px', marginLeft: '0.5rem', textTransform: 'uppercase' }}>
+                          {r.promo === 'combo_musical' ? 'Combo' : r.promo === 'mixto' ? 'Mixto' : r.promo === 'intensivo' ? 'Intensivo' : r.promo}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      {r.descuento && r.descuento > 0 && (
+                        <span style={{ fontSize: '0.75rem', color: '#94a3b8', textDecoration: 'line-through', display: 'block' }}>
+                          S/. {(r.precio_total + r.descuento).toFixed(2)}
+                        </span>
+                      )}
+                      <span style={{ fontFamily: 'monospace', fontWeight: 600, color: r.descuento && r.descuento > 0 ? '#059669' : '#0f172a' }}>
+                        S/. {r.precio_total.toFixed(2)}
                       </span>
                     </div>
-                    <button
-                      onClick={() => eliminarItem(item.id)}
-                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: '600', padding: '0.5rem', minHeight: '44px', minWidth: '44px' }}
-                    >
-                      ×
-                    </button>
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Panel derecho - Resultado */}
-        <div>
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem', position: 'sticky', top: '1rem' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem', color: '#111827' }}>
-              Resumen de Precio
-            </h3>
-
-            {!resultado ? (
-              <p style={{ color: '#9ca3af', textAlign: 'center', padding: '2rem' }}>
-                Agrega clases para ver el cálculo
-              </p>
-            ) : (
-              <div>
-                {/* Desglose */}
-                <div style={{ marginBottom: '1rem' }}>
-                  <p style={{ fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.5rem' }}>DESGLOSE</p>
-                  {resultado.desglose.map((d, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #e5e7eb' }}>
-                      <span style={{ color: '#374151' }}>{d.nombre} ({d.clases} clases)</span>
-                      <span style={{ fontFamily: 'monospace', fontWeight: '500' }}>S/. {d.precio.toFixed(2)}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Precio bruto */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0' }}>
-                  <span style={{ color: '#374151' }}>Precio bruto</span>
-                  <span style={{ fontFamily: 'monospace' }}>S/. {resultado.precioBruto.toFixed(2)}</span>
-                </div>
-
-                {/* Descuento si aplica */}
-                {resultado.descuento > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', color: '#059669' }}>
-                    <span>Promoción: {resultado.promoAplicada}</span>
-                    <span style={{ fontFamily: 'monospace' }}>-S/. {resultado.descuento.toFixed(2)}</span>
-                  </div>
-                )}
-
-                {/* Total */}
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between',
-                  padding: '1rem', marginTop: '1rem',
-                  background: '#f0fdf4', borderRadius: '8px', border: '1px solid #86efac',
-                }}>
-                  <span style={{ fontWeight: '700', color: '#111827', fontSize: '1.125rem' }}>TOTAL</span>
-                  <span style={{ fontFamily: 'monospace', fontWeight: '700', fontSize: '1.25rem', color: '#059669' }}>
-                    S/. {resultado.precioFinal.toFixed(2)}
-                  </span>
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', marginTop: '1rem', background: 'linear-gradient(135deg, #fef9e7, #fef3c7)', borderRadius: 12, border: '1px solid #f0d878' }}>
+                <span style={{ fontWeight: 700, color: '#8b6914', fontSize: '1rem' }}>Total</span>
+                <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '1.25rem', color: '#5c4508' }}>S/. {total.toFixed(2)}</span>
               </div>
-            )}
-          </div>
-
-          {/* Tabla de precios de referencia (desde API) */}
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem', marginTop: '1rem' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem', color: '#111827' }}>
-              Tabla de Precios
-            </h3>
-            {loadingPrecios ? (
-              <p style={{ color: '#9ca3af', textAlign: 'center', padding: '1rem', fontSize: '0.875rem' }}>Cargando...</p>
-            ) : (
-              <>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <thead>
-                    <tr style={{ background: '#f9fafb' }}>
-                      <th style={{ padding: '0.5rem', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>Tipo</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: '600', color: '#6b7280' }}>1</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: '600', color: '#6b7280' }}>8</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: '600', color: '#6b7280' }}>12</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: '600', color: '#6b7280' }}>20</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td style={{ padding: '0.5rem', fontWeight: '500', color: '#d4af37' }}>Instrumento</td>
-                      {[1, 8, 12, 20].map(n => (
-                        <td key={n} style={{ padding: '0.5rem', textAlign: 'center' }}>
-                          {precios.instrumento[n]?.total.toFixed(2) ?? '-'}
-                        </td>
-                      ))}
-                    </tr>
-                    <tr>
-                      <td style={{ padding: '0.5rem', fontWeight: '500', color: '#f59e0b' }}>Taller</td>
-                      {[1, 8, 12, 20].map(n => (
-                        <td key={n} style={{ padding: '0.5rem', textAlign: 'center' }}>
-                          {precios.taller[n]?.total.toFixed(2) ?? '-'}
-                        </td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
-
-                <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginTop: '1rem', marginBottom: '0.5rem', color: '#111827' }}>
-                  Promociones
-                </h4>
-                <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.75rem' }}>
-                  {Object.keys(promos.combo_musical).length > 0 && (
-                    <div style={{ padding: '0.5rem', background: '#fef9e7', borderRadius: '6px' }}>
-                      <strong>Combo Musical (2 Instrumentos):</strong>
-                      {Object.entries(promos.combo_musical)
-                        .sort(([a], [b]) => {
-                          const [a1] = a.split('+').map(Number);
-                          const [b1] = b.split('+').map(Number);
-                          return b1 - a1;
-                        })
-                        .map(([clases, promo]) => ` ${clases} clases = S/. ${promo.total.toFixed(2)}`)
-                        .join(' | ')}
-                    </div>
-                  )}
-                  {Object.keys(promos.mixto).length > 0 && (
-                    <div style={{ padding: '0.5rem', background: '#fef3c7', borderRadius: '6px' }}>
-                      <strong>Mixto (Instrumento + Taller):</strong>
-                      {Object.entries(promos.mixto)
-                        .sort(([a], [b]) => {
-                          const [a1] = a.split('+').map(Number);
-                          const [b1] = b.split('+').map(Number);
-                          return b1 - a1;
-                        })
-                        .map(([clases, promo]) => ` ${clases} clases = S/. ${promo.total.toFixed(2)}`)
-                        .join(' | ')}
-                    </div>
-                  )}
-                  {Object.keys(promos.intensivo).length > 0 && (
-                    <div style={{ padding: '0.5rem', background: '#fee2e2', borderRadius: '6px' }}>
-                      <strong>Intensivo (20 clases):</strong>
-                      {Object.entries(promos.intensivo)
-                        .map(([tipo, promo]) => ` ${tipo} = S/. ${promo.total.toFixed(2)}`)
-                        .join(' | ')}
-                    </div>
-                  )}
-                  {Object.keys(promos.combo_musical).length === 0 && Object.keys(promos.mixto).length === 0 && Object.keys(promos.intensivo).length === 0 && (
-                    <div style={{ padding: '0.5rem', background: '#e5e7eb', borderRadius: '6px', color: '#6b7280' }}>
-                      No hay promociones configuradas. Configuralas en <strong>Precios → Paquetes Promocionales</strong>.
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
+              {resultados.some((r) => r.promo) && (
+                <p style={{ fontSize: '0.75rem', color: '#8b6914', marginTop: '0.5rem', textAlign: 'center' }}>
+                  ⚡ Promoción aplicada — el precio final ya incluye el descuento del paquete
+                </p>
+              )}
+              <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.75rem' }}>Precios con promociones activas para este ciclo.</p>
+            </>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

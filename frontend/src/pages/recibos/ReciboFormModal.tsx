@@ -3,27 +3,10 @@ import api from '../../api/axios';
 import { useToast } from '../../contexts/ToastContext';
 import { useWindowWidth } from '../../hooks/useWindowWidth';
 import { BTN_PRIMARY } from '../../theme/colors';
-import type { Alumno, Matricula } from '../../api/endpoints';
+import { previewPricing } from '../../api/endpoints';
+import type { Alumno, Matricula, PricingPreviewResponse } from '../../api/endpoints';
 
-interface PrecioCalculado {
-  precio_bruto: number;
-  descuento: number;
-  precio_sugerido: number;
-  paquete_detectado: string;
-  desglose: Array<{
-    tipo_taller: string;
-    cantidad_clases: number;
-    precio: number;
-  }>;
-  detalles: Array<{
-    matricula_id: number;
-    alumno: string;
-    taller: string;
-    taller_tipo: string;
-    cantidad_clases: number;
-    precio_individual: number;
-  }>;
-}
+interface PrecioCalculado extends PricingPreviewResponse {}
 
 interface MatriculaForm extends Matricula {
   taller_tipo: string;
@@ -158,15 +141,15 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
     }
     setCalculandoPrecio(true);
     try {
-      const response = await api.post('/recibos/calcular-precio/', { matricula_ids: matriculaIds });
-      const jsonData = response.data;
+      const jsonData = await previewPricing(matriculaIds);
       setPrecioCalculado(jsonData);
+      const bruto = jsonData.items.reduce((sum, item) => sum + item.precio_original, 0);
       setFormData((prev) => ({
         ...prev,
-        monto_bruto: String(jsonData.precio_bruto ?? '0'),
-        monto_total: String(jsonData.precio_sugerido ?? '0'),
-        descuento: String(jsonData.descuento ?? '0'),
-        paquete_aplicado: jsonData.paquete_detectado || 'individual',
+        monto_bruto: String(bruto.toFixed(2)),
+        monto_total: String(jsonData.total_general.toFixed(2)),
+        descuento: String(jsonData.descuento_total.toFixed(2)),
+        paquete_aplicado: jsonData.paquete_aplicado || 'individual',
       }));
       setPrecioEditadoManual(false);
     } catch (err) {
@@ -187,7 +170,8 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
   const handlePrecioChange = (value: string) => {
     setPrecioEditadoManual(true);
     if (precioCalculado) {
-      const nuevoDescuento = precioCalculado.precio_bruto - parseFloat(value || '0');
+      const bruto = precioCalculado.items.reduce((sum, item) => sum + item.precio_original, 0);
+      const nuevoDescuento = bruto - parseFloat(value || '0');
       setFormData((prev) => ({
         ...prev,
         monto_total: value,
@@ -200,18 +184,20 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
   };
 
   const getPaqueteLabel = (paquete: string) => {
+    if (!paquete || paquete === 'individual') return 'Individual';
+    const parts = paquete.split('_');
+    const base = parts.slice(0, 2).join('_');
     const labels: Record<string, string> = {
-      'individual': 'Individual',
-      'combo_musical_12': 'Combo Musical 12+12',
-      'combo_musical_8': 'Combo Musical 8+8',
-      'combo_musical_12_8': 'Combo Musical 12+8',
-      'mixto_12': 'Mixto 12+12',
-      'mixto_8': 'Mixto 8+8',
-      'mixto_12_8': 'Mixto 12+8',
-      'intensivo_instrumento': 'Intensivo Instrumento',
-      'intensivo_taller': 'Intensivo Taller',
+      'combo_musical': 'Combo Musical',
+      'mixto': 'Mixto',
+      'intensivo': 'Intensivo',
     };
-    return labels[paquete] || paquete;
+    const label = labels[base] || paquete;
+    const numeros = parts.slice(2);
+    if (numeros.length > 0) {
+      return `${label} (${numeros.join('+')} clases)`;
+    }
+    return label;
   };
 
   const getAlumnoNombre = (alumnoId: number) => {
@@ -323,28 +309,48 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
             <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '1rem 1.125rem', marginBottom: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.8125rem' }}>
                 <span style={{ color: '#166534' }}>Precio bruto</span>
-                <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>S/. {precioCalculado.precio_bruto.toFixed(2)}</span>
+                <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                  S/. {precioCalculado.items.reduce((sum, item) => sum + item.precio_original, 0).toFixed(2)}
+                </span>
               </div>
-              {precioCalculado.descuento > 0 && (
+              {precioCalculado.descuento_total > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.8125rem' }}>
-                  <span style={{ color: '#166534' }}>{getPaqueteLabel(precioCalculado.paquete_detectado)}</span>
-                  <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#dc2626' }}>-S/. {precioCalculado.descuento.toFixed(2)}</span>
+                  <span style={{ color: '#166534' }}>{getPaqueteLabel(precioCalculado.paquete_aplicado)}</span>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#dc2626' }}>-S/. {precioCalculado.descuento_total.toFixed(2)}</span>
                 </div>
               )}
-              {precioCalculado.detalles && precioCalculado.detalles.length > 0 && (
+              {precioCalculado.items.length > 0 && (
                 <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid #bbf7d0' }}>
-                  <p style={{ fontSize: '0.7rem', fontWeight: 600, color: '#166534', marginBottom: '0.375rem' }}>Desglose por alumno:</p>
-                  {precioCalculado.detalles.map((d, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.125rem' }}>
-                      <span style={{ color: '#166534' }}>{d.alumno} - {d.taller} ({d.cantidad_clases})</span>
-                      <span style={{ fontFamily: 'monospace', color: '#166534' }}>S/. {d.precio_individual.toFixed(2)}</span>
+                  <p style={{ fontSize: '0.7rem', fontWeight: 600, color: '#166534', marginBottom: '0.375rem' }}>Desglose por matrícula:</p>
+                  {precioCalculado.items.map((item) => (
+                    <div key={item.matricula_id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
+                      <span style={{ color: '#166534' }}>
+                        {item.alumno_nombre} — {item.taller_nombre} ({item.sesiones_contratadas} clases)
+                        {item.descuento_aplicado > 0 && (
+                          <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', color: '#059669' }}>
+                            {getPaqueteLabel(item.promo_aplicada)}
+                          </span>
+                        )}
+                      </span>
+                      <span style={{ fontFamily: 'monospace', color: '#166534' }}>
+                        {item.descuento_aplicado > 0 ? (
+                          <>
+                            <span style={{ textDecoration: 'line-through', color: '#9ca3af', marginRight: '0.25rem' }}>
+                              S/. {item.precio_original.toFixed(2)}
+                            </span>
+                            S/. {item.precio_final.toFixed(2)}
+                          </>
+                        ) : (
+                          <>S/. {item.precio_final.toFixed(2)}</>
+                        )}
+                      </span>
                     </div>
                   ))}
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid #bbf7d0', marginTop: '0.375rem' }}>
                 <span style={{ fontWeight: 600, color: '#166534', fontSize: '0.875rem' }}>Precio sugerido</span>
-                <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '1.125rem', color: '#059669' }}>S/. {precioCalculado.precio_sugerido.toFixed(2)}</span>
+                <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '1.125rem', color: '#059669' }}>S/. {precioCalculado.total_general.toFixed(2)}</span>
               </div>
             </div>
           )}

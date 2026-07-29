@@ -56,11 +56,11 @@ function Sidebar({ cicloNombre, abierto, onToggle }: SidebarProps) {
 
   // Estructura del sidebar dividida en secciones semánticas
   const secciones = [
-    { titulo: 'Gestión', items: NAV_ITEMS.slice(0, 4) },      // Dashboard, Alumnos, Profesores, Talleres
+    { titulo: 'Gestión', items: NAV_ITEMS.slice(0, 4) },       // Dashboard, Alumnos, Profesores, Talleres
     { titulo: 'Operaciones', items: NAV_ITEMS.slice(4, 8) },   // Horarios, Matrículas, Asistencias, Feriados
     { titulo: 'Caja', items: NAV_ITEMS.slice(8, 10) },         // Recibos, Egresos
-    { titulo: 'Nómina', items: NAV_ITEMS.slice(10, 11) },     // Horas Profesores
-    { titulo: 'Resumen', items: NAV_ITEMS.slice(11, 12) },    // Finanzas
+    { titulo: 'Nómina', items: NAV_ITEMS.slice(10, 11) },      // Horas Profesores
+    { titulo: 'Resumen', items: NAV_ITEMS.slice(11, 12) },     // Finanzas
     { titulo: 'Configuración', items: NAV_ITEMS.slice(12) },  // Configuración
   ];
 

@@ -193,6 +193,12 @@ class ReciboService:
                         matricula=matricula,
                         monto=monto
                     )
+                    # Actualizar precio de la matrícula con el monto distribuido
+                    matricula.precio_total = monto
+                    matricula.precio_por_sesion = (monto / matricula.sesiones_contratadas).quantize(
+                        Decimal('0.01'), rounding=ROUND_HALF_UP
+                    )
+                    matricula.save(update_fields=['precio_total', 'precio_por_sesion'])
                 except Matricula.DoesNotExist:
                     pass
         else:
@@ -226,11 +232,18 @@ class ReciboService:
             for i, matricula_id in enumerate(matricula_ids):
                 try:
                     matricula = Matricula.objects.get(id=matricula_id)
+                    monto = montos[i]
                     ReciboMatricula.objects.create(
                         recibo=recibo,
                         matricula=matricula,
-                        monto=montos[i]
+                        monto=monto
                     )
+                    # Actualizar precio de la matrícula con el monto distribuido
+                    matricula.precio_total = monto
+                    matricula.precio_por_sesion = (monto / matricula.sesiones_contratadas).quantize(
+                        Decimal('0.01'), rounding=ROUND_HALF_UP
+                    )
+                    matricula.save(update_fields=['precio_total', 'precio_por_sesion'])
                 except Matricula.DoesNotExist:
                     pass
 

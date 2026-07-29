@@ -1,4 +1,5 @@
 # Views init
+
 from .alumno_view import AlumnoViewSet
 from .taller_view import TallerViewSet
 from .profesor_view import ProfesorViewSet
@@ -13,5 +14,7 @@ from .pago_profesor_view import PagoProfesorViewSet, calcular_pago_profesor, det
 from .dashboard_view import dashboard_kpis, dashboard_ingresos
 from .precio_paquete_view import PrecioPaqueteViewSet
 from .egreso_view import EgresoViewSet
+from .nota_view import NotaViewSet
 from .hora_trabajada_view import HoraTrabajadaViewSet
 from .feriado_view import FeriadoViewSet
+from .pricing_view import PricePreviewView, PriceCalculateView, PriceIndividualView, PriceEstimateView

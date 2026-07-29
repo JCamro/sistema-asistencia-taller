@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ..models import Recibo, ReciboMatricula, Matricula
+from ..models import Recibo, ReciboMatricula
 from ..services import ReciboService
 from ..shared.serializer_helpers import get_alumnos_nombres
 
@@ -72,7 +72,8 @@ class ReciboListSerializer(serializers.ModelSerializer):
     matricula_ids = serializers.SerializerMethodField()
     ciclo_nombre = serializers.CharField(source='ciclo.nombre', read_only=True)
     saldo_pendiente = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    paquete_display = serializers.CharField(source='get_paquete_aplicado_display', read_only=True)
+    paquete_display = serializers.CharField(source='paquete_label', read_only=True)
+    paquete_label = serializers.CharField(read_only=True)
     metodo_pago = serializers.CharField(read_only=True)
     updated_at = serializers.DateTimeField(read_only=True)
 
@@ -81,7 +82,7 @@ class ReciboListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'numero', 'alumno', 'alumno_nombre', 'alumnos_nombres',
             'matricula_ids', 'ciclo', 'ciclo_nombre', 'fecha_emision', 'monto_bruto', 'monto_total',
-            'monto_pagado', 'descuento', 'paquete_aplicado', 'paquete_display',
+            'monto_pagado', 'descuento', 'paquete_aplicado', 'paquete_label', 'paquete_display',
             'precio_editado', 'saldo_pendiente', 'estado', 'metodo_pago', 'updated_at'
         ]
 
@@ -101,95 +102,4 @@ class ReciboListSerializer(serializers.ModelSerializer):
         return [rm.matricula_id for rm in obj.matriculas.all()]
 
 
-class CalcularPrecioSerializer(serializers.Serializer):
-    matricula_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        min_length=1
-    )
 
-    def validate_matricula_ids(self, value):
-        ids = set(value)
-        existing = Matricula.objects.filter(id__in=ids).values_list('id', flat=True)
-        for mid in value:
-            if mid not in existing:
-                raise serializers.ValidationError(f"Matrícula {mid} no existe")
-        return value
-
-    def calcular(self):
-        from ..models import PrecioPaquete
-        
-        try:
-            matricula_ids = self.validated_data['matricula_ids']
-            total = 0
-            detalles = []
-            
-            # Batch fetch all matrículas in one query
-            matriculas = Matricula.objects.filter(id__in=matricula_ids).select_related('taller', 'alumno', 'ciclo')
-            matricula_map = {m.id: m for m in matriculas}
-            ciclo_id = next((m.ciclo_id for m in matriculas), None)
-            
-            matriculas_data = []
-            for mid in matricula_ids:
-                matricula = matricula_map.get(mid)
-                if not matricula:
-                    continue
-                
-                precio = PrecioPaquete.get_precio_individual(
-                    matricula.taller.tipo,
-                    matricula.sesiones_contratadas,
-                    ciclo_id
-                )
-                if precio:
-                    precio_val = precio['precio_total']
-                else:
-                    precio_por_sesion = float(matricula.precio_por_sesion or 0)
-                    precio_val = precio_por_sesion * matricula.sesiones_contratadas
-                total += precio_val
-                detalles.append({
-                    'matricula_id': mid,
-                    'alumno': f"{matricula.alumno.nombre} {matricula.alumno.apellido}",
-                    'taller': matricula.taller.nombre,
-                    'taller_tipo': matricula.taller.tipo,
-                    'cantidad_clases': matricula.sesiones_contratadas,
-                    'precio_individual': precio_val
-                })
-                matriculas_data.append({
-                    'tipo_taller': matricula.taller.tipo,
-                    'cantidad_clases': matricula.sesiones_contratadas
-                })
-
-            # Usar PrecioPaquete.calcular_precio_recomendado que lee de la BD
-            resultado_precio = PrecioPaquete.calcular_precio_recomendado(matriculas_data, ciclo_id)
-            
-            if resultado_precio and resultado_precio['precio_bruto'] > 0:
-                return {
-                    'precio_bruto': resultado_precio['precio_bruto'],
-                    'precio_sugerido': resultado_precio['precio_sugerido'],
-                    'descuento': resultado_precio['descuento'],
-                    'paquete_detectado': resultado_precio['paquete_detectado'],
-                    'desglose': resultado_precio.get('desglose', []),
-                    'detalles': detalles
-                }
-            
-            # Fallback si no hay precios configurados o resultado_precio es 0
-            return {
-                'precio_bruto': total,
-                'precio_sugerido': total,
-                'descuento': 0,
-                'paquete_detectado': 'individual',
-                'desglose': [{'alumno': d['alumno'], 'taller': d['taller'], 'cantidad_clases': d['cantidad_clases'], 'precio_individual': d['precio_individual']} for d in detalles],
-                'detalles': detalles
-            }
-        except Exception as e:
-            import logging
-            logging.error(f"Error calculating price: {e}")
-            import traceback
-            logging.error(traceback.format_exc())
-            return {
-                'precio_bruto': 0,
-                'precio_sugerido': 0,
-                'descuento': 0,
-                'paquete_detectado': 'individual',
-                'desglose': [],
-                'detalles': []
-            }

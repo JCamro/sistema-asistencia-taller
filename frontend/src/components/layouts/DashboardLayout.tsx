@@ -4,6 +4,7 @@ import { Navigate } from 'react-router-dom';
 import { useCiclo } from '../../contexts/CicloContext';
 import Sidebar from './Sidebar';
 import NotificationBell from '../NotificationBell';
+import NotasFAB from '../notas/NotasFAB';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -50,7 +51,8 @@ function DashboardLayout({ children }: DashboardLayoutProps) {
         </svg>
       </button>
       <Sidebar cicloNombre={cicloActual.nombre} abierto={sidebarAbierto} onToggle={() => setSidebarAbierto(!sidebarAbierto)} />
-      <div style={{ position: 'fixed', top: '1rem', right: '1.5rem', zIndex: 55 }}>
+      <div style={{ position: 'fixed', bottom: '1.5rem', right: '1.5rem', zIndex: 55, display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'center' }}>
+        <NotasFAB />
         <NotificationBell />
       </div>
       <main style={{ marginLeft: '260px', padding: '1.5rem 2rem', minHeight: '100vh', boxSizing: 'border-box' }} className="main-content">

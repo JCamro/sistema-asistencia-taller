@@ -2,22 +2,6 @@ from django.db import models
 
 
 class Recibo(models.Model):
-    PAQUETE_CHOICES = [
-        ('individual', 'Individual'),
-        ('combo_musical_12', 'Combo Musical 12+12'),
-        ('combo_musical_8', 'Combo Musical 8+8'),
-        ('combo_musical_12_8', 'Combo Musical 12+8'),
-        ('combo_musical_8_8', 'Combo Musical 8+8 (otro)'),
-        ('combo_musical_12_12', 'Combo Musical 12+12 (otro)'),
-        ('mixto_12', 'Mixto 12+12'),
-        ('mixto_8', 'Mixto 8+8'),
-        ('mixto_12_8', 'Mixto 12+8'),
-        ('mixto_8_8', 'Mixto 8+8 (otro)'),
-        ('mixto_12_12', 'Mixto 12+12 (otro)'),
-        ('intensivo_instrumento', 'Intensivo Instrumento'),
-        ('intensivo_taller', 'Intensivo Taller'),
-    ]
-
     METODO_PAGO = [
         ('efectivo', 'Efectivo'),
         ('transferencia', 'Transferencia'),
@@ -63,9 +47,9 @@ class Recibo(models.Model):
         verbose_name='Descuento aplicado'
     )
     paquete_aplicado = models.CharField(
-        max_length=30,
-        choices=PAQUETE_CHOICES,
-        default='individual',
+        max_length=50,
+        blank=True,
+        default='',
         verbose_name='Paquete promocional aplicado'
     )
     precio_editado = models.BooleanField(
@@ -103,3 +87,24 @@ class Recibo(models.Model):
         if self.monto_bruto > 0:
             return round((self.descuento / self.monto_bruto) * 100, 1)
         return 0
+
+    @property
+    def paquete_label(self) -> str:
+        """Etiqueta legible para los paquetes aplicados (soporta múltiples)."""
+        value = self.paquete_aplicado
+        if not value or value == 'individual':
+            return 'Individual'
+        labels = []
+        for v in value.split(','):
+            parts = v.split('_')
+            if parts[0] == 'combo' and len(parts) >= 2 and parts[1] == 'musical':
+                numeros = parts[2:]
+                labels.append('Combo Musical (' + '+'.join(numeros) + ')' if numeros else 'Combo Musical')
+            elif parts[0] == 'mixto':
+                numeros = parts[1:]
+                labels.append('Mixto (' + '+'.join(numeros) + ')' if numeros else 'Mixto')
+            elif parts[0] == 'intensivo':
+                labels.append('Intensivo ' + ' '.join(p.title() for p in parts[1:]) if len(parts) > 1 else 'Intensivo')
+            else:
+                labels.append(v)
+        return ', '.join(labels)

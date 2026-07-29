@@ -8,8 +8,9 @@ from .views import (
     AsistenciaViewSet, ReciboViewSet, PagoProfesorViewSet,
     calcular_pago_profesor, detalle_clase_pago, resumen_ciclo, resumen_mensual_ciclo, ConfiguracionView,
     dashboard_kpis, dashboard_ingresos, PrecioPaqueteViewSet,
-    EgresoViewSet, HoraTrabajadaViewSet, FeriadoViewSet
+    EgresoViewSet, NotaViewSet, HoraTrabajadaViewSet, FeriadoViewSet
 )
+from .views.pricing_view import PricePreviewView, PriceCalculateView, PriceIndividualView, PriceEstimateView
 from .views.usuario_view import CambiarPasswordView
 
 router = DefaultRouter()
@@ -25,6 +26,7 @@ router.register(r'recibos', ReciboViewSet)
 router.register(r'pagos-profesores', PagoProfesorViewSet)
 router.register(r'precios', PrecioPaqueteViewSet, basename='precios')
 router.register(r'egresos', EgresoViewSet, basename='egresos')
+router.register(r'notas', NotaViewSet, basename='notas')
 router.register(r'horas-trabajadas', HoraTrabajadaViewSet)
 
 urlpatterns = [
@@ -82,9 +84,17 @@ urlpatterns = [
     path('ciclos/<int:ciclo_id>/feriados/<int:pk>/', FeriadoViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'}), name='ciclo-feriados-detail'),
     path('ciclos/<int:ciclo_id>/feriados/<int:pk>/aplicar/', FeriadoViewSet.as_view({'post': 'aplicar'}), name='ciclo-feriados-aplicar'),
     path('ciclos/<int:ciclo_id>/precios/', PrecioPaqueteViewSet.as_view({'get': 'list'}), name='ciclo-precios'),
+    path('ciclos/<int:ciclo_id>/precios/check/', PrecioPaqueteViewSet.as_view({'get': 'check_base'}), name='ciclo-precios-check'),
     path('ciclos/<int:ciclo_id>/egresos/', EgresoViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-egresos'),
     path('ciclos/<int:ciclo_id>/egresos/resumen/', EgresoViewSet.as_view({'get': 'resumen'}), name='ciclo-egresos-resumen'),
     path('profesores/<int:profesor_id>/historial-pagos/', EgresoViewSet.as_view({'get': 'historial_pagos'}), name='profesor-historial-pagos'),
+
+    # Notas y recordatorios
+    path('ciclos/<int:ciclo_id>/notas/', NotaViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-notas'),
+    path('ciclos/<int:ciclo_id>/notas/no_leidas/', NotaViewSet.as_view({'get': 'no_leidas'}), name='ciclo-notas-no-leidas'),
+    path('notas/<int:pk>/', NotaViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='notas-detail'),
+    path('notas/<int:pk>/marcar_leida/', NotaViewSet.as_view({'patch': 'marcar_leida'}), name='notas-marcar-leida'),
+    path('notas/<int:pk>/marcar_no_leida/', NotaViewSet.as_view({'patch': 'marcar_no_leida'}), name='notas-marcar-no-leida'),
     
     # Horas trabajadas por ciclo
     path('ciclos/<int:ciclo_id>/horas-trabajadas/', HoraTrabajadaViewSet.as_view({'get': 'list', 'post': 'create'}), name='ciclo-horas-trabajadas'),
@@ -92,9 +102,12 @@ urlpatterns = [
     # Endpoints anidados para matrículas
     path('matriculas/<int:matricula_id>/horarios/', MatriculaHorarioViewSet.as_view({'get': 'list'}), name='matricula-horarios'),
     
-    # Acción calcular precio (debe ir antes del router)
-    path('recibos/calcular-precio/', ReciboViewSet.as_view({'post': 'calcular_precio'}), name='recibo-calcular-precio'),
-    
+    # Pricing endpoints
+    path('pricing/preview/', PricePreviewView.as_view(), name='pricing-preview'),
+    path('pricing/calculate/', PriceCalculateView.as_view(), name='pricing-calculate'),
+    path('pricing/individual/', PriceIndividualView.as_view(), name='pricing-individual'),
+    path('pricing/estimate/', PriceEstimateView.as_view(), name='pricing-estimate'),
+
     # Router URLs LAST
     path('', include(router.urls)),
 ]

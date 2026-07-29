@@ -98,7 +98,7 @@ def dashboard_kpis(request, ciclo_id):
             recibo__ciclo_id=ciclo_id
         ).exclude(recibo__estado='pagado'))
     ).count()
-    
+
     return Response({
         'alumnos_sin_asistencia_hoy': alumnos_sin_asistencia,
         'matriculas_por_concluir': matriculas_por_concluir,

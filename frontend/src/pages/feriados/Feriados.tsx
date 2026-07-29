@@ -21,6 +21,10 @@ interface FeriadoGrupo {
   items: Feriado[];
 }
 
+function isFeriadoGrupo(item: Feriado | FeriadoGrupo): item is FeriadoGrupo {
+  return Array.isArray((item as FeriadoGrupo).items);
+}
+
 function agruparFeriados(feriados: Feriado[]): (FeriadoGrupo | Feriado)[] {
   const porGrupo = new Map<string, Feriado[]>();
   const sueltos: Feriado[] = [];
@@ -207,7 +211,7 @@ function FeriadosPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {items.map((item) => {
-              if ('grupo' in item && item.items) {
+              if (isFeriadoGrupo(item)) {
                 const grupo = item;
                 const isExpanded = expandedGroups.has(grupo.grupo);
                 const isAplicando = aplicandoGrupoId === grupo.grupo;

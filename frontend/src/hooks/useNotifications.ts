@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCiclo } from '../contexts/CicloContext';
+import { getNotasNoLeidas, marcarLeida, marcarNoLeida, type Nota } from '../api/endpoints';
 
 export interface Notification {
   id: string;
@@ -29,7 +32,9 @@ function saveNotifications(notifications: Notification[]) {
 }
 
 export function useNotifications() {
+  const queryClient = useQueryClient();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const { cicloActual } = useCiclo();
 
   useEffect(() => {
     setNotifications(loadNotifications());
@@ -38,6 +43,18 @@ export function useNotifications() {
   useEffect(() => {
     saveNotifications(notifications);
   }, [notifications]);
+
+  const {
+    data: noLeidas,
+    refetch: refetchBackendNotes,
+  } = useQuery({
+    queryKey: ['notas-no-leidas', cicloActual?.id],
+    queryFn: () => getNotasNoLeidas(cicloActual!.id).then((res) => res.data),
+    enabled: !!cicloActual?.id,
+  });
+
+  const backendNotes = noLeidas?.results ?? [];
+  const backendUnreadCount = noLeidas?.count ?? 0;
 
   const addNotification = useCallback((notification: Omit<Notification, 'id' | 'read' | 'createdAt'>) => {
     const newItem: Notification = {
@@ -66,15 +83,34 @@ export function useNotifications() {
     setNotifications([]);
   }, []);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const markBackendRead = useCallback(async (id: number) => {
+    await marcarLeida(id);
+    queryClient.invalidateQueries({ queryKey: ['notas', cicloActual?.id] });
+    await refetchBackendNotes();
+  }, [cicloActual?.id, queryClient, refetchBackendNotes]);
+
+  const markBackendUnread = useCallback(async (id: number) => {
+    await marcarNoLeida(id);
+    queryClient.invalidateQueries({ queryKey: ['notas', cicloActual?.id] });
+    await refetchBackendNotes();
+  }, [cicloActual?.id, queryClient, refetchBackendNotes]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length + backendUnreadCount;
 
   return {
     notifications,
+    backendNotes,
+    backendUnreadCount,
     unreadCount,
     addNotification,
     markAsRead,
     markAllAsRead,
     removeNotification,
     clearNotifications,
+    markBackendRead,
+    markBackendUnread,
+    refreshBackendNotes: refetchBackendNotes,
   };
 }
+
+export type { Nota };

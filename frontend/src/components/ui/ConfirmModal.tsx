@@ -1,4 +1,4 @@
-import { useEffect, memo, type ReactNode } from 'react';
+import { useEffect, memo } from 'react';
 
 type ConfirmVariant = 'destructive' | 'action';
 

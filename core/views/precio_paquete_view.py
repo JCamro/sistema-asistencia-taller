@@ -33,3 +33,24 @@ class PrecioPaqueteViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(precios, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='check')
+    def check_base(self, request, ciclo_id=None):
+        """Verifica si un ciclo tiene precios base configurados (indispensables)."""
+        ciclo_id = ciclo_id or request.query_params.get('ciclo_id')
+        if not ciclo_id:
+            return Response({'error': 'ciclo_id requerido'}, status=400)
+
+        def _has_base(tipo):
+            return PrecioPaquete.objects.filter(
+                ciclo_id=ciclo_id, tipo_taller=tipo,
+                tipo_paquete='individual', cantidad_clases=1, activo=True
+            ).exists()
+
+        has_instr = _has_base('instrumento')
+        has_taller = _has_base('taller')
+        return Response({
+            'has_instrumento_base': has_instr,
+            'has_taller_base': has_taller,
+            'completo': has_instr and has_taller,
+        })
