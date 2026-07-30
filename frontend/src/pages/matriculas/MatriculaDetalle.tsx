@@ -78,6 +78,24 @@ function MatriculaDetallePage() {
     });
   }, [data?.asistencias]);
 
+  // ponytail: map horario string pattern -> horario_id for "Ver" navigation
+  const horarioIdByPattern = useMemo(() => {
+    if (!data) return new Map<string, number>();
+    const map = new Map<string, number>();
+    for (const h of data.horarios) {
+      const key = `${h.dia} ${h.hora_inicio}-${h.hora_fin}`;
+      map.set(key, h.id);
+    }
+    return map;
+  }, [data?.horarios]);
+
+  const getHorarioId = useCallback((horarioStr: string) => {
+    for (const [pattern, id] of horarioIdByPattern) {
+      if (horarioStr.includes(pattern)) return id;
+    }
+    return null;
+  }, [horarioIdByPattern]);
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
@@ -227,10 +245,15 @@ function MatriculaDetallePage() {
                             padding: '0.625rem 0.75rem',
                             borderBottom: idx < asistenciasMes.length - 1 ? '1px solid #e2e8f0' : 'none',
                           }}>
-                            {/* Fecha — solo DD/MM */}
-                            <span style={{ fontSize: '0.8125rem', color: '#6b7280', fontFamily: 'monospace' }}>
-                              {a.fecha.split('-').slice(1).reverse().join('/')}
-                            </span>
+                            {/* Fecha + día de la semana */}
+                            <div>
+                              <span style={{ fontSize: '0.8125rem', color: '#6b7280', fontFamily: 'monospace' }}>
+                                {a.fecha.split('-').slice(1).reverse().join('/')}
+                              </span>
+                              <span style={{ display: 'block', fontSize: '0.65rem', color: '#9ca3af' }}>
+                                {['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sabado'][new Date(a.fecha + 'T00:00:00').getDay()]}
+                              </span>
+                            </div>
 
                             {/* Taller + Horario */}
                             <div style={{ minWidth: 0, maxWidth: '280px', overflow: 'hidden' }}>
@@ -260,7 +283,10 @@ function MatriculaDetallePage() {
                             {/* Acciones */}
                             <div style={{ display: 'flex', gap: '0.25rem' }}>
                               <button
-                                onClick={() => navigate(`/asistencias?fecha=${a.fecha}`)}
+                                onClick={() => {
+                                  const hid = getHorarioId(a.horario);
+                                  navigate(`/asistencias?fecha=${a.fecha}${data.taller_id ? `&taller=${data.taller_id}` : ''}${hid ? `&horario=${hid}` : ''}`);
+                                }}
                                 style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white', color: '#374151', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer' }}
                               >
                                 Ver

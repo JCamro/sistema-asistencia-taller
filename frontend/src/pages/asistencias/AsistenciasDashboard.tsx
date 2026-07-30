@@ -14,6 +14,7 @@ interface AlumnoHorario {
   alumno_nombre: string;
   estado: string | null;
   es_recuperacion?: boolean;
+  matricula_concluida?: boolean;
 }
 
 interface AsistenciasDashboardProps {
@@ -130,12 +131,14 @@ function AsistenciasDashboard({
               {horarios.map((horario, idx) => {
                 const alumnos = alumnosPorHorario.get(horario.id) || [];
                 const error = erroresPorHorario?.get(horario.id);
-                const total = alumnos.length;
-                const asistio = alumnos.filter((a) => a.estado === 'asistio').length;
-                const recuperacion = alumnos.filter((a) => a.estado === 'asistio' && a.es_recuperacion).length;
-                const falta = alumnos.filter((a) => a.estado === 'falta' || a.estado === 'falta_grave').length;
+                const activos = alumnos.filter((a) => !a.matricula_concluida);
+                const concluidos = alumnos.filter((a) => a.matricula_concluida);
+                const total = activos.length;
+                const asistio = activos.filter((a) => a.estado === 'asistio').length;
+                const recuperacion = activos.filter((a) => a.estado === 'asistio' && a.es_recuperacion).length;
+                const falta = activos.filter((a) => a.estado === 'falta' || a.estado === 'falta_grave').length;
                 const pendiente = total - asistio - falta;
-                const noStudents = total === 0;
+                const noStudents = total === 0 && concluidos.length === 0;
                 const isDisabled = esFeriado || noStudents;
 
                 return (
@@ -187,6 +190,9 @@ function AsistenciasDashboard({
                             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#9ca3af' }} />
                             <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 500 }}>{pendiente}</span>
                           </div>
+                        )}
+                        {concluidos.length > 0 && (
+                          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>+{concluidos.length} concl.</span>
                         )}
                       </div>
                     )}

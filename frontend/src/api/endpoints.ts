@@ -470,6 +470,7 @@ export interface PorHorarioResponse {
     profesor_nombre: string;
     es_recuperacion: boolean;
     hora: string | null;
+    matricula_concluida: boolean;
   }[];
 }
 
@@ -490,6 +491,7 @@ export interface PorDiaHorario {
     asistencia_id: number | null;
     estado: string | null;
     observacion: string;
+    matricula_concluida: boolean;
   }[];
 }
 

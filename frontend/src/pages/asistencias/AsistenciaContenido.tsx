@@ -15,6 +15,7 @@ interface AlumnoHorario {
   observacion: string;
   profesor_id?: number | null;
   profesor_nombre?: string;
+  matricula_concluida: boolean;
 }
 
 interface Horario {
@@ -42,6 +43,7 @@ interface AsistenciaItem {
   profesor: number | null;
   profesor_nombre: string;
   activo: boolean;
+  matricula_concluida: boolean;
 }
 
 export interface AsistenciaEdit {
@@ -134,6 +136,7 @@ function AsistenciaContenido({
         profesor: a.profesor_id,
         profesor_nombre: a.profesor_nombre || '',
         activo: true,
+        matricula_concluida: a.matricula_concluida,
       } as AsistenciaItem));
   }, [alumnosHorario, horarioSeleccionado, fecha]);
   return (

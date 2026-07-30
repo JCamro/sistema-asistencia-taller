@@ -44,7 +44,10 @@ class FeriadoViewSet(viewsets.ModelViewSet):
         feriado = self.get_object()
         ciclo = feriado.ciclo
 
-        horarios = Horario.objects.filter(ciclo=ciclo)
+        horarios = Horario.objects.filter(
+            ciclo=ciclo,
+            dia_semana=feriado.fecha.weekday(),
+        )
         if feriado.horario:
             horarios = horarios.filter(id=feriado.horario.id)
         elif feriado.taller:
@@ -112,7 +115,10 @@ class FeriadoViewSet(viewsets.ModelViewSet):
 
         total_creadas = 0
         for feriado in feriados:
-            horarios = Horario.objects.filter(ciclo=feriado.ciclo)
+            horarios = Horario.objects.filter(
+                ciclo=feriado.ciclo,
+                dia_semana=feriado.fecha.weekday(),
+            )
             if feriado.horario:
                 horarios = horarios.filter(id=feriado.horario.id)
             elif feriado.taller:

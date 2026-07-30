@@ -86,7 +86,8 @@ def matricula(ciclo, alumno, taller):
         precio_total=160,
         precio_por_sesion=20,
         activo=True,
-        concluida=False
+        concluida=False,
+        fecha_matricula='2026-06-01',
     )
 
 

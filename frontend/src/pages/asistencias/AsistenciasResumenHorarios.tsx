@@ -4,6 +4,7 @@ interface AlumnoHorario {
   matricula_id: number;
   alumno_nombre: string;
   estado: string | null;
+  matricula_concluida?: boolean;
 }
 
 interface HorarioResumen {
@@ -89,7 +90,8 @@ function AsistenciasResumenHorarios({ horarios, alumnosPorHorario, loading }: As
                 ) : (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', padding: '0.75rem 1rem' }}>
                     {alumnosDelHorario.map((alumno) => {
-                      const color = getEstadoColor(alumno.estado);
+                      const concluida = alumno.matricula_concluida;
+                      const color = concluida ? '#9ca3af' : getEstadoColor(alumno.estado);
                       return (
                         <div
                           key={alumno.matricula_id}
@@ -98,14 +100,20 @@ function AsistenciasResumenHorarios({ horarios, alumnosPorHorario, loading }: As
                             alignItems: 'center',
                             gap: '0.375rem',
                             padding: '0.25rem 0.75rem',
-                            background: 'white',
-                            border: '1px solid #e5e7eb',
+                            background: concluida ? '#fafafa' : 'white',
+                            border: concluida ? '1px dashed #d1d5db' : '1px solid #e5e7eb',
                             borderRadius: '999px',
                             fontSize: '0.75rem',
+                            opacity: concluida ? 0.7 : 1,
                           }}
                         >
                           <Dot color={color} />
-                          <span style={{ color: '#334155', fontWeight: 500 }}>{alumno.alumno_nombre}</span>
+                          <span style={{ color: concluida ? '#9ca3af' : '#334155', fontWeight: 500 }}>
+                            {alumno.alumno_nombre}
+                            {concluida && (
+                              <span style={{ marginLeft: '0.25rem', fontSize: '0.65rem', color: '#9ca3af' }}>(Concluida)</span>
+                            )}
+                          </span>
                         </div>
                       );
                     })}

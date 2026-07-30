@@ -11,6 +11,7 @@ interface AlumnoHorario {
   profesor_id?: number | null;
   profesor_nombre?: string;
   es_recuperacion?: boolean;
+  matricula_concluida: boolean;
 }
 
 interface HorarioOption {
@@ -106,12 +107,21 @@ function AsistenciaTable({
           {alumnosHorario.map((alumno) => {
             const estadoInfo = getEstadoInfo(alumno.estado);
             const tieneAsistencia = !!alumno.asistencia_id;
+            const concluida = alumno.matricula_concluida;
             return (
-              <div key={alumno.matricula_id} style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+              <div key={alumno.matricula_id} style={{
+                padding: '1rem',
+                borderBottom: '1px solid #e5e7eb',
+                borderLeft: concluida ? '3px dashed #d1d5db' : '3px solid transparent',
+                background: concluida ? '#fafafa' : 'transparent',
+              }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                   <div>
-                    <div style={{ fontWeight: '600', color: '#111827' }}>
+                    <div style={{ fontWeight: '600', color: concluida ? '#9ca3af' : '#111827' }}>
                       {alumno.alumno_nombre}
+                      {concluida && (
+                        <span style={{ marginLeft: '0.35rem', fontSize: '0.7rem', color: '#9ca3af', fontWeight: 400 }}>(Concluida)</span>
+                      )}
                       {alumno.es_recuperacion && (
                         <span style={{ marginLeft: '0.35rem', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, background: '#fef9e7', color: '#8b6914' }}>Recuperacion</span>
                       )}
@@ -120,7 +130,7 @@ function AsistenciaTable({
                   </div>
                   <span
                     onClick={() => {
-                      if (alumno.asistencia_id) {
+                      if (alumno.asistencia_id && !concluida) {
                         onEditAsistencia(alumno);
                       }
                     }}
@@ -131,42 +141,45 @@ function AsistenciaTable({
                       fontWeight: 600,
                       background: estadoInfo.bg,
                       color: estadoInfo.color,
-                      cursor: tieneAsistencia ? 'pointer' : 'default',
+                      cursor: tieneAsistencia && !concluida ? 'pointer' : 'default',
                       border: tieneAsistencia ? `1.5px solid ${estadoInfo.color}40` : 'none',
+                      opacity: concluida ? 0.6 : 1,
                     }}
                   >
                     {estadoInfo.label}
                   </span>
                 </div>
-                {tieneAsistencia && (
+                {tieneAsistencia && !concluida && (
                   <div style={{ fontSize: '0.65rem', color: '#9ca3af', textAlign: 'center', marginBottom: '0.5rem' }}>
                     Editar desde el panel derecho
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {ESTADOS.map((estado) => (
-                    <button
-                      key={estado.value}
-                      onClick={() => onEstadoChange(alumno, estado.value)}
-                      disabled={saving || tieneAsistencia}
-                      style={{
-                        flex: 1,
-                        padding: isMobile ? '0.75rem 0.5rem' : '0.5rem',
-                        minHeight: '44px',
-                        border: alumno.estado === estado.value ? `1.5px solid ${estado.color}40` : '1px solid transparent',
-                        borderRadius: '6px',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        cursor: saving || tieneAsistencia ? 'not-allowed' : 'pointer',
-                        background: alumno.estado === estado.value ? estado.bg : '#f3f4f6',
-                        color: alumno.estado === estado.value ? estado.color : '#9ca3af',
-                      }}
-                    >
-                      {estado.label}
-                    </button>
-                  ))}
-                </div>
-                {tieneAsistencia && (
+                {!concluida && (
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {ESTADOS.map((estado) => (
+                      <button
+                        key={estado.value}
+                        onClick={() => onEstadoChange(alumno, estado.value)}
+                        disabled={saving || tieneAsistencia}
+                        style={{
+                          flex: 1,
+                          padding: isMobile ? '0.75rem 0.5rem' : '0.5rem',
+                          minHeight: '44px',
+                          border: alumno.estado === estado.value ? `1.5px solid ${estado.color}40` : '1px solid transparent',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          cursor: saving || tieneAsistencia ? 'not-allowed' : 'pointer',
+                          background: alumno.estado === estado.value ? estado.bg : '#f3f4f6',
+                          color: alumno.estado === estado.value ? estado.color : '#9ca3af',
+                        }}
+                      >
+                        {estado.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {tieneAsistencia && !concluida && (
                   <div style={{ fontSize: '0.65rem', color: '#9ca3af', textAlign: 'center', marginTop: '0.25rem' }}>
                     (Registrado - editar desde panel derecho)
                   </div>

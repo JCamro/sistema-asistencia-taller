@@ -101,6 +101,7 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
                 'alumno_id': mh.matricula.alumno.id,
                 'alumno_nombre': f"{mh.matricula.alumno.apellido}, {mh.matricula.alumno.nombre}",
                 'sesiones_disponibles': mh.matricula.sesiones_disponibles,
+                'matricula_concluida': False,
                 'asistencia_id': asistencia.id if asistencia else None,
                 'estado': asistencia.estado if asistencia else None,
                 'observacion': asistencia.observacion if asistencia else '',
@@ -122,6 +123,7 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
                     'alumno_id': asist.matricula.alumno.id,
                     'alumno_nombre': f"{asist.matricula.alumno.apellido}, {asist.matricula.alumno.nombre}",
                     'sesiones_disponibles': asist.matricula.sesiones_disponibles,
+                    'matricula_concluida': False,
                     'asistencia_id': asist.id,
                     'estado': asist.estado,
                 'observacion': asist.observacion,
@@ -130,6 +132,29 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
                 'es_recuperacion': True,
                 'hora': asist.hora.strftime('%H:%M'),
             })
+
+        concluida_ids = {r['matricula_id'] for r in resultados}
+        for asist in Asistencia.objects.filter(
+            horario_id=horario_id,
+            fecha=fecha_obj,
+            es_recuperacion=False,
+            matricula__concluida=True,
+        ).select_related('matricula__alumno', 'profesor'):
+            if asist.matricula_id and asist.matricula_id not in concluida_ids:
+                resultados.append({
+                    'matricula_id': asist.matricula.id,
+                    'alumno_id': asist.matricula.alumno.id,
+                    'alumno_nombre': f"{asist.matricula.alumno.apellido}, {asist.matricula.alumno.nombre}",
+                    'sesiones_disponibles': 0,
+                    'matricula_concluida': True,
+                    'asistencia_id': asist.id,
+                    'estado': asist.estado,
+                    'observacion': asist.observacion or '',
+                    'profesor_id': asist.profesor_id,
+                    'profesor_nombre': f"{asist.profesor.apellido}, {asist.profesor.nombre}" if asist.profesor else '',
+                    'es_recuperacion': False,
+                    'hora': asist.hora.strftime('%H:%M') if asist.hora else None,
+                })
 
         return Response({
             'es_feriado': es_feriado,
@@ -191,6 +216,16 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
             if a.matricula_id:
                 asis_recuperacion_por_horario.setdefault(a.horario_id, {})[a.matricula_id] = a
 
+        concluida_asis_por_horario = {}
+        for a in Asistencia.objects.filter(
+            horario_id__in=horario_ids,
+            fecha=fecha,
+            es_recuperacion=False,
+            matricula__concluida=True,
+        ).select_related('matricula__alumno'):
+            if a.matricula_id:
+                concluida_asis_por_horario.setdefault(a.horario_id, {})[a.matricula_id] = a
+
         resultado = []
         for h in horarios:
             feriado_horario = next(
@@ -207,12 +242,26 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
                     'alumno_id': mh.matricula.alumno.id,
                     'alumno_nombre': f"{mh.matricula.alumno.apellido}, {mh.matricula.alumno.nombre}",
                     'sesiones_disponibles': mh.matricula.sesiones_disponibles,
+                    'matricula_concluida': False,
                     'asistencia_id': asis.id if asis else None,
                     'estado': asis.estado if asis else None,
                     'observacion': asis.observacion if asis else '',
                 })
 
             alumnos_regulares_matricula_ids = {mh.matricula_id for mh in mh_por_horario.get(h.id, [])}
+            for m_id, a in concluida_asis_por_horario.get(h.id, {}).items():
+                if m_id not in alumnos_regulares_matricula_ids:
+                    alumnos_regulares_matricula_ids.add(m_id)
+                    alumnos_data.append({
+                        'matricula_id': m_id,
+                        'alumno_id': a.matricula.alumno.id,
+                        'alumno_nombre': f"{a.matricula.alumno.apellido}, {a.matricula.alumno.nombre}",
+                        'sesiones_disponibles': 0,
+                        'matricula_concluida': True,
+                        'asistencia_id': a.id,
+                        'estado': a.estado,
+                        'observacion': a.observacion or '',
+                    })
             for a_matricula_id, a in asis_recuperacion_por_horario.get(h.id, {}).items():
                 if a_matricula_id not in alumnos_regulares_matricula_ids:
                     alumnos_data.append({
@@ -220,6 +269,7 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
                         'alumno_id': a.matricula.alumno.id,
                         'alumno_nombre': f"{a.matricula.alumno.apellido}, {a.matricula.alumno.nombre}",
                         'sesiones_disponibles': a.matricula.sesiones_disponibles,
+                        'matricula_concluida': False,
                         'asistencia_id': a.id,
                         'estado': a.estado,
                         'observacion': a.observacion or '',

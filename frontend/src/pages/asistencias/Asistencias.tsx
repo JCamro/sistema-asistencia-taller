@@ -33,6 +33,7 @@ interface AlumnoHorario {
   observacion: string;
   profesor_id?: number | null;
   profesor_nombre?: string;
+  matricula_concluida: boolean;
 }
 
 interface Asistencia {
@@ -287,6 +288,10 @@ function AsistenciasPage() {
       showToast('Seleccionar un horario primero', 'warning');
       return;
     }
+    if (alumno.matricula_concluida) {
+      showToast('Esta matrícula ya está concluida', 'warning');
+      return;
+    }
     setSaving(true);
     const token = localStorage.getItem('access_token');
     const horaActual = new Date().toTimeString().slice(0, 5);
@@ -427,6 +432,7 @@ function AsistenciasPage() {
         observacion: '',
         profesor_id: profesorSeleccionado,
         profesor_nombre: nombreProfRecup,
+        matricula_concluida: false,
       };
 
       setAlumnosHorario(prev => [...prev, nuevoAlumno]);

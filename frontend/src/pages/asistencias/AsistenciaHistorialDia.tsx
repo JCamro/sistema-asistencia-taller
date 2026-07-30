@@ -10,6 +10,7 @@ interface Asistencia {
   es_recuperacion: boolean;
   profesor: number | null;
   profesor_nombre: string;
+  matricula_concluida?: boolean;
 }
 
 interface HorarioOption {
@@ -67,25 +68,37 @@ function AsistenciaHistorialDia({
           <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>Sin registros</div>
         ) : (
           <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-            {asistencias.map((a) => {
-              const estadoInfo = getEstadoInfo(a.estado);
-              return (
-                <div
-                  key={a.id}
-                  onClick={() => onEditAsistencia(a)}
-                  style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: '500', color: '#111827', fontSize: '0.875rem' }}>{a.alumno_nombre}</span>
-                    <Badge bg={estadoInfo.bg} color={estadoInfo.color} label={estadoInfo.label} size="sm" />
+              {asistencias.map((a) => {
+                const estadoInfo = getEstadoInfo(a.estado);
+                const concluida = a.matricula_concluida;
+                return (
+                  <div
+                    key={a.id}
+                    onClick={() => { if (!concluida) onEditAsistencia(a); }}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      borderBottom: '1px solid #e5e7eb',
+                      cursor: concluida ? 'default' : 'pointer',
+                      opacity: concluida ? 0.6 : 1,
+                      background: concluida ? '#fafafa' : 'transparent',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: '500', color: '#111827', fontSize: '0.875rem' }}>
+                        {a.alumno_nombre}
+                        {concluida && (
+                          <span style={{ marginLeft: '0.35rem', fontSize: '0.7rem', color: '#9ca3af', fontWeight: 400 }}>(Concluida)</span>
+                        )}
+                      </span>
+                      <Badge bg={estadoInfo.bg} color={estadoInfo.color} label={estadoInfo.label} size="sm" />
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                      {a.hora?.substring(0, 5)} {a.es_recuperacion && '(Recuperación)'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Prof. {a.profesor_nombre}</div>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                    {a.hora?.substring(0, 5)} {a.es_recuperacion && '(Recuperación)'}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Prof. {a.profesor_nombre}</div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         )}
       </div>
