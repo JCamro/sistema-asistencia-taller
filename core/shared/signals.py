@@ -34,7 +34,7 @@ def auto_create_hora_trabajada(sender, instance, created, **kwargs):
         return
 
     fecha = instance.fecha
-    profesor = horario.profesor
+    profesor = instance.profesor  # Usar el profesor de la Asistencia (puede ser sustituto), no el titular del horario
     ciclo = horario.ciclo
 
     # No sobreescribir registros manuales existentes

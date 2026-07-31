@@ -472,6 +472,33 @@ class HoraTrabajadaService:
             else:
                 actualizados += 1
 
+        # ===== Limpiar registros huérfanos =====
+        # Si la Asistencia se corrigió a otro profesor (ej: sustituto),
+        # los HoraTrabajada auto-generados del profesor anterior persisten.
+        # Eliminamos los que ya no tienen Asistencia que los respalde.
+        orphaned_deleted = 0
+        if grupo_list:
+            valid_combos = {(g['profesor_id'], g['horario_id'], g['fecha']) for g in grupo_list}
+
+            ids_to_delete = list(
+                HoraTrabajada.objects.filter(
+                    ciclo=ciclo,
+                    created_from='asistencia_auto',
+                    fecha__gte=fecha_inicio,
+                    fecha__lte=fecha_fin,
+                )
+                .exclude(
+                    Q(profesor_id__in=[c[0] for c in valid_combos])
+                    & Q(horario_id__in=[c[1] for c in valid_combos])
+                    & Q(fecha__in=[c[2] for c in valid_combos])
+                )
+                .values_list('id', flat=True)
+            )
+
+            if ids_to_delete:
+                deleted_count, _ = HoraTrabajada.objects.filter(id__in=ids_to_delete).delete()
+                orphaned_deleted = deleted_count
+
         # ===== Contabilizar consolidaciones en el recuento =====
         # Nota: 'consolidados' se actualizó dentro del bucle de solapamientos
 
