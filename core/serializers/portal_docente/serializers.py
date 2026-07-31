@@ -195,6 +195,27 @@ class HoraTrabajadaSerializer(serializers.ModelSerializer):
         return None
 
 
+class HoraTrabajadaDetalleSerializer(serializers.Serializer):
+    """Detailed worked-hour row with attendance and class notes."""
+    fecha = serializers.DateField(format='%Y-%m-%d')
+    hora_inicio = serializers.TimeField(source='horario.hora_inicio', format='%H:%M', allow_null=True)
+    hora_fin = serializers.TimeField(source='horario.hora_fin', format='%H:%M', allow_null=True)
+    taller_nombre = serializers.CharField(source='horario.taller.nombre', allow_null=True)
+    num_alumnos = serializers.IntegerField()
+    monto_profesor = serializers.DecimalField(max_digits=10, decimal_places=2)
+    observacion = serializers.CharField(allow_blank=True)
+    alumnos = serializers.SerializerMethodField()
+    nota_clase = serializers.SerializerMethodField(allow_null=True)
+
+    def get_alumnos(self, obj):
+        alumnos_map = self.context.get('alumnos_map', {})
+        return alumnos_map.get((obj.horario_id, obj.fecha), [])
+
+    def get_nota_clase(self, obj):
+        notas_map = self.context.get('notas_map', {})
+        return notas_map.get((obj.horario_id, obj.fecha))
+
+
 class NotaClaseSerializer(serializers.ModelSerializer):
     """NotaClase serializer for list/create/update."""
     taller_nombre = serializers.CharField(source='horario.taller.nombre', read_only=True)
