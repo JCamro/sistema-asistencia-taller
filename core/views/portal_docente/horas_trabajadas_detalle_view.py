@@ -1,10 +1,10 @@
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.db.models import Q, Exists, OuterRef
 
 from core.models import Asistencia, NotaClase
 from core.models.hora_trabajada import HoraTrabajada
-from core.models.horario import Horario
 from core.shared.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 
 
@@ -45,6 +45,22 @@ class ProfesorHorasTrabajadasDetalleView(APIView):
         queryset = HoraTrabajada.objects.filter(**ht_filters).select_related(
             'horario__taller', 'horario__profesor', 'profesor',
         ).order_by('-fecha', 'horario__taller__nombre', 'horario__hora_inicio')
+
+        # Excluir HoraTrabajada auto-generadas sin Asistencia que las respalde.
+        # Cuando un sustituto trabaja, el signal viejo creaba registros para el titular
+        # (horario.profesor). Esos registros no tienen Asistencia.profesor que coincida.
+        # Filtramos: para cada (profesor, horario, fecha), debe existir al menos una
+        # Asistencia con ese mismo profesor.
+        from django.db.models import Exists, OuterRef
+        asistencia_valida = Asistencia.objects.filter(
+            horario_id=OuterRef('horario_id'),
+            fecha=OuterRef('fecha'),
+            profesor_id=OuterRef('profesor_id'),
+            estado='asistio',
+        )
+        queryset = queryset.filter(
+            Q(created_from='admin_manual') | Exists(asistencia_valida)
+        )
 
         horario_ids = set()
         fechas = set()
