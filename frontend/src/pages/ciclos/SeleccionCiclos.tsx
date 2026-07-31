@@ -17,6 +17,10 @@ function SeleccionCiclos() {
   const [fechaFin, setFechaFin] = useState('');
   const [activo, setActivo] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: number; nombre: string } | null>(null);
+  const [passwordDelete, setPasswordDelete] = useState('');
+  const [errorDelete, setErrorDelete] = useState('');
+  const [eliminando, setEliminando] = useState(false);
   const [busquedaCiclo, setBusquedaCiclo] = useState('');
   const [ordenCiclo, setOrdenCiclo] = useState<'nombre' | 'fecha_nueva' | 'fecha_vieja'>('fecha_nueva');
   
@@ -106,18 +110,45 @@ function SeleccionCiclos() {
   };
 
   const handleEliminar = async (id: number) => {
-    const confirmar = window.confirm('¿Estás seguro de que deseas eliminar este ciclo? Se eliminarán todos los datos asociados (alumnos, profesores, talleres, etc.).');
-    if (!confirmar) return;
+    const ciclo = ciclos.find(c => c.id === id);
+    setConfirmDelete({ id, nombre: ciclo?.nombre ?? `#${id}` });
+    setPasswordDelete('');
+    setErrorDelete('');
+  };
+
+  const confirmarEliminar = async () => {
+    if (!confirmDelete) return;
+    if (!passwordDelete) {
+      setErrorDelete('Ingresá tu contraseña para confirmar');
+      return;
+    }
+    setEliminando(true);
+    setErrorDelete('');
     const token = localStorage.getItem('access_token');
     try {
-      await fetch(`${apiBase}/ciclos/${id}/`, {
+      const res = await fetch(`${apiBase}/ciclos/${confirmDelete.id}/`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password: passwordDelete }),
       });
-      recargar();
-    } catch (error) {
-      console.error('Error:', error);
+      if (res.ok) {
+        setConfirmDelete(null);
+        recargar();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        if (data.protected_models?.length) {
+          setErrorDelete(`No se puede eliminar: tiene ${data.protected_models.join(', ')} asociados. Eliminá esos datos primero.`);
+        } else {
+          setErrorDelete(data.detail || 'Error al eliminar el ciclo');
+        }
+      }
+    } catch {
+      setErrorDelete('Error de conexión');
     }
+    setEliminando(false);
   };
 
   const abrirFormulario = () => {
@@ -455,9 +486,127 @@ function SeleccionCiclos() {
           </div>
         </div>
       )}
+
+      {/* Modal de confirmación para eliminar ciclo */}
+      {confirmDelete && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 200,
+          padding: '1rem',
+        }}>
+          <div style={{
+            background: '#1c1c1c',
+            borderRadius: '16px',
+            padding: '2rem',
+            width: '100%',
+            maxWidth: '440px',
+            border: '1px solid rgba(196, 30, 58, 0.3)',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.7)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(196, 30, 58, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e63950" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div>
+                <h3 style={{ color: '#e63950', fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>Eliminar ciclo</h3>
+                <p style={{ color: '#888', fontSize: '0.875rem', margin: '2px 0 0' }}>
+                  ¿Eliminar <strong style={{ color: '#d4af37' }}>{confirmDelete.nombre}</strong>?
+                </p>
+              </div>
+            </div>
+
+            <p style={{ color: '#a1a1a1', fontSize: '0.875rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+              Esta acción eliminará el ciclo y <strong style={{ color: '#e63950' }}>todos sus datos asociados</strong>: alumnos, profesores, talleres, horarios, matrículas, asistencias, recibos y egresos. No se puede deshacer.
+            </p>
+
+            {errorDelete && (
+              <div style={{
+                padding: '0.65rem 0.85rem',
+                borderRadius: '8px',
+                marginBottom: '1rem',
+                background: 'rgba(196, 30, 58, 0.15)',
+                color: '#e63950',
+                fontSize: '0.8125rem',
+                fontWeight: 500,
+              }}>
+                {errorDelete}
+              </div>
+            )}
+
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.4rem', color: '#a1a1a1', fontSize: '0.8125rem', fontWeight: 500 }}>
+                Ingresá tu contraseña para confirmar
+              </label>
+              <input
+                type="password"
+                value={passwordDelete}
+                onChange={(e) => { setPasswordDelete(e.target.value); setErrorDelete(''); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') confirmarEliminar(); }}
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '0.7rem 0.85rem',
+                  border: `1px solid ${errorDelete ? 'rgba(196, 30, 58, 0.5)' : 'rgba(255,255,255,0.08)'}`,
+                  borderRadius: '10px',
+                  background: 'rgba(255,255,255,0.04)',
+                  color: '#fff',
+                  fontSize: '0.9375rem',
+                  fontFamily: 'inherit',
+                }}
+                placeholder="Tu contraseña"
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                onClick={() => { setConfirmDelete(null); setPasswordDelete(''); setErrorDelete(''); }}
+                disabled={eliminando}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  background: 'transparent',
+                  color: '#888',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '10px',
+                  cursor: eliminando ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                  fontSize: '0.875rem',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarEliminar}
+                disabled={eliminando || !passwordDelete}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  background: eliminando ? 'rgba(196, 30, 58, 0.4)' : 'linear-gradient(135deg, #c41e3a, #a01830)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  cursor: eliminando || !passwordDelete ? 'not-allowed' : 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                }}
+              >
+                {eliminando ? 'Eliminando...' : 'Eliminar ciclo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
 
 export default memo(SeleccionCiclos);
