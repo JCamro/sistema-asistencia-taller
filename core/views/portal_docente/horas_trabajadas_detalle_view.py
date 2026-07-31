@@ -84,7 +84,7 @@ class ProfesorHorasTrabajadasDetalleView(APIView):
                     continue
                 key = (asistencia.horario_id, asistencia.fecha)
                 alumnos_map.setdefault(key, []).append({
-                    'nombre_completo': f"{alumno.apellido}, {alumno.nombre}",
+                    'nombre_completo': f"{alumno.nombre} {alumno.apellido}",
                     'estado': asistencia.estado,
                 })
 

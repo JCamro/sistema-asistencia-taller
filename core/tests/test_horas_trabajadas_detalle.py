@@ -120,7 +120,7 @@ class TestProfesorHorasTrabajadasDetalle:
 
         slot = data['2026-08-03']['Guitarra'][0]
         assert len(slot['alumnos']) == 1
-        assert slot['alumnos'][0]['nombre_completo'] == 'García, Ana'
+        assert slot['alumnos'][0]['nombre_completo'] == 'Ana García'
         assert slot['alumnos'][0]['estado'] == 'asistio'
 
     def test_includes_nota_clase_contenido_when_it_exists(
