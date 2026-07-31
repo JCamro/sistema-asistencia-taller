@@ -204,5 +204,19 @@ class TestProfesorHorasTrabajadasDetalle:
         data = response.json()
 
         assert response.status_code == 200
-        assert list(data.keys()) == ['2026-08-04']
-        assert '2026-08-03' not in data
+        # Both dates appear: 2026-08-04 (propia) y 2026-08-03 (sustituto)
+        assert set(data.keys()) == {'2026-08-04', '2026-08-03'}
+
+        # 2026-08-03 should be marked as sustituto
+        dia_sustituto = data['2026-08-03']
+        taller_key = list(dia_sustituto.keys())[0]
+        slot_sustituto = dia_sustituto[taller_key][0]
+        assert slot_sustituto['es_sustituto'] is True
+        assert slot_sustituto['profesor_que_trabajo'] == 'Profe, Otro'
+        assert slot_sustituto['monto_profesor'] == '0.00'
+
+        # 2026-08-04 should be normal
+        dia_propio = data['2026-08-04']
+        slot_propio = dia_propio[taller_key][0]
+        assert slot_propio['es_sustituto'] is False
+        assert slot_propio['monto_profesor'] == '17.00'

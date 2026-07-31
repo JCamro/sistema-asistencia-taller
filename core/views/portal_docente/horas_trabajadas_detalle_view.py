@@ -4,7 +4,7 @@ from rest_framework.response import Response
 
 from core.models import Asistencia, NotaClase
 from core.models.hora_trabajada import HoraTrabajada
-from core.serializers.portal_docente.serializers import HoraTrabajadaDetalleSerializer
+from core.models.horario import Horario
 from core.shared.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 
 
@@ -12,8 +12,10 @@ class ProfesorHorasTrabajadasDetalleView(APIView):
     """
     GET /api/portal-docente/ciclos/{id}/horas-trabajadas/detalle/
 
-    Returns worked hours for the authenticated professor grouped by
-    date (descending), workshop name, and time slot.
+    Returns all hours for horarios assigned to the authenticated professor,
+    grouped by date, workshop, and time slot. Hours worked by the professor
+    include monto and count toward payment. Hours worked by a substitute
+    show the substitute's name, 0 monto, and are marked as "sustituto".
 
     Query params:
     - fecha_desde: YYYY-MM-DD (optional)
@@ -25,22 +27,24 @@ class ProfesorHorasTrabajadasDetalleView(APIView):
     def get(self, request, ciclo_id):
         profesor_id = get_profesor_for_ciclo(request.user.dni, ciclo_id)
 
-        queryset = HoraTrabajada.objects.filter(
-            profesor_id=profesor_id,
-            ciclo_id=ciclo_id,
-        ).select_related(
-            'horario__taller',
-        ).order_by(
-            '-fecha', 'horario__taller__nombre', 'horario__hora_inicio'
-        )
-
         fecha_desde = request.query_params.get('fecha_desde')
         fecha_hasta = request.query_params.get('fecha_hasta')
 
+        # Fetch ALL HoraTrabajada for horarios assigned to this profesor
+        # (not just the ones where this profesor is the HoraTrabajada.profesor).
+        # This lets us show hours worked by substitutes too.
+        ht_filters = {
+            'ciclo_id': ciclo_id,
+            'horario__profesor_id': profesor_id,
+        }
         if fecha_desde:
-            queryset = queryset.filter(fecha__gte=fecha_desde)
+            ht_filters['fecha__gte'] = fecha_desde
         if fecha_hasta:
-            queryset = queryset.filter(fecha__lte=fecha_hasta)
+            ht_filters['fecha__lte'] = fecha_hasta
+
+        queryset = HoraTrabajada.objects.filter(**ht_filters).select_related(
+            'horario__taller', 'horario__profesor', 'profesor',
+        ).order_by('-fecha', 'horario__taller__nombre', 'horario__hora_inicio')
 
         horario_ids = set()
         fechas = set()
@@ -49,6 +53,7 @@ class ProfesorHorasTrabajadasDetalleView(APIView):
                 horario_ids.add(ht.horario_id)
             fechas.add(ht.fecha)
 
+        # Fetch Asistencia for all horarios+fechas (students who attended)
         alumnos_map = {}
         if horario_ids and fechas:
             asistencias = Asistencia.objects.filter(
@@ -67,6 +72,7 @@ class ProfesorHorasTrabajadasDetalleView(APIView):
                     'estado': asistencia.estado,
                 })
 
+        # Fetch NotaClase for all horarios+fechas
         notas_map = {}
         if horario_ids and fechas:
             notas = NotaClase.objects.filter(
@@ -76,17 +82,31 @@ class ProfesorHorasTrabajadasDetalleView(APIView):
             for nota in notas:
                 notas_map[(nota.horario_id, nota.fecha)] = nota.contenido
 
-        serializer_context = {
-            'alumnos_map': alumnos_map,
-            'notas_map': notas_map,
-        }
-
         grouped = {}
         for ht in queryset:
-            slot = HoraTrabajadaDetalleSerializer(
-                ht, context=serializer_context
-            ).data
-            taller_nombre = slot['taller_nombre'] or 'Sin taller'
+            es_sustituto = ht.profesor_id != profesor_id
+            taller_nombre = ht.horario.taller.nombre if ht.horario and ht.horario.taller else 'Sin taller'
+
+            alumnos = alumnos_map.get((ht.horario_id, ht.fecha), [])
+            nota_clase = notas_map.get((ht.horario_id, ht.fecha))
+
+            slot = {
+                'id': ht.id,
+                'fecha': str(ht.fecha),
+                'horario_id': ht.horario_id,
+                'hora_inicio': str(ht.horario.hora_inicio)[:5] if ht.horario else '',
+                'hora_fin': str(ht.horario.hora_fin)[:5] if ht.horario else '',
+                'taller_nombre': taller_nombre,
+                'num_alumnos': len(alumnos),
+                'monto_profesor': '0.00' if es_sustituto else str(ht.monto_profesor),
+                'observacion': ht.observacion or '',
+                'alumnos': alumnos,
+                'nota_clase': nota_clase,
+                'es_sustituto': es_sustituto,
+                'profesor_que_trabajo': f"{ht.profesor.apellido}, {ht.profesor.nombre}" if es_sustituto else '',
+                'profesor_titular': f"{ht.horario.profesor.apellido}, {ht.horario.profesor.nombre}" if ht.horario and ht.horario.profesor else '',
+            }
+
             grouped.setdefault(str(ht.fecha), {}).setdefault(
                 taller_nombre, []
             ).append(slot)
