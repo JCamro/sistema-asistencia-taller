@@ -7,7 +7,7 @@ import { formatMonto } from '../../utils/formatters';
 import { useWindowWidth } from '../../hooks/useWindowWidth';
 import {
   createHoraTrabajada, updateHoraTrabajada,
-  deleteHoraTrabajada,
+  deleteHoraTrabajada, reassignHoraTrabajada,
 } from '../../api/endpoints';
 
 const TABS = [
@@ -29,6 +29,7 @@ interface ResultadoPago {
 interface DetalleClase {
   id: number; horario: number; horario_info: string; fecha: string;
   profesor_id?: number; profesor_nombre?: string;
+  horario_profesor_id?: number; es_sustituto?: boolean;
   num_alumnos: number;
   valor_generado: number; monto_base: number; monto_adicional: number;
   monto_profesor: number; ganancia_taller: number;
@@ -76,6 +77,8 @@ function HorasProfesoresPage() {
   const [hHasta, setHHasta] = useState(() => getLimaToday());
   const [hModal, setHModal] = useState(false);
   const [hEditando, setHEditando] = useState<any>(null);
+  const [reassignId, setReassignId] = useState<number | null>(null);
+  const [reassigning, setReassigning] = useState(false);
 
   // Form state
   const [formTallerId, setFormTallerId] = useState<number | string>('');
@@ -232,6 +235,23 @@ function HorasProfesoresPage() {
     try { await deleteHoraTrabajada(id); showToast('Eliminada', 'success'); fetchHoras(hPage); }
     catch { showToast('Error', 'error'); }
   };
+  const handleReassign = async (id: number, profesorId: number) => {
+    setReassigning(true);
+    try {
+      await reassignHoraTrabajada(id, profesorId);
+      showToast('Profesor reasignado', 'success');
+      setReassignId(null);
+      fetchHoras(hPage);
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail;
+      if (err?.response?.status === 409) {
+        showToast('Ya existe un registro para este profesor en esta fecha y horario', 'error');
+      } else {
+        showToast(msg || 'Error al reasignar', 'error');
+      }
+    }
+    setReassigning(false);
+  };
   const abrirEditarHora = async (h: any) => {
     setHEditando(h);
     // Load the horario's taller to set the filter
@@ -375,7 +395,14 @@ function HorasProfesoresPage() {
           <div style={{ background: 'white', borderRadius: '12px', border: '1.5px solid #c8ccd4', overflow: 'hidden' }}>
             <ResponsiveTable
               columns={[
-                { key: 'profesor_nombre', label: 'Profesor', render: (h: any) => <span style={{ fontWeight: 600, color:'#0f172a' }}>{h.profesor_nombre ?? '-'}</span> },
+                { key: 'profesor_nombre', label: 'Profesor', render: (h: any) => (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, color:'#0f172a' }}>
+                    {h.profesor_nombre ?? '-'}
+                    {h.es_sustituto && (
+                      <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#92400e', background: '#fef3c7', padding: '0.15rem 0.45rem', borderRadius: '9999px', border: '1px solid #fcd34d' }}>Sustituto</span>
+                    )}
+                  </span>
+                )},
                 { key: 'horario_info', label: 'Horario', render: (h: any) => <span style={{ fontSize: '0.8125rem', color:'#64748b' }}>{h.horario_info ?? '-'}</span> },
                 { key: 'fecha', label: 'Fecha', render: (h: any) => h.fecha.split('-').reverse().join('/') },
                 { key: 'num_alumnos', label: 'Alumnos', align: 'center', render: (h: any) => h.num_alumnos ?? 0 },
@@ -385,11 +412,35 @@ function HorasProfesoresPage() {
               keyField="id"
               actions={(h) => {
                 const isAuto = h.created_from === 'asistencia_auto';
-                if (isAuto) return null;
+                const mostrandoReassign = reassignId === h.id;
                 return (
-                  <div style={{ display: 'flex', gap: '0.25rem' }}>
-                    <button onClick={() => abrirEditarHora(h)} style={{ padding: '0.25rem 0.5rem', border: '1px solid #e5e7eb', borderRadius: '6px', background: 'white', fontSize: '0.75rem', cursor: 'pointer', color: '#d4af37' }}>Editar</button>
-                    <button onClick={() => handleHEliminar(h.id)} style={{ padding: '0.25rem 0.5rem', border: '1px solid #ef4444', borderRadius: '6px', background: 'white', color: '#ef4444', fontSize: '0.75rem', cursor: 'pointer' }}>Eliminar</button>
+                  <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                    {!isAuto && (
+                      <>
+                        <button onClick={() => abrirEditarHora(h)} style={{ padding: '0.25rem 0.5rem', border: '1px solid #e5e7eb', borderRadius: '6px', background: 'white', fontSize: '0.75rem', cursor: 'pointer', color: '#d4af37' }}>Editar</button>
+                        <button onClick={() => handleHEliminar(h.id)} style={{ padding: '0.25rem 0.5rem', border: '1px solid #ef4444', borderRadius: '6px', background: 'white', color: '#ef4444', fontSize: '0.75rem', cursor: 'pointer' }}>Eliminar</button>
+                      </>
+                    )}
+                    {mostrandoReassign ? (
+                      <select
+                        autoFocus
+                        disabled={reassigning}
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val) handleReassign(h.id, Number(val));
+                          else setReassignId(null);
+                        }}
+                        onBlur={() => setReassignId(null)}
+                        style={{ padding: '0.25rem 0.5rem', border: '1px solid #d4af37', borderRadius: '6px', fontSize: '0.75rem', background: 'white', color: '#374151', minWidth: '140px' }}
+                      >
+                        <option value="">Seleccionar profesor</option>
+                        {hProfesores.map((p: any) => (
+                          <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <button onClick={() => setReassignId(h.id)} style={{ padding: '0.25rem 0.5rem', border: '1px solid #d4af37', borderRadius: '6px', background: '#fef9e7', color: '#8b6914', fontSize: '0.75rem', cursor: 'pointer' }}>Reasignar</button>
+                    )}
                   </div>
                 );
               }}
@@ -524,7 +575,12 @@ function HorasProfesoresPage() {
                                 return (
                                   <div key={d.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                                     <div onClick={() => toggleRowExpansion(d)} style={{ padding: '0.5rem 1rem 0.5rem 2rem', cursor: 'pointer', display: 'grid', gridTemplateColumns: '1fr 60px 80px 80px 80px 30px', gap: '0.5rem', alignItems: 'center', background: isExpanded ? '#fef9e7' : 'white', fontSize: '0.8125rem' }}>
-                                      <span style={{ color: '#6b7280' }}>{d.horario_info}</span>
+                                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280' }}>
+                                        {d.horario_info}
+                                        {d.es_sustituto && (
+                                          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#92400e', background: '#fef3c7', padding: '0.1rem 0.4rem', borderRadius: '9999px', border: '1px solid #fcd34d' }}>Sustituto</span>
+                                        )}
+                                      </span>
                                       <span style={{ textAlign: 'center' }}><span style={{ background: '#fef9e7', color: '#8b6914', padding: '0.15rem 0.4rem', borderRadius: '9999px', fontSize: '0.75rem' }}>{d.num_alumnos}</span></span>
                                       <span style={{ textAlign: 'right', fontFamily: 'monospace', color: '#6b7280' }}>S/. {fmt(Number(d.monto_base))}</span>
                                       <span style={{ textAlign: 'right', fontFamily: 'monospace', color: '#6b7280' }}>+S/. {fmt(Number(d.monto_adicional))}</span>
@@ -613,6 +669,19 @@ function HorasProfesoresPage() {
                   <option value="">Seleccionar profesor</option>
                   {hProfesores.map((p: any) => <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>)}
                 </select>
+                {hFormHorario && hFormProf && (
+                  (() => {
+                    const horarioSeleccionado = formHorarios.find((hor: any) => hor.id === hFormHorario);
+                    if (horarioSeleccionado && horarioSeleccionado.profesor && horarioSeleccionado.profesor !== hFormProf) {
+                      return (
+                        <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '8px', color: '#92400e', fontSize: '0.75rem', fontWeight: 500 }}>
+                          El profesor seleccionado no es el titular del horario
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()
+                )}
               </div>
               <div>
                 <label style={{ fontSize: '0.8125rem', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>Fecha</label>

@@ -765,6 +765,9 @@ export interface HoraTrabajada {
   num_alumnos: number;
   valor_generado: number | string;
   monto_profesor: number | string;
+  es_sustituto?: boolean;
+  horario_profesor_id?: number | null;
+  horario_profesor_nombre?: string | null;
 }
 
 export interface HoraTrabajadaDetail extends HoraTrabajada {
@@ -801,6 +804,10 @@ export const deleteHoraTrabajada = (id: number) =>
 /** Actualiza un registro de hora trabajada */
 export const updateHoraTrabajada = (id: number, data: Partial<HoraTrabajadaDetail>) =>
   api.patch<HoraTrabajadaDetail>(`/horas-trabajadas/${id}/`, data);
+
+/** Reasigna el profesor de una hora trabajada */
+export const reassignHoraTrabajada = (id: number, profesorId: number) =>
+  api.patch<HoraTrabajadaDetail>(`/horas-trabajadas/${id}/reassign/`, { profesor: profesorId });
 
 // --- Egresos ---
 /** Lista egresos con filtros opcionales vía query string */

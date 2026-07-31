@@ -6,11 +6,14 @@ class PagoProfesorDetalleSerializer(serializers.ModelSerializer):
     horario_info = serializers.SerializerMethodField()
     profesor_nombre = serializers.SerializerMethodField()
     profesor_id = serializers.SerializerMethodField()
+    horario_profesor_id = serializers.SerializerMethodField()
+    es_sustituto = serializers.SerializerMethodField()
 
     class Meta:
         model = PagoProfesorDetalle
         fields = [
             'id', 'horario', 'horario_info', 'fecha', 'profesor_id', 'profesor_nombre',
+            'horario_profesor_id', 'es_sustituto',
             'num_alumnos', 'valor_generado', 'monto_base',
             'monto_adicional', 'monto_profesor', 'ganancia_taller'
         ]
@@ -23,6 +26,12 @@ class PagoProfesorDetalleSerializer(serializers.ModelSerializer):
 
     def get_profesor_id(self, obj):
         return obj.pago_profesor.profesor.id
+
+    def get_horario_profesor_id(self, obj):
+        return obj.horario.profesor_id
+
+    def get_es_sustituto(self, obj):
+        return obj.pago_profesor.profesor_id != obj.horario.profesor_id
 
 
 class PagoProfesorSerializer(serializers.ModelSerializer):

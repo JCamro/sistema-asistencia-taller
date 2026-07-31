@@ -624,11 +624,7 @@ class HoraTrabajadaService:
             except Horario.DoesNotExist:
                 raise ValueError("Horario no encontrado.")
 
-        # Validar que el profesor corresponda al horario
-        if horario.profesor_id != profesor.id:
-            raise ValueError(
-                f"El horario pertenece a {horario.profesor.nombre}, no a {profesor.nombre}."
-            )
+        # Se permite que el profesor difiera del titular del horario (sustituto)
 
         fecha = data.get('fecha')
         if fecha and fecha > date.today():
