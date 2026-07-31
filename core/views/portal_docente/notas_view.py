@@ -134,7 +134,8 @@ class ProfesorNotaDetailView(APIView):
         serializer = NotaClaseSerializer(
             nota,
             data=request.data,
-            context={'request': request}
+            context={'request': request},
+            partial=True,
         )
         serializer.is_valid(raise_exception=True)
 

@@ -118,6 +118,7 @@ class AsistenciaRegistroSerializer(serializers.Serializer):
     """Single attendance record for a student."""
     alumno = serializers.SerializerMethodField()
     estado = serializers.CharField()
+    es_recuperacion = serializers.BooleanField()
 
     def get_alumno(self, obj):
         a = obj.matricula.alumno
@@ -128,6 +129,30 @@ class AsistenciaRegistroSerializer(serializers.Serializer):
             'dni': a.dni,
             'telefono': a.telefono or '',
         }
+
+
+class AlumnoResumenEntrySerializer(serializers.Serializer):
+    """Unified student row for a horario/date combination."""
+    alumno_id = serializers.IntegerField()
+    nombre = serializers.CharField()
+    apellido = serializers.CharField()
+    dni = serializers.CharField()
+    estado_asistencia = serializers.CharField(allow_null=True)
+    es_recuperacion = serializers.BooleanField()
+    hora_asistencia = serializers.TimeField(allow_null=True, format='%H:%M')
+    inscripcion_activa = serializers.BooleanField()
+
+
+class HorarioResumenFechaSerializer(serializers.Serializer):
+    """Date-aware unified response for a horario."""
+    modo = serializers.CharField()
+    fecha = serializers.DateField()
+    aviso = serializers.CharField(allow_null=True)
+    horario_id = serializers.IntegerField()
+    taller_nombre = serializers.CharField()
+    hora_inicio = serializers.TimeField(format='%H:%M')
+    hora_fin = serializers.TimeField(format='%H:%M')
+    registros = AlumnoResumenEntrySerializer(many=True)
 
 
 class AsistenciaPorHorarioSerializer(serializers.Serializer):

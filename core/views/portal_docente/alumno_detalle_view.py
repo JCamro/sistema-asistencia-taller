@@ -1,5 +1,6 @@
 from django.http import Http404
-from django.db.models import Count, Q, Prefetch
+from django.db import models
+from django.db.models import Count, Q, Prefetch, Subquery, OuterRef
 from collections import defaultdict
 
 from rest_framework.views import APIView
@@ -48,14 +49,20 @@ class ProfesorAlumnoDetalleView(APIView):
         # ── Matriculas ─────────────────────────────────────────────────
         # Annotate each matricula with sesiones_consumidas count
         # NOTE: using _sesiones_consumidas to avoid collision with @property on model
+        # Use Subquery to avoid count duplication from multiple MatriculaHorario rows
+        asistencias_count_subquery = Asistencia.objects.filter(
+            matricula=OuterRef('pk'),
+            estado__in=['asistio', 'falta_grave'],
+        ).order_by().values('matricula').annotate(cnt=Count('id')).values('cnt')
+
         matriculas = Matricula.objects.filter(
             alumno_id=alumno_id,
             ciclo_id=ciclo_id,
-        ).annotate(
-            _sesiones_consumidas=Count(
-                'asistencias',
-                filter=Q(asistencias__estado__in=['asistio', 'falta_grave']),
-            ),
+            horarios__horario__profesor_id=profesor_id,
+            horarios__horario__ciclo_id=ciclo_id,
+            horarios__horario__activo=True,
+        ).distinct().annotate(
+            _sesiones_consumidas=Subquery(asistencias_count_subquery, output_field=models.IntegerField()),
         ).select_related('taller').prefetch_related(
             Prefetch(
                 'horarios',
@@ -122,7 +129,7 @@ class ProfesorAlumnoDetalleView(APIView):
             # Get asistencias for this active matricula
             asistencias_qs = Asistencia.objects.filter(
                 matricula=matricula_activa,
-            ).order_by('-fecha', '-hora')[:20]
+            ).select_related('horario').order_by('-fecha', '-hora')[:20]
 
             matricula_activa_data = {
                 'id': matricula_activa.id,
@@ -145,6 +152,9 @@ class ProfesorAlumnoDetalleView(APIView):
                         'fecha': a.fecha.isoformat(),
                         'estado': a.estado,
                         'hora': str(a.hora),
+                        'horario_inicio': str(a.horario.hora_inicio) if a.horario else None,
+                        'horario_fin': str(a.horario.hora_fin) if a.horario else None,
+                        'dia_semana': a.horario.dia_semana if a.horario else None,
                     }
                     for a in asistencias_qs
                 ],
@@ -196,11 +206,12 @@ class ProfesorAlumnoDetalleView(APIView):
         estadisticas_por_taller = None
 
         if taller_id:
-            # Focused stats for the selected taller
+            # Focused stats for the selected taller — filter by docente's matrículas only
+            matriculas_taller = [m.id for m in activas if m.taller_id == int(taller_id)]
+            if not matriculas_taller:
+                matriculas_taller = [m.id for m in historicas if m.taller_id == int(taller_id)]
             stats = Asistencia.objects.filter(
-                matricula__alumno_id=alumno_id,
-                matricula__ciclo_id=ciclo_id,
-                matricula__taller_id=int(taller_id),
+                matricula_id__in=matriculas_taller,
             ).aggregate(
                 total_asistencias=Count('id', filter=Q(estado='asistio')),
                 total_faltas=Count('id', filter=Q(estado__in=['falta', 'falta_grave'])),
@@ -219,9 +230,7 @@ class ProfesorAlumnoDetalleView(APIView):
             taller_stats = []
             for m in activas:
                 s = Asistencia.objects.filter(
-                    matricula__alumno_id=alumno_id,
-                    matricula__ciclo_id=ciclo_id,
-                    matricula__taller_id=m.taller_id,
+                    matricula_id=m.id,
                 ).aggregate(
                     total_asistencias=Count('id', filter=Q(estado='asistio')),
                     total_faltas=Count('id', filter=Q(estado__in=['falta', 'falta_grave'])),

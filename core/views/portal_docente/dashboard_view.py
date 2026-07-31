@@ -1,14 +1,12 @@
-from datetime import date, datetime
 from decimal import Decimal
 
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum
 from django.utils import timezone
-from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.models import Horario, Alumno, Matricula, PagoProfesor
+from core.models import Horario, Alumno
 from core.models.hora_trabajada import HoraTrabajada
 from core.shared.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
 
@@ -20,8 +18,8 @@ class ProfesorDashboardView(APIView):
     Returns KPIs for the authenticated professor:
     - clases_hoy: number of classes today
     - total_alumnos: unique active students across all horarios
+    - horas_dia: total hours worked today
     - horas_mes: total hours worked this month
-    - monto_acumulado: accumulated payment amount (aprobada + pendiente)
     """
     authentication_classes = [ProfesorJWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -48,36 +46,27 @@ class ProfesorDashboardView(APIView):
             matriculas__concluida=False,
         ).distinct().count()
 
-        # Horas del mes: total horas_trabajadas for this month
-        horas_mes_result = HoraTrabajada.objects.filter(
+        # Horas base query (reused for dia and mes)
+        horas_base = HoraTrabajada.objects.filter(
             profesor_id=profesor_id,
             ciclo_id=ciclo_id,
+            estado__in=['pendiente', 'aprobada'],
+        )
+
+        # Horas del dia
+        horas_dia = horas_base.filter(fecha=today).aggregate(
+            total=Sum('horas_trabajadas')
+        )['total'] or Decimal('0')
+
+        # Horas del mes
+        horas_mes = horas_base.filter(
             fecha__gte=first_of_month,
             fecha__lte=today,
-            estado__in=['pendiente', 'aprobada'],
-        ).aggregate(total=Sum('horas_trabajadas'))
-
-        horas_mes = horas_mes_result['total'] or Decimal('0')
-
-        # Monto acumulado: sum of monto_profesor for this cycle
-        monto_result = HoraTrabajada.objects.filter(
-            profesor_id=profesor_id,
-            ciclo_id=ciclo_id,
-            estado__in=['pendiente', 'aprobada'],
-        ).aggregate(total=Sum('monto_profesor'))
-
-        monto_acumulado = monto_result['total'] or Decimal('0')
-
-        # tiene_pagos: whether any PagoProfesor record exists for this profesor + ciclo
-        tiene_pagos = PagoProfesor.objects.filter(
-            profesor_id=profesor_id,
-            ciclo_id=ciclo_id,
-        ).exists()
+        ).aggregate(total=Sum('horas_trabajadas'))['total'] or Decimal('0')
 
         return Response({
             'clases_hoy': clases_hoy,
             'total_alumnos': total_alumnos,
+            'horas_dia': float(horas_dia),
             'horas_mes': float(horas_mes),
-            'monto_acumulado': float(monto_acumulado),
-            'tiene_pagos': tiene_pagos,
         })
