@@ -52,7 +52,6 @@ class ProfesorHorasTrabajadasDetalleView(APIView):
         alumnos_map = {}
         if horario_ids and fechas:
             asistencias = Asistencia.objects.filter(
-                profesor_id=profesor_id,
                 horario_id__in=horario_ids,
                 fecha__in=fechas,
                 estado='asistio',
@@ -71,7 +70,6 @@ class ProfesorHorasTrabajadasDetalleView(APIView):
         notas_map = {}
         if horario_ids and fechas:
             notas = NotaClase.objects.filter(
-                profesor_id=profesor_id,
                 horario_id__in=horario_ids,
                 fecha__in=fechas,
             )
