@@ -32,7 +32,7 @@ const EgresosPage = () => {
   const [egresos, setEgresos] = useState<any[]>([]); const [profesores, setProfesores] = useState<any[]>([]);
   const [resumen, setResumen] = useState({ gasto_taller:0, pago_profesor:0, gasto_personal:0, total:0 });
   const [loading, setLoading] = useState(true); const [page, setPage] = useState(1); const [tp, setTp] = useState(1); const [tc, setTc] = useState(0);
-  const [filtroTipo, setFiltroTipo] = useState(''); const [filtroEstado, setFiltroEstado] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState(''); const [filtroEstado, setFiltroEstado] = useState(''); const [filtroProfesor, setFiltroProfesor] = useState('');
   const [modalOpen, setModalOpen] = useState(false); const [egresoEditando, setEgresoEditando] = useState<any>(null);
   const [formTipo, setFormTipo] = useState('gasto_taller'); const [formMonto, setFormMonto] = useState('');
   const [formDesc, setFormDesc] = useState(''); const formToday = new Date().toISOString().split('T')[0];
@@ -70,6 +70,10 @@ const EgresosPage = () => {
       else if(e.tipo!==filtroTipo) return false;
     }
     if(filtroEstado && e.estado!==filtroEstado) return false;
+    if(filtroProfesor) {
+      const profesorId = e.profesor?.id || e.profesor;
+      if(profesorId !== Number(filtroProfesor)) return false;
+    }
     return true;
   });
 
@@ -106,8 +110,14 @@ const EgresosPage = () => {
 
     {/* Filters */}
     <div style={{background:'white',borderRadius:'12px',border:'1px solid #e2e8f0',padding:'0.75rem 1rem',marginBottom:'0.75rem',display:'flex',gap:'0.5rem',flexWrap:'wrap',alignItems:'center'}}>
-      <select value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)} style={{padding:'0.5rem 0.75rem',border:'1px solid #e2e8f0',borderRadius:'8px',fontSize:'0.8125rem',background:'white',color:'#374151',minWidth:150,cursor:'pointer'}}><option value="">Todos los tipos</option><option value="gasto_taller">Gasto Taller</option><option value="gasto_personal">Gasto Personal</option></select>
+      <select value={filtroTipo} onChange={e=>{setFiltroTipo(e.target.value);setFiltroProfesor('')}} style={{padding:'0.5rem 0.75rem',border:'1px solid #e2e8f0',borderRadius:'8px',fontSize:'0.8125rem',background:'white',color:'#374151',minWidth:150,cursor:'pointer'}}><option value="">Todos los tipos</option><option value="gasto_taller">Gasto Taller</option><option value="gasto_personal">Gasto Personal</option></select>
       <select value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)} style={{padding:'0.5rem 0.75rem',border:'1px solid #e2e8f0',borderRadius:'8px',fontSize:'0.8125rem',background:'white',color:'#374151',minWidth:150,cursor:'pointer'}}><option value="">Todos los estados</option><option value="pendiente">Pendiente</option><option value="cancelado">Cancelado</option></select>
+      {(filtroTipo === '' || filtroTipo === 'gasto_personal') && (
+        <select value={filtroProfesor} onChange={e=>setFiltroProfesor(e.target.value)} style={{padding:'0.5rem 0.75rem',border:'1px solid #e2e8f0',borderRadius:'8px',fontSize:'0.8125rem',background:'white',color:'#374151',minWidth:150,cursor:'pointer'}}>
+          <option value="">Todos los profesores</option>
+          {profesores.map(p=><option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>)}
+        </select>
+      )}
     </div>
 
     {/* Table */}
