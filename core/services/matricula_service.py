@@ -7,6 +7,7 @@ incluyendo la gestión de horarios asociados.
 from decimal import Decimal
 
 from django.db import transaction
+from django.core.exceptions import ValidationError
 
 from ..models import Horario, Matricula, MatriculaHorario
 
@@ -26,8 +27,11 @@ class MatriculaService:
             
         Returns:
             Matricula: La matrícula creada
+            
+        Raises:
+            ValidationError: Si algún horario ID no existe
         """
-        horarios_ids = horarios_ids or []
+        horarios_ids = list(set(horarios_ids or []))  # Deduplicar
 
         # Calcular precio_por_sesion al crear
         precio_total = validated_data.get('precio_total', Decimal('0'))
@@ -37,12 +41,17 @@ class MatriculaService:
 
         matricula = Matricula.objects.create(**validated_data)
         
-        for horario_id in horarios_ids:
-            try:
+        # Validar que todos los horarios existan
+        if horarios_ids:
+            horarios_existentes = set(Horario.objects.filter(id__in=horarios_ids).values_list('id', flat=True))
+            ids_faltantes = set(horarios_ids) - horarios_existentes
+            if ids_faltantes:
+                matricula.delete()  # Rollback parcial
+                raise ValidationError(f"Los siguientes horarios no existen: {list(ids_faltantes)}")
+            
+            for horario_id in horarios_ids:
                 horario = Horario.objects.get(id=horario_id)
                 MatriculaHorario.objects.create(matricula=matricula, horario=horario)
-            except Horario.DoesNotExist:
-                pass
         
         return matricula
 
@@ -59,20 +68,27 @@ class MatriculaService:
             
         Returns:
             Matricula: La matrícula actualizada
+            
+        Raises:
+            ValidationError: Si algún horario ID no existe
         """
-        horarios_ids = horarios_ids
-        
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
         
         if horarios_ids is not None:
+            horarios_ids = list(set(horarios_ids))  # Deduplicar
+            
+            # Validar que todos los horarios existan
+            if horarios_ids:
+                horarios_existentes = set(Horario.objects.filter(id__in=horarios_ids).values_list('id', flat=True))
+                ids_faltantes = set(horarios_ids) - horarios_existentes
+                if ids_faltantes:
+                    raise ValidationError(f"Los siguientes horarios no existen: {list(ids_faltantes)}")
+            
             instance.horarios.all().delete()
             for horario_id in horarios_ids:
-                try:
-                    horario = Horario.objects.get(id=horario_id)
-                    MatriculaHorario.objects.create(matricula=instance, horario=horario)
-                except Horario.DoesNotExist:
-                    pass
+                horario = Horario.objects.get(id=horario_id)
+                MatriculaHorario.objects.create(matricula=instance, horario=horario)
         
         return instance
