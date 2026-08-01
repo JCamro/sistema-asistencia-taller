@@ -6,7 +6,6 @@ import { useWindowWidth } from '../../hooks/useWindowWidth';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 
 const formatClases = (n:number):string => n===1?'1 clase':`${n} clases`;
-const SUGERENCIAS = [4,8,12,16,20,24];
 const TPL: Record<string,string> = {individual:'Individual',combo_musical:'Combo Musical',mixto:'Mixto',intensivo:'Intensivo'};
 type FormMode = 'create'|'edit'|null;
 

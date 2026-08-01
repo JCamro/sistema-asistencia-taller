@@ -4,7 +4,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useWindowWidth } from '../../hooks/useWindowWidth';
 import { BTN_PRIMARY } from '../../theme/colors';
 import { previewPricing } from '../../api/endpoints';
-import type { Alumno, Matricula, PricingPreviewResponse } from '../../api/endpoints';
+import type { Alumno, Matricula, PricingItemResponse, PricingPreviewResponse } from '../../api/endpoints';
 
 interface PrecioCalculado extends PricingPreviewResponse {}
 
@@ -257,7 +257,7 @@ function ReciboFormModal({ isOpen, onClose, onSuccess, recibo, cicloId }: Recibo
   };
 
   // ponytail: largest-remainder method distributes rounding across all items
-  const roundTo5Balanced = (items: typeof precioCalculado extends { items: infer I } ? I : never, total: number, bruto: number) => {
+  const roundTo5Balanced = (items: PricingItemResponse[], total: number, bruto: number) => {
     // Step 1: proportional share, floor to multiple of 5, track fraction
     const shares = items.map((item) => {
       const share = bruto > 0 ? (item.precio_original / bruto) * total : 0;
