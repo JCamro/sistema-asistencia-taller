@@ -20,6 +20,9 @@ class ProfesorHorasTrabajadasDetalleView(APIView):
     Query params:
     - fecha_desde: YYYY-MM-DD (optional)
     - fecha_hasta: YYYY-MM-DD (optional)
+    - mostrar_todos: true/false (optional, default false)
+      When true, includes absent students (falta/falta_grave) in the response.
+      Does NOT change which HoraTrabajada records are shown.
     """
     authentication_classes = [ProfesorJWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -29,6 +32,7 @@ class ProfesorHorasTrabajadasDetalleView(APIView):
 
         fecha_desde = request.query_params.get('fecha_desde')
         fecha_hasta = request.query_params.get('fecha_hasta')
+        mostrar_todos = request.query_params.get('mostrar_todos', 'false') == 'true'
 
         # Fetch ALL HoraTrabajada for horarios assigned to this profesor
         # (not just the ones where this profesor is the HoraTrabajada.profesor).
@@ -46,11 +50,12 @@ class ProfesorHorasTrabajadasDetalleView(APIView):
             'horario__taller', 'horario__profesor', 'profesor',
         ).order_by('-fecha', 'horario__taller__nombre', 'horario__hora_inicio')
 
-        # Excluir HoraTrabajada auto-generadas sin Asistencia que las respalde.
-        # Cuando un sustituto trabaja, el signal viejo creaba registros para el titular
-        # (horario.profesor). Esos registros no tienen Asistencia.profesor que coincida.
-        # Filtramos: para cada (profesor, horario, fecha), debe existir al menos una
-        # Asistencia con ese mismo profesor.
+        # ALWAYS filter: only show HoraTrabajada records backed by valid Asistencia
+        # (asistio) or admin_manual creation. This prevents showing duplicate slots
+        # when a substitute worked (both substitute and regular professor records exist,
+        # but only the substitute's has valid Asistencia).
+        # mostrar_todos does NOT affect this filter - it only affects which students
+        # are included in the response (see alumnos query below).
         from django.db.models import Exists, OuterRef
         asistencia_valida = Asistencia.objects.filter(
             horario_id=OuterRef('horario_id'),
@@ -69,14 +74,19 @@ class ProfesorHorasTrabajadasDetalleView(APIView):
                 horario_ids.add(ht.horario_id)
             fechas.add(ht.fecha)
 
-        # Fetch Asistencia for all horarios+fechas (students who attended)
+        # Fetch Asistencia for all horarios+fechas
+        # When mostrar_todos=False: only students who attended (asistio)
+        # When mostrar_todos=True: ALL students (asistio + falta + falta_grave)
         alumnos_map = {}
         if horario_ids and fechas:
-            asistencias = Asistencia.objects.filter(
-                horario_id__in=horario_ids,
-                fecha__in=fechas,
-                estado='asistio',
-            ).select_related('matricula__alumno')
+            asistencias_filter = {
+                'horario_id__in': horario_ids,
+                'fecha__in': fechas,
+            }
+            if not mostrar_todos:
+                asistencias_filter['estado'] = 'asistio'
+
+            asistencias = Asistencia.objects.filter(**asistencias_filter).select_related('matricula__alumno')
 
             for asistencia in asistencias:
                 alumno = asistencia.matricula.alumno if asistencia.matricula else None

@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from core.models import NotaClase, Horario
 from core.serializers.portal_docente.serializers import NotaClaseSerializer
 from core.shared.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
+from core.views.pagination import StandardResultsSetPagination
 
 
 class ProfesorNotasView(APIView):
@@ -40,9 +41,10 @@ class ProfesorNotasView(APIView):
         if fecha:
             queryset = queryset.filter(fecha=fecha)
 
-        return Response(
-            NotaClaseSerializer(queryset, many=True).data
-        )
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        serializer = NotaClaseSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, ciclo_id):
         profesor_id = get_profesor_for_ciclo(request.user.dni, ciclo_id)

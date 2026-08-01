@@ -64,9 +64,17 @@ class ProfesorDashboardView(APIView):
             fecha__lte=today,
         ).aggregate(total=Sum('horas_trabajadas'))['total'] or Decimal('0')
 
+        # Total horarios: active schedules for this profesor in this ciclo
+        total_horarios = Horario.objects.filter(
+            ciclo_id=ciclo_id,
+            profesor_id=profesor_id,
+            activo=True,
+        ).count()
+
         return Response({
             'clases_hoy': clases_hoy,
             'total_alumnos': total_alumnos,
+            'total_horarios': total_horarios,
             'horas_dia': float(horas_dia),
             'horas_mes': float(horas_mes),
         })

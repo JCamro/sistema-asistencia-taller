@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -6,6 +7,7 @@ from rest_framework.response import Response
 from core.models import NotaDia
 from core.serializers.portal_docente.serializers import NotaDiaSerializer
 from core.shared.authentication import ProfesorJWTAuthentication, get_profesor_for_ciclo
+from core.views.pagination import StandardResultsSetPagination
 
 
 class ProfesorNotasDiaView(APIView):
@@ -22,7 +24,7 @@ class ProfesorNotasDiaView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, ciclo_id):
-        get_profesor_for_ciclo(request.user.dni, ciclo_id)  # validate ciclo active
+        get_profesor_for_ciclo(request.user.dni, ciclo_id)
         profesor_id = request.user.id
 
         queryset = NotaDia.objects.filter(
@@ -30,39 +32,27 @@ class ProfesorNotasDiaView(APIView):
             ciclo_id=ciclo_id,
         ).order_by('-fecha', '-created_at')
 
-        # Filter by fecha
         fecha = request.query_params.get('fecha')
         if fecha:
             queryset = queryset.filter(fecha=fecha)
 
-        return Response(
-            NotaDiaSerializer(queryset, many=True).data
-        )
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        serializer = NotaDiaSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, ciclo_id):
-        get_profesor_for_ciclo(request.user.dni, ciclo_id)  # validate ciclo active
+        get_profesor_for_ciclo(request.user.dni, ciclo_id)
         profesor_id = request.user.id
 
         serializer = NotaDiaSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        fecha = serializer.validated_data['fecha']
-
-        # Check for duplicate (unique_together: ciclo + profesor + fecha)
-        if NotaDia.objects.filter(
-            profesor_id=profesor_id,
-            ciclo_id=ciclo_id,
-            fecha=fecha,
-        ).exists():
-            return Response(
-                {"detail": "Ya existe una nota para este día"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         nota = NotaDia.objects.create(
             profesor_id=profesor_id,
             ciclo_id=ciclo_id,
-            fecha=fecha,
+            fecha=timezone.now().date(),
+            titulo=serializer.validated_data['titulo'],
             contenido=serializer.validated_data.get('contenido', ''),
         )
 
@@ -100,7 +90,7 @@ class ProfesorNotaDiaDetailView(APIView):
         return Response(NotaDiaSerializer(nota).data)
 
     def put(self, request, ciclo_id, nota_id):
-        get_profesor_for_ciclo(request.user.dni, ciclo_id)  # validate ciclo active
+        get_profesor_for_ciclo(request.user.dni, ciclo_id)
         nota = self._get_nota(nota_id, request.user.id, ciclo_id)
         if not nota:
             return Response(
@@ -108,14 +98,10 @@ class ProfesorNotaDiaDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = NotaDiaSerializer(
-            nota,
-            data=request.data,
-            partial=False,
-        )
+        serializer = NotaDiaSerializer(nota, data=request.data, partial=False)
         serializer.is_valid(raise_exception=True)
 
-        # Update allowed fields
+        nota.titulo = serializer.validated_data.get('titulo', nota.titulo)
         nota.contenido = serializer.validated_data.get('contenido', nota.contenido)
         nota.save()
 
@@ -129,13 +115,11 @@ class ProfesorNotaDiaDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = NotaDiaSerializer(
-            nota,
-            data=request.data,
-            partial=True,
-        )
+        serializer = NotaDiaSerializer(nota, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
+        if 'titulo' in serializer.validated_data:
+            nota.titulo = serializer.validated_data['titulo']
         if 'contenido' in serializer.validated_data:
             nota.contenido = serializer.validated_data['contenido']
         nota.save()
