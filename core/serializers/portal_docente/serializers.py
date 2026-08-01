@@ -4,7 +4,7 @@ from django.db.models import IntegerField, ExpressionWrapper, Value
 from django.db.models.functions import ExtractYear
 from rest_framework import serializers
 
-from core.models import Ciclo, Horario, Asistencia, Matricula, Alumno, NotaClase, NotaDia, NotaAlumno, PagoProfesor
+from core.models import Ciclo, Egreso, Horario, Asistencia, Matricula, Alumno, NotaClase, NotaDia, NotaAlumno, PagoProfesor
 from core.models.hora_trabajada import HoraTrabajada
 
 
@@ -219,10 +219,13 @@ class HoraTrabajadaDetalleSerializer(serializers.Serializer):
 class NotaClaseSerializer(serializers.ModelSerializer):
     """NotaClase serializer for list/create/update."""
     taller_nombre = serializers.CharField(source='horario.taller.nombre', read_only=True)
+    dia_semana = serializers.IntegerField(source='horario.dia_semana', read_only=True)
+    hora_inicio = serializers.CharField(source='horario.hora_inicio', read_only=True)
+    hora_fin = serializers.CharField(source='horario.hora_fin', read_only=True)
 
     class Meta:
         model = NotaClase
-        fields = ['id', 'horario', 'fecha', 'contenido', 'created_at', 'updated_at', 'taller_nombre']
+        fields = ['id', 'horario', 'dia_semana', 'hora_inicio', 'hora_fin', 'fecha', 'contenido', 'created_at', 'updated_at', 'taller_nombre']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def validate_horario(self, value):
@@ -236,12 +239,12 @@ class NotaClaseSerializer(serializers.ModelSerializer):
 
 
 class NotaDiaSerializer(serializers.ModelSerializer):
-    """NotaDia serializer for list/create/update."""
+    """NotaDia serializer for list/create/update. fecha is server-managed (always today)."""
 
     class Meta:
         model = NotaDia
-        fields = ['id', 'fecha', 'contenido', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        fields = ['id', 'titulo', 'fecha', 'contenido', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'fecha', 'created_at', 'updated_at']
 
 
 class NotaAlumnoSerializer(serializers.ModelSerializer):
@@ -328,6 +331,15 @@ class PagoProfesorPortalSerializer(serializers.Serializer):
     estado_display = serializers.CharField(source='get_estado_display')
     fecha_pago = serializers.DateField(allow_null=True)
     detalles = PagoProfesorDetallePortalSerializer(many=True, read_only=True)
+
+
+class EgresoPortalSerializer(serializers.ModelSerializer):
+    """Egreso serializer for portal docente — read-only payment view."""
+    class Meta:
+        model = Egreso
+        fields = ['id', 'monto', 'descripcion', 'fecha', 'metodo_pago',
+                  'estado', 'beneficiario', 'created_at']
+        read_only_fields = fields
 
 
 # ─── Alumno-specific asistencias (SidePanel) ─────────────────────────────
