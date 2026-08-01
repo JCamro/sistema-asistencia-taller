@@ -28,8 +28,8 @@ class ProfesorPagosView(APIView):
         qs = Egreso.objects.filter(
             ciclo_id=ciclo_id,
             profesor_id=profesor_id,
-            tipo='pago_profesor',
-        )
+            tipo__in=['pago_profesor', 'gasto_personal'],
+        ).select_related('profesor')
 
         fecha_desde = request.query_params.get('fecha_desde')
         fecha_hasta = request.query_params.get('fecha_hasta')

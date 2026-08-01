@@ -333,13 +333,36 @@ class PagoProfesorPortalSerializer(serializers.Serializer):
     detalles = PagoProfesorDetallePortalSerializer(many=True, read_only=True)
 
 
+DIA_SEMANA_MAP = {
+    0: 'Lunes',
+    1: 'Martes',
+    2: 'Miércoles',
+    3: 'Jueves',
+    4: 'Viernes',
+    5: 'Sábado',
+    6: 'Domingo',
+}
+
+
 class EgresoPortalSerializer(serializers.ModelSerializer):
     """Egreso serializer for portal docente — read-only payment view."""
+    dia_semana = serializers.SerializerMethodField()
+    profesor_nombre = serializers.SerializerMethodField()
+
     class Meta:
         model = Egreso
-        fields = ['id', 'monto', 'descripcion', 'fecha', 'metodo_pago',
-                  'estado', 'beneficiario', 'created_at']
+        fields = ['id', 'monto', 'descripcion', 'fecha', 'dia_semana',
+                  'metodo_pago', 'estado', 'beneficiario', 'profesor_nombre',
+                  'created_at']
         read_only_fields = fields
+
+    def get_dia_semana(self, obj):
+        return DIA_SEMANA_MAP.get(obj.fecha.weekday(), '')
+
+    def get_profesor_nombre(self, obj):
+        if obj.profesor:
+            return f"{obj.profesor.nombre} {obj.profesor.apellido}"
+        return obj.beneficiario or ''
 
 
 # ─── Alumno-specific asistencias (SidePanel) ─────────────────────────────
