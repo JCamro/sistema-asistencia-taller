@@ -286,38 +286,13 @@ function MatriculaFormModal({ isOpen, onClose, onSuccess, matricula, editingId: 
         payload.activo = formData.activo;
         payload.concluida = formData.concluida;
       }
-      if (!editingId && formData.horarios.length > 0) {
-        payload.horarios = formData.horarios;
-      }
-      const response = editingId ? await api.patch(url, payload) : await api.post(url, payload);
-      const matriculaData = response.data;
-      if (!editingId && formData.horarios.length > 0) {
-        for (const horarioId of formData.horarios) {
-          try {
-            await api.post('/matriculas-horarios/', { matricula: matriculaData.id, horario: horarioId });
-          } catch (err: any) {
-            if (!err.response || (err.response.status !== 400 && err.response.status !== 200)) throw err;
-          }
-        }
-      } else if (editingId) {
-        const matriculasHorariosResponse = await api.get(`/matriculas-horarios/?matricula=${editingId}`);
-        const matriculasHorariosJsonData = matriculasHorariosResponse.data.results || matriculasHorariosResponse.data;
-        const horariosActuales: number[] = Array.isArray(matriculasHorariosJsonData) ? matriculasHorariosJsonData.map((mh: any) => mh.horario) : [];
-        for (const horarioId of horariosActuales) {
-          if (!formData.horarios.includes(horarioId)) {
-            const mhToDelete = Array.isArray(matriculasHorariosJsonData) ? matriculasHorariosJsonData.find((mh: any) => mh.horario === horarioId) : null;
-            if (mhToDelete) await api.delete(`/matriculas-horarios/${mhToDelete.id}/`);
-          }
-        }
-        for (const horarioId of formData.horarios) {
-          if (!horariosActuales.includes(horarioId)) {
-            try {
-              await api.post('/matriculas-horarios/', { matricula: editingId, horario: horarioId });
-            } catch (err: any) {
-              if (!err.response || (err.response.status !== 400 && err.response.status !== 200)) throw err;
-            }
-          }
-        }
+      // Los horarios se reemplazan atómicamente en el backend vía MatriculaService
+      // (PATCH /matriculas/{id}/ con el campo write-only 'horarios').
+      payload.horarios = formData.horarios;
+      if (editingId) {
+        await api.patch(url, payload);
+      } else {
+        await api.post(url, payload);
       }
       onSuccess();
       onClose();
